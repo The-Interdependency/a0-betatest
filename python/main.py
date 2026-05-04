@@ -434,6 +434,11 @@ async def lifespan(app: FastAPI):
             await _sess.execute(_sa_text(_ddl))
     print("[messages] orchestration columns ensured")
     async with get_session() as _sess:
+        await _sess.execute(_sa_text(
+            "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS enabled_tools JSONB"
+        ))
+    print("[conversations] enabled_tools column ensured")
+    async with get_session() as _sess:
         await _sess.execute(_sa_text("""
             CREATE TABLE IF NOT EXISTS transcript_uploads (
                 id SERIAL PRIMARY KEY,
