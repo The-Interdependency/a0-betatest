@@ -3,11 +3,12 @@ import { useState, useCallback } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
+import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useBillingStatus } from "@/hooks/use-billing-status";
 import { useSEO } from "@/hooks/use-seo";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Heart, X } from "lucide-react";
+import { Loader2, Heart, X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -105,7 +106,17 @@ export default function PricingPage() {
   const legalCopy = plans?.legal_copy;
 
   return (
-    <div className="min-h-screen bg-background pb-20 px-4 pt-6 max-w-lg mx-auto">
+    <div className="min-h-screen bg-background pb-20 px-4 pt-4 max-w-lg mx-auto">
+      <div className="mb-6">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          data-testid="link-back-home"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Link>
+      </div>
       <div className="mb-8 text-center">
         <div className="flex justify-center mb-3">
           <Heart className="w-6 h-6 text-primary" />
