@@ -222,6 +222,42 @@ async def promote_draft(draft_id: int, request: Request, body: dict):
     return {"ok": True}
 
 
+import subprocess as _subprocess
+import time as _time
+
+_BOOT_AT: float = _time.time()
+
+
+@router.get("/system/build-info")
+async def build_info(request: Request):
+    """Git commit + server boot time. Visible to ws/admin only."""
+    uid = request.headers.get("x-user-id")
+    role = request.headers.get("x-user-role", "")
+    if role not in ("admin", "ws"):
+        from ..storage import storage as _s
+        row = await _s.get_user(uid) if uid else None
+        if not row or row.get("role") not in ("admin", "ws"):
+            raise HTTPException(status_code=403, detail="ws/admin only")
+    try:
+        raw = _subprocess.check_output(
+            ["git", "log", "-1", "--format=%H|%s|%cI"],
+            stderr=_subprocess.DEVNULL,
+            timeout=3,
+        ).decode().strip()
+        parts = raw.split("|", 2)
+        commit_hash = parts[0][:8] if len(parts) > 0 else "unknown"
+        commit_subject = parts[1] if len(parts) > 1 else ""
+        committed_at = parts[2] if len(parts) > 2 else ""
+    except Exception:
+        commit_hash, commit_subject, committed_at = "unknown", "", ""
+    return {
+        "commit_hash": commit_hash,
+        "commit_subject": commit_subject,
+        "committed_at": committed_at,
+        "boot_at": _BOOT_AT,
+    }
+
+
 from ..services.editable_registry import editable_registry, EditableField
 editable_registry.register(EditableField(
     key="system_toggle",

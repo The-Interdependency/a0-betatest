@@ -1,6 +1,6 @@
 // 174:0
 import { useLocation, Link } from "wouter";
-import { Zap, Shield, Palette, Check, Archive, Network, Images, FileSearch, Sun, Moon, Monitor, Cpu } from "lucide-react";
+import { Zap, Shield, Palette, Check, Archive, Network, Images, FileSearch, Sun, Moon, Monitor, Cpu, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUiStructure } from "@/hooks/use-ui-structure";
 import { useBillingStatus } from "@/hooks/use-billing-status";
@@ -11,6 +11,77 @@ import { useSkin, SKINS, SKIN_LABELS, type Skin } from "@/hooks/use-skin";
 import { useThemeMode, MODES, MODE_LABELS, type ThemeMode } from "@/hooks/use-theme-mode";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+
+interface BuildInfo {
+  commit_hash: string;
+  commit_subject: string;
+  committed_at: string;
+  boot_at: number;
+}
+
+function useRelativeTime(iso: string | number | undefined): string {
+  if (!iso) return "";
+  const ts = typeof iso === "number" ? iso * 1000 : new Date(iso).getTime();
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function LastUpdatedWidget() {
+  const { isWs, isAdmin } = useBillingStatus();
+  const { data } = useQuery<BuildInfo>({
+    queryKey: ["/api/v1/system/build-info"],
+    staleTime: 5 * 60 * 1000,
+    enabled: isWs || isAdmin,
+  });
+  const deployedAgo = useRelativeTime(data?.committed_at);
+  const bootAgo = useRelativeTime(data?.boot_at);
+  if (!isWs && !isAdmin) return null;
+  if (!data) return null;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="flex flex-col items-center justify-center px-2 min-h-[44px] gap-0.5 text-muted-foreground hover:text-foreground transition-colors"
+          data-testid="button-last-updated"
+          aria-label="Last updated info"
+        >
+          <Clock className="w-4 h-4" />
+          <span className="text-[10px] font-mono leading-none">{deployedAgo}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 p-3 space-y-2" data-testid="popover-last-updated">
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+          Last updated
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex items-start gap-2">
+            <span className="text-[11px] text-muted-foreground w-14 shrink-0">deploy</span>
+            <span className="text-[12px] font-mono text-foreground break-all leading-snug">
+              {data.commit_hash}
+            </span>
+            <span className="text-[11px] text-muted-foreground shrink-0 ml-auto">{deployedAgo}</span>
+          </div>
+          {data.commit_subject && (
+            <div className="flex items-start gap-2">
+              <span className="text-[11px] text-muted-foreground w-14 shrink-0"></span>
+              <span className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                {data.commit_subject}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 pt-0.5 border-t border-border">
+            <span className="text-[11px] text-muted-foreground w-14 shrink-0">boot</span>
+            <span className="text-[11px] text-muted-foreground">{bootAgo}</span>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const NAV_ITEMS = [
   { path: "/", icon: Zap, label: "Agent" },
@@ -156,6 +227,7 @@ export default function TopNav() {
           </div>
         </PopoverContent>
       </Popover>
+      <LastUpdatedWidget />
       {data?.agent && (
         <div
           className="flex items-center justify-center px-3 min-h-[44px] text-muted-foreground gap-2"
