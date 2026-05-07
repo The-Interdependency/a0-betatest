@@ -305,6 +305,7 @@ async def get_context_preview(conv_id: int, request: Request):
         if rec:
             tier = rec["subscription_tier"]
 
+    # Load agent persona if the conversation is Forge-pinned.
     agent_persona: str | None = None
     agent_id = conv.get("agent_id")
     if agent_id:
@@ -325,6 +326,8 @@ async def get_context_preview(conv_id: int, request: Request):
 
     base_prompt = await _build_system_prompt(tier, agent_persona=agent_persona)
 
+    # Inject context_boost exactly as the send path does (chat.py), so the
+    # preview matches what the model actually receives.
     boost = (conv.get("context_boost") or "").strip()
     if boost and base_prompt is not None:
         base_prompt = base_prompt + f"\n\n## Context Boost\n{boost}"
@@ -333,6 +336,7 @@ async def get_context_preview(conv_id: int, request: Request):
 
     full_prompt = _prepend_doctrine(base_prompt) or ""
 
+    # Collect active seed titles for the UI summary strip.
     seeds = await storage.get_memory_seeds()
     active_seed_titles = [
         s.get("label", f"Seed {s.get('seed_index', '?')}")
@@ -376,6 +380,7 @@ async def get_conv_tools(conv_id: int, request: Request):
     for schema in TOOL_SCHEMAS_CHAT:
         fn = schema.get("function", {})
         name = fn.get("name", "")
+        # Look up metadata from the registry for tier/category info.
         spec = reg.get(name)
         tool_list.append({
             "name": name,
@@ -405,6 +410,7 @@ async def patch_conv_tools(conv_id: int, body: ToolsBody, request: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
     await _assert_conv_owner(conv_id, uid)
 
+    # Validate tool names against the known registry to prevent data drift.
     if body.enabled_tools is not None:
         from ..services.tool_executor import TOOL_SCHEMAS_CHAT
         known = {s["function"]["name"] for s in TOOL_SCHEMAS_CHAT}
@@ -414,6 +420,7 @@ async def patch_conv_tools(conv_id: int, body: ToolsBody, request: Request):
                 status_code=400,
                 detail=f"Unknown tool name(s): {', '.join(unknown)}",
             )
+        # Deduplicate and sort for stable storage.
         body = body.model_copy(update={"enabled_tools": sorted(set(body.enabled_tools))})
 
     import json as _json

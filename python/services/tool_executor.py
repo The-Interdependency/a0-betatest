@@ -75,16 +75,19 @@ def get_active_responses_schemas() -> list[dict]:
     filtered = []
     for s in TOOL_SCHEMAS_RESPONSES:
         if "name" in s:
+            # Named tool (function-call style) — check allow-list directly.
             if s["name"] in allowed_set:
                 filtered.append(s)
         elif "type" in s:
+            # Native type entry (e.g. {"type": "web_search_preview"}).
+            # Map to logical name; include if the logical name is allowed.
             logical = _NATIVE_TYPE_TO_TOOL_NAME.get(s["type"], s["type"])
             if logical in allowed_set:
                 filtered.append(s)
         else:
+            # Unknown shape — include unconditionally.
             filtered.append(s)
     return filtered
-
 
 _TOOL_RESULT_PASS_TOKENS = 8000  # mirrored from tool_distill for the persist gate
 
