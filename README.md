@@ -88,8 +88,14 @@ npm run build                      # Production build → dist/
 npm run check                      # TypeScript type checking
 python scripts/annotate.py         # Re-stamp file N:M ratio annotations
 
-# Gating contracts (no live server required)
-python -m pytest python/tests/contracts/route_gating.py python/tests/contracts/gating.py -v
+# Static gating contracts (no live server required)
+python3 -m pytest python/tests/contracts/route_gating.py python/tests/contracts/gating.py -v
+
+# Full contract suite (requires dev server on :8001 + Postgres)
+python3 -m pytest python/tests/contracts/route_gating.py python/tests/contracts/gating.py \
+  python/tests/contracts/billing.py python/tests/contracts/chat.py \
+  python/tests/contracts/energy.py python/tests/contracts/spawn_executor.py \
+  python/tests/contracts/transcripts_explainer.py -v
 
 # Playwright e2e (requires dev server on :5000)
 npx playwright install chromium    # first time only
