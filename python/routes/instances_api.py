@@ -22,6 +22,39 @@
 # DOC endpoint: GET /api/v1/agents/instances/{id}/archives | List chat archives
 """Model-instantiation (D&D party) CRUD and sub-routes."""
 
+UI_META = {
+    "tab_id": "instances",
+    "label": "Instances",
+    "icon": "Bot",
+    "order": 16,
+    "sections": [
+        {
+            "id": "instance_roster",
+            "label": "Instance Roster",
+            "endpoint": "/api/v1/agents/instances",
+            "fields": [
+                {"key": "canonical_name", "type": "text", "label": "Name"},
+                {"key": "kind", "type": "badge", "label": "Kind"},
+                {"key": "vendor", "type": "badge", "label": "Vendor"},
+                {"key": "model_id", "type": "text", "label": "Model"},
+                {"key": "role_slot", "type": "badge", "label": "Slot"},
+                {"key": "memory_count", "type": "text", "label": "Memory"},
+                {"key": "open_task_count", "type": "text", "label": "Open Tasks"},
+                {"key": "created_at", "type": "text", "label": "Created"},
+            ],
+        },
+        {
+            "id": "model_catalog",
+            "label": "Model Catalog",
+            "endpoint": "/api/v1/agents/models",
+            "fields": [
+                {"key": "vendor", "type": "badge", "label": "Vendor"},
+                {"key": "models", "type": "json", "label": "Models"},
+            ],
+        },
+    ],
+}
+
 import uuid
 import os
 import json

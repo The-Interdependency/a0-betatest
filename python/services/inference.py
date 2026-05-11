@@ -57,6 +57,49 @@ def _load_doctrine() -> str:
     return ""
 
 
+async def _instance_memory_block(provider_id: str) -> str:
+    """Fetch editable instance memory for the provider's primary model.
+
+    Reads instance_memory rows for the model_instances row whose model_id
+    matches this provider's model string. Also prepends swarm_context if set.
+    Returns "" when no instance exists, no entries exist, or on any error —
+    so inference is never blocked by this path.
+
+    The user controls injection by editing or deleting memory entries via
+    /api/v1/agents/instances/{id}/memory (admin). Deleting all entries and
+    clearing swarm_context on the instance stops injection entirely.
+    """
+    from ..database import get_session
+    from sqlalchemy import text as _sa_text
+    try:
+        spec = BUILTIN_PROVIDERS.get(provider_id, {})
+        model_id = (spec.get("model") or "").strip()
+        if not model_id:
+            return ""
+        async with get_session() as session:
+            inst = (await session.execute(_sa_text(
+                "SELECT id, swarm_context FROM model_instances "
+                "WHERE model_id = :mid LIMIT 1"
+            ), {"mid": model_id})).mappings().first()
+            if not inst:
+                return ""
+            iid = str(inst["id"])
+            sc = (inst["swarm_context"] or "").strip()
+            rows = (await session.execute(_sa_text(
+                "SELECT tier, content FROM instance_memory "
+                "WHERE instance_id = :iid "
+                "ORDER BY tier DESC, created_at DESC LIMIT 40"
+            ), {"iid": iid})).mappings().all()
+        parts: list[str] = []
+        if sc:
+            parts.append(sc)
+        for r in rows:
+            parts.append(f"[{(r['tier'] or '').upper()}] {r['content']}")
+        return "\n".join(parts)
+    except Exception:
+        return ""
+
+
 def _prime_seed_context_lines() -> tuple[str, str]:
     """Return (lt_line, st_line) compact one-line memory tags from prime seeds.
 
@@ -543,6 +586,9 @@ async def call_provider(
       - Gemini: honored only on the native SDK path (gemini3 spec.supports_thinking)
     """
     system_prompt = _prepend_doctrine(system_prompt)
+    _imem = await _instance_memory_block(provider_id)
+    if _imem:
+        system_prompt = (system_prompt or "") + "\n\n## Instance Memory\n" + _imem
     messages = _build_provider_messages(messages, provider_id)
 
     if provider_id == "openai":
