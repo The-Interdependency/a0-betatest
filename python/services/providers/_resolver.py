@@ -1,5 +1,5 @@
-# 40:30
-"""resolve_model_for_role — env > seed > spec primary.
+# 28:25
+"""resolve_model_for_role — env > spec primary.
 
 Purpose: every provider module asks one question on every call:
 "given the role I'm being asked to fulfil, which concrete model id should
@@ -9,22 +9,15 @@ Resolution order (highest precedence first):
   1. Env var `<PROVIDER>_MODEL_<ROLE>` (uppercase, e.g. CLAUDE_MODEL_CONDUCT,
      OPENAI_MODEL_PERFORM, GROK_MODEL_PRACTICE). Env wins so an operator can
      pin a model without touching DB or code.
-  2. Persisted seed `route_config.model_assignments[role]` for that provider
-     (persisted in ws_modules.route_config.model_assignments).
-  3. Provider spec primary (`BUILTIN_PROVIDERS[provider_id]["model"]`) which
+  2. Provider spec primary (`BUILTIN_PROVIDERS[provider_id]["model"]`) which
      comes from python/config/providers.json. This is the doctrine baseline.
 
-Raises ValueError if none of the three yields a model id — no silent
-fallback to any default, since silent fallbacks burn user trust harder
-than failing loudly with a real exception.
+Raises ValueError if neither yields a model id — no silent fallback.
 """
 from __future__ import annotations
 
 import os
 
-from sqlalchemy import text as sa_text
-
-from ...database import get_session
 from ..energy_registry import BUILTIN_PROVIDERS
 
 # Env-var prefix per provider id. Keep in sync with providers.json. The
@@ -60,24 +53,13 @@ async def resolve_model_for_role(provider_id: str, role: str) -> str:
         val = os.environ.get(env_key, "").strip()
         if val:
             return val
-    # 2. Seed model_assignments
-    async with get_session() as session:
-        row = (await session.execute(
-            sa_text("SELECT route_config FROM ws_modules WHERE slug = :slug"),
-            {"slug": f"provider_{provider_id}"},
-        )).mappings().first()
-    if row and isinstance(row["route_config"], dict):
-        ma = row["route_config"].get("model_assignments") or {}
-        if isinstance(ma.get(role_norm), str) and ma[role_norm].strip():
-            return ma[role_norm].strip()
-    # 3. Spec primary (providers.json baseline)
+    # 2. Spec primary (providers.json baseline)
     spec = BUILTIN_PROVIDERS.get(provider_id, {})
     primary = (spec.get("model") or "").strip()
     if primary:
         return primary
     raise ValueError(
         f"No model resolvable for provider={provider_id!r} role={role_norm!r} "
-        f"(checked env {prefix or '?'}{role_norm.upper()}, seed model_assignments, "
-        f"and providers.json primary)"
+        f"(checked env {prefix or '?'}{role_norm.upper()} and providers.json primary)"
     )
-# 40:30
+# 28:25

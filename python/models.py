@@ -1,4 +1,4 @@
-# 386:31
+# 358:23
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, Float, DateTime, JSON,
     ARRAY, ForeignKey, UniqueConstraint, Index, text
@@ -260,19 +260,6 @@ class SystemToggle(Base):
     updated_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 
-class DiscoveryDraft(Base):
-    __tablename__ = "discovery_drafts"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    source_task = Column(Text, nullable=False)
-    title = Column(Text, nullable=False)
-    summary = Column(Text, nullable=False)
-    relevance_score = Column(Float, nullable=False, server_default="0")
-    source_data = Column(JSONB)
-    promoted_to_conversation = Column(Boolean, nullable=False, server_default="false")
-    conversation_id = Column(Integer)
-    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-
-
 class TranscriptSource(Base):
     __tablename__ = "transcript_sources"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -412,34 +399,6 @@ class ApprovalScope(Base):
     __table_args__ = (UniqueConstraint("user_id", "scope", name="uq_approval_scope_user_scope"),)
 
 
-class WsModule(Base):
-    """A user-defined or system-shadow console module.
-
-    status values:
-      system   — shadow record for a hardcoded route module; visible, immutable via API
-      active   — user module mounted and live
-      inactive — user module persisted but not mounted
-      locked   — active/inactive module write-protected by its owner
-      error    — compilation or mount failed; error_log has details
-    """
-    __tablename__ = "ws_modules"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    slug = Column(String(120), unique=True, nullable=False)
-    name = Column(Text, nullable=False)
-    description = Column(Text, nullable=False, server_default="")
-    owner_id = Column(String, nullable=False)
-    status = Column(String(20), nullable=False, server_default="inactive")
-    handler_code = Column(Text)
-    ui_meta = Column(JSONB, nullable=False, server_default="{}")
-    route_config = Column(JSONB, nullable=False, server_default="{}")
-    error_log = Column(Text)
-    version = Column(Integer, nullable=False, server_default="1")
-    content_hash = Column(String(64))
-    last_swapped_at = Column(DateTime)
-    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
-    updated_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
-
-
 class ToolResult(Base):
     """Persistent store of raw tool-call outputs.
 
@@ -489,4 +448,4 @@ class GeneratedImage(Base):
     featured = Column(Boolean, nullable=False, server_default=text("false"))
     tags = Column(JSONB, server_default=text("'[]'::jsonb"))
     skill_origin = Column(Text)
-# 386:31
+# 358:23

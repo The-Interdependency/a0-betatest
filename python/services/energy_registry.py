@@ -1,4 +1,4 @@
-# 245:55
+# 245:52
 import logging
 import contextvars
 import json
@@ -25,8 +25,7 @@ _PROVIDER_PRICING_URLS: dict[str, str] = {
 }
 
 # Per-model pricing manifest — source of truth for input/output/cached rates
-# per individual model id. Hydrates ws_modules.route_config.available_models
-# on boot and on POST /api/energy/refresh-pricing/{provider_id}.
+# per individual model id. Used on boot and on POST /api/energy/refresh-pricing/{provider_id}.
 _PRICING_JSON_PATH = Path(__file__).parent.parent / "config" / "pricing.json"
 
 
@@ -343,4 +342,4 @@ def resolve_providers(providers: list[str] | None) -> list[str]:
         elif p in BUILTIN_PROVIDERS and p not in out:
             out.append(p)
     return out
-# 245:55
+# 245:52

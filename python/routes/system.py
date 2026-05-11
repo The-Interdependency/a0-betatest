@@ -1,4 +1,4 @@
-# 236:12
+# 208:12
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, Any
@@ -63,7 +63,6 @@ UI_META = {
                 {"key": "heartbeatRuns", "type": "text", "label": "Heartbeat Runs"},
                 {"key": "conversations", "type": "text", "label": "Conversations"},
                 {"key": "events", "type": "text", "label": "Events"},
-                {"key": "drafts", "type": "text", "label": "Drafts"},
             ],
         },
         {
@@ -74,17 +73,6 @@ UI_META = {
                 {"key": "title", "type": "text", "label": "Title"},
                 {"key": "status", "type": "badge", "label": "Status"},
                 {"key": "ceiling", "type": "text", "label": "Ceiling"},
-                {"key": "created_at", "type": "text", "label": "Created"},
-            ],
-        },
-        {
-            "id": "discovery",
-            "label": "Discovery Drafts",
-            "endpoint": "/api/v1/system/discovery",
-            "fields": [
-                {"key": "title", "type": "text", "label": "Title"},
-                {"key": "relevance_score", "type": "gauge", "label": "Relevance"},
-                {"key": "promoted_to_conversation", "type": "badge", "label": "Promoted"},
                 {"key": "created_at", "type": "text", "label": "Created"},
             ],
         },
@@ -102,7 +90,6 @@ DATA_SCHEMA = {
         {"method": "GET", "path": "/api/v1/system/activity"},
         {"method": "GET", "path": "/api/v1/system/deals"},
         {"method": "POST", "path": "/api/v1/system/deals"},
-        {"method": "GET", "path": "/api/v1/system/discovery"},
     ],
 }
 
@@ -201,26 +188,6 @@ async def update_deal(deal_id: int, request: Request, body: DealUpdate):
     return await storage.update_deal(deal_id, updates)
 
 
-@router.get("/system/discovery")
-async def list_discovery(limit: int = 50):
-    return await storage.get_discovery_drafts(limit)
-
-
-@router.post("/system/discovery")
-async def create_draft(request: Request, body: dict):
-    await require_admin(request)
-    return await storage.create_discovery_draft(body)
-
-
-@router.post("/system/discovery/{draft_id}/promote")
-async def promote_draft(draft_id: int, request: Request, body: dict):
-    await require_admin(request)
-    conv_id = body.get("conversation_id")
-    if not conv_id:
-        raise HTTPException(status_code=400, detail="conversation_id required")
-    await storage.promote_discovery_draft(draft_id, conv_id)
-    return {"ok": True}
-
 
 import subprocess as _subprocess
 import time as _time
@@ -298,4 +265,4 @@ editable_registry.register(EditableField(
     patch_endpoint="/api/v1/system/toggles/{subsystem}",
     query_key="/api/v1/system/toggles",
 ))
-# 236:12
+# 208:12

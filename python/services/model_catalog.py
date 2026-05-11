@@ -1,4 +1,4 @@
-# 131:76
+# 105:66
 """model_catalog — single source of truth for "what models can this user use".
 
 Today three surfaces answer this question independently:
@@ -24,9 +24,6 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from sqlalchemy import text as sa_text
-
-from ..database import get_session
 from .energy_registry import (
     BUILTIN_PROVIDERS,
     _PROVIDER_PRESETS,
@@ -83,43 +80,17 @@ async def resolve_model_id(model_id: str) -> tuple[str, dict]:
     hit = _resolve_static(model_id)
     if hit:
         return hit
-    # Fall back to persisted route_config so any model surfaced by
-    # /api/v1/models is callable.
-    async with get_session() as session:
-        # ESCAPE '\' so the literal underscore in 'provider_' is not treated
-        # as a SQL single-char wildcard (which would also match the legacy
-        # 'provider::<id>' rows during the migration window).
-        rows = (await session.execute(sa_text(
-            r"SELECT slug, route_config FROM ws_modules WHERE slug LIKE 'provider\_%' ESCAPE '\'"
-        ))).mappings().all()
-    for row in rows:
-        pid = row["slug"].removeprefix("provider_")
-        if pid not in BUILTIN_PROVIDERS:
-            continue
-        cfg = row["route_config"] if isinstance(row["route_config"], dict) else {}
-        assignments = cfg.get("model_assignments") or {}
-        if model_id in assignments.values():
-            return pid, BUILTIN_PROVIDERS[pid]
-        for m in cfg.get("available_models") or []:
-            if isinstance(m, dict) and m.get("id") == model_id:
-                return pid, BUILTIN_PROVIDERS[pid]
     raise ValueError(f"Unknown model_id: {model_id!r}")
 
 
 async def is_provider_enabled(provider_id: str) -> bool:
-    """Honor the user-facing kill switch in route_config.enabled.
-
-    Defaults to True when no row exists yet (provider seeds may not have
-    been written). Mirrors the chat.py enforcement.
-    """
-    async with get_session() as session:
-        row = (await session.execute(sa_text(
-            "SELECT route_config FROM ws_modules WHERE slug = :slug"
-        ), {"slug": f"provider_{provider_id}"})).mappings().first()
-    if not row:
+    """Providers are enabled when their API key env var is present."""
+    spec = BUILTIN_PROVIDERS.get(provider_id, {})
+    env_key = spec.get("env_key")
+    if not env_key:
         return True
-    cfg = row["route_config"] if isinstance(row["route_config"], dict) else {}
-    return cfg.get("enabled", True)
+    import os
+    return bool(os.environ.get(env_key))
 
 
 async def _user_tier(user_id: Optional[str]) -> str:
@@ -162,16 +133,7 @@ async def list_models_for_user(user_id: Optional[str]) -> dict[str, Any]:
     active = default_provider()
     out_providers: list[dict[str, Any]] = []
 
-    # Pull each provider's persisted route_config so we honor enabled flag,
-    # disabled_models, model_assignments, and discovered available_models.
     cfgs: dict[str, dict] = {}
-    async with get_session() as session:
-        rows = (await session.execute(sa_text(
-            r"SELECT slug, route_config FROM ws_modules WHERE slug LIKE 'provider\_%' ESCAPE '\'"
-        ))).mappings().all()
-        for row in rows:
-            pid = row["slug"].removeprefix("provider_")
-            cfgs[pid] = (row["route_config"] or {}) if isinstance(row["route_config"], dict) else {}
 
     for pid, spec in BUILTIN_PROVIDERS.items():
         env_key = spec.get("env_key")
@@ -239,4 +201,4 @@ async def list_models_for_user(user_id: Optional[str]) -> dict[str, Any]:
         })
 
     return {"user_tier": user_tier, "providers": out_providers}
-# 131:76
+# 105:66

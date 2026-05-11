@@ -1,4 +1,4 @@
-# 663:41
+# 573:39
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from sqlalchemy import select, update, delete, func, desc, asc, text as _sa_text
@@ -6,11 +6,11 @@ from sqlalchemy import select, update, delete, func, desc, asc, text as _sa_text
 from ..database import get_session
 from ..models import (
     HeartbeatTask, EdcmMetricSnapshot, MemorySeed, MemoryProjection,
-    MemoryTensorSnapshot, SystemToggle, DiscoveryDraft,
+    MemoryTensorSnapshot, SystemToggle,
     TranscriptSource, TranscriptReport, TranscriptUpload, TranscriptMessage,
     TranscriptExplanation, ExplanationCredits,
     Deal, HeartbeatLog,
-    Conversation, A0pEvent, Message, ApprovalScope, WsModule,
+    Conversation, A0pEvent, Message, ApprovalScope,
 )
 from .core import _CoreStorage, _row_to_dict
 
@@ -501,28 +501,6 @@ class DatabaseStorage(_CoreStorage):
         async with get_session() as session:
             await session.execute(delete(SystemToggle).where(SystemToggle.subsystem == subsystem))
 
-    async def get_discovery_drafts(self, limit: int = 50) -> List[Dict[str, Any]]:
-        async with get_session() as session:
-            result = await session.execute(
-                select(DiscoveryDraft).order_by(desc(DiscoveryDraft.created_at)).limit(limit)
-            )
-            return [_row_to_dict(r) for r in result.scalars().all()]
-
-    async def create_discovery_draft(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        async with get_session() as session:
-            draft = DiscoveryDraft(**data)
-            session.add(draft)
-            await session.flush()
-            await session.refresh(draft)
-            return _row_to_dict(draft)
-
-    async def promote_discovery_draft(self, id: int, conversation_id: int) -> None:
-        async with get_session() as session:
-            await session.execute(
-                update(DiscoveryDraft).where(DiscoveryDraft.id == id)
-                .values(promoted_to_conversation=True, conversation_id=conversation_id)
-            )
-
     async def list_deals(self, user_id: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
         async with get_session() as session:
             q = select(Deal).where(Deal.user_id == user_id).order_by(desc(Deal.created_at))
@@ -558,11 +536,6 @@ class DatabaseStorage(_CoreStorage):
             hb = await session.execute(select(func.count()).select_from(HeartbeatLog))
             conv = await session.execute(select(func.count()).select_from(Conversation))
             ev = await session.execute(select(func.count()).select_from(A0pEvent))
-            drafts = await session.execute(select(func.count()).select_from(DiscoveryDraft))
-            promos = await session.execute(
-                select(func.count()).select_from(DiscoveryDraft)
-                .where(DiscoveryDraft.promoted_to_conversation == True)
-            )
             edcm = await session.execute(select(func.count()).select_from(EdcmMetricSnapshot))
             mem = await session.execute(select(func.count()).select_from(MemoryTensorSnapshot))
             msgs = await session.execute(select(func.count()).select_from(Message))
@@ -571,8 +544,6 @@ class DatabaseStorage(_CoreStorage):
                 "transcripts": msgs.scalar(),
                 "conversations": conv.scalar(),
                 "events": ev.scalar(),
-                "drafts": drafts.scalar(),
-                "promotions": promos.scalar(),
                 "edcmSnapshots": edcm.scalar(),
                 "memorySnapshots": mem.scalar(),
             }
@@ -713,80 +684,6 @@ class DatabaseStorage(_CoreStorage):
             )
             return result.rowcount > 0
 
-    async def list_ws_modules(self) -> List[Dict[str, Any]]:
-        async with get_session() as session:
-            result = await session.execute(
-                select(WsModule).order_by(asc(WsModule.status), asc(WsModule.name))
-            )
-            return [_row_to_dict(r) for r in result.scalars().all()]
-
-    async def get_ws_module(self, module_id: int) -> Optional[Dict[str, Any]]:
-        async with get_session() as session:
-            result = await session.execute(select(WsModule).where(WsModule.id == module_id))
-            return _row_to_dict(result.scalar_one_or_none())
-
-    async def get_ws_module_by_slug(self, slug: str) -> Optional[Dict[str, Any]]:
-        async with get_session() as session:
-            result = await session.execute(select(WsModule).where(WsModule.slug == slug))
-            return _row_to_dict(result.scalar_one_or_none())
-
-    async def create_ws_module(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        async with get_session() as session:
-            mod = WsModule(**data)
-            session.add(mod)
-            await session.flush()
-            await session.refresh(mod)
-            return _row_to_dict(mod)
-
-    async def update_ws_module(self, module_id: int, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        updates["updated_at"] = datetime.utcnow()
-        async with get_session() as session:
-            await session.execute(
-                update(WsModule).where(WsModule.id == module_id).values(**updates)
-            )
-        return await self.get_ws_module(module_id)
-
-    async def delete_ws_module(self, module_id: int) -> bool:
-        async with get_session() as session:
-            result = await session.execute(delete(WsModule).where(WsModule.id == module_id))
-            return result.rowcount > 0
-
-    async def get_active_ws_module_ui_metas(self) -> List[Dict[str, Any]]:
-        """Return UI_META dicts for all user-created active ws modules."""
-        async with get_session() as session:
-            result = await session.execute(
-                select(WsModule).where(
-                    WsModule.status == "active",
-                    WsModule.owner_id != "system",
-                )
-            )
-            metas = []
-            for row in result.scalars().all():
-                d = _row_to_dict(row)
-                ui_meta = d.get("ui_meta") or {}
-                if ui_meta:
-                    metas.append(ui_meta)
-            return metas
-
-    async def upsert_system_shadow(self, slug: str, name: str, description: str, ui_meta: Dict[str, Any]) -> None:
-        """Upsert a system shadow record for a hardcoded route module."""
-        existing = await self.get_ws_module_by_slug(slug)
-        if existing:
-            await self.update_ws_module(existing["id"], {
-                "name": name,
-                "ui_meta": ui_meta,
-            })
-        else:
-            await self.create_ws_module({
-                "slug": slug,
-                "name": name,
-                "description": description,
-                "owner_id": "system",
-                "status": "system",
-                "ui_meta": ui_meta,
-                "route_config": {},
-            })
-
 
 storage = DatabaseStorage()
-# 663:41
+# 573:39

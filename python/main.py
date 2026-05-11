@@ -1,4 +1,4 @@
-# 356:328
+# 326:309
 import os
 import time
 from contextlib import asynccontextmanager
@@ -13,7 +13,6 @@ from .database import engine
 from .engine import PCNAEngine
 from .routes import ALL_ROUTERS, collect_ui_meta
 from .services.heartbeat import heartbeat_service
-from .engine.module_registry import initialize_registry, get_registry
 from .agents.zfae import compose_name, ZFAE_AGENT_DEF
 from .services.energy_registry import default_provider, BUILTIN_PROVIDERS as _BP_MAIN
 
@@ -121,27 +120,6 @@ async def _ensure_default_tools() -> None:
         print(f"[tools] {len(_ZFAE_TOOL_SPECS)} ZFAE tools already present")
 
 
-async def _seed_system_shadow_modules() -> None:
-    """Upsert shadow DB records for every hardcoded route module.
-
-    These records are visible in the WS editor but completely immutable via the
-    API (status='system', owner_id='system'). The backing code is never touched;
-    this is purely informational / safe-mode reference.
-    """
-    from .storage import storage as _storage
-    metas = collect_ui_meta()
-    for meta in metas:
-        tab_id = meta.get("tab_id", "")
-        slug = f"system::{tab_id}"
-        label = meta.get("label", tab_id)
-        await _storage.upsert_system_shadow(
-            slug=slug,
-            name=label,
-            description=f"System module — hardcoded route ({tab_id})",
-            ui_meta=meta,
-        )
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("[python] FastAPI starting — DB engine initialized")
@@ -198,30 +176,6 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE conversations ALTER COLUMN model DROP DEFAULT"
         ))
     print("[conversations] silent 'gemini' default dropped from model column")
-    async with get_session() as _sess:
-        await _sess.execute(_sa_text("""
-            CREATE TABLE IF NOT EXISTS ws_modules (
-                id SERIAL PRIMARY KEY,
-                slug VARCHAR(120) UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                description TEXT NOT NULL DEFAULT '',
-                owner_id VARCHAR NOT NULL,
-                status VARCHAR(20) NOT NULL DEFAULT 'inactive',
-                handler_code TEXT,
-                ui_meta JSONB NOT NULL DEFAULT '{}',
-                route_config JSONB NOT NULL DEFAULT '{}',
-                error_log TEXT,
-                version INTEGER NOT NULL DEFAULT 1,
-                content_hash VARCHAR(64),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-    async with get_session() as _sess:
-        await _sess.execute(_sa_text(
-            "ALTER TABLE ws_modules ADD COLUMN IF NOT EXISTS last_swapped_at TIMESTAMP"
-        ))
-    print("[ws_modules] table ensured")
     async with get_session() as _sess:
         # agent_runs / agent_logs / settings — backbone for per-recursion-level
         # structured logging, cut-mode + cap enforcement, fleet view.
@@ -559,13 +513,8 @@ async def lifespan(app: FastAPI):
             )
         """))
     print("[model_instances] tables ensured")
-    await _seed_system_shadow_modules()
-    print("[ws_modules] system shadows seeded")
     from .services.energy_registry import BUILTIN_PROVIDERS as _BP
     print(f"[providers] {len(_BP)} provider(s) in catalog (no DB bootstrap)")
-    _hot_count = await get_registry().load_all_active()
-    if _hot_count:
-        print(f"[module_registry] {_hot_count} hot-swap module(s) mounted")
     from .storage import storage as _storage
     _res_toggle = await _storage.get_system_toggle("zfae:resolution")
     if _res_toggle and _res_toggle.get("parameters"):
@@ -615,7 +564,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="A0P Python Backend", lifespan=lifespan)
-initialize_registry(app)
 
 _IS_PROD = os.environ.get("NODE_ENV") == "production" or os.environ.get("ENV") == "production"
 _INTERNAL_SECRET = os.environ.get("INTERNAL_API_SECRET")
@@ -696,13 +644,10 @@ async def health():
 
 @app.get("/api/v1/ui/structure")
 async def ui_structure():
-    from .storage import storage as _storage
     base_tabs = collect_ui_meta()
-    ws_tabs = await _storage.get_active_ws_module_ui_metas()
-    all_tabs = base_tabs + ws_tabs
-    all_tabs.sort(key=lambda t: t.get("order", 99))
+    base_tabs.sort(key=lambda t: t.get("order", 99))
     return {
-        "tabs": all_tabs,
+        "tabs": base_tabs,
         "agent": compose_name(
             default_provider(),
             model_id=((_BP_MAIN.get(default_provider()) or {}).get("spec_model")),
@@ -719,4 +664,4 @@ if IS_PROD and os.path.isdir(STATIC_DIR):
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))
-# 356:328
+# 326:309

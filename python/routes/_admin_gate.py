@@ -1,10 +1,9 @@
-# 29:22
+# 29:21
 # DOC module: _admin_gate
 # DOC label: Admin Gate
 # DOC description: Shared write-gate for instrument-wide mutation endpoints.
 """Shared admin / operator gate for routes that mutate global instrument
-state (memory seeds, PCNA channels, sigma watches, system toggles, agents,
-bandits, deals, discovery drafts).
+state (memory seeds, PCNA channels, sigma watches, system toggles, agents, deals).
 
 Two-tier write model from replit.md:
   1. ADMIN — set via ADMIN_USER_ID, ADMIN_EMAIL env vars, or x-user-role: admin.
@@ -56,4 +55,4 @@ async def require_admin(request: Request) -> None:
         except Exception:
             pass
     raise HTTPException(status_code=403, detail="Admin only")
-# 29:22
+# 29:21

@@ -1,4 +1,4 @@
-# 168:17
+# 162:17
 from .chat import router as chat_router
 from .agents import router as agents_router
 from .memory import router as memory_router
@@ -15,7 +15,6 @@ from .guest import router as guest_router
 from .openai_api import router as openai_router
 from .zfae_api import router as zfae_router
 from .approval_scopes import router as approval_scopes_router
-from .ws_modules import router as ws_modules_router
 from .docs import router as docs_router
 from .sigma_api import router as sigma_router
 from .editable_schema import router as editable_schema_router
@@ -30,7 +29,6 @@ from .preferences import router as preferences_router
 from .fleet import router as fleet_router
 from .transcripts import router as transcripts_router
 from .models import router as models_router
-from .module_config_api import router as module_config_router
 from .instances_api import router as instances_router
 
 ALL_ROUTERS = [
@@ -51,7 +49,6 @@ ALL_ROUTERS = [
     openai_router,
     zfae_router,
     approval_scopes_router,
-    ws_modules_router,
     docs_router,
     sigma_router,
     editable_schema_router,
@@ -66,7 +63,6 @@ ALL_ROUTERS = [
     fleet_router,
     transcripts_router,
     models_router,
-    module_config_router,
     instances_router,
 ]
 
@@ -87,7 +83,6 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.openai_api",
         "python.routes.zfae_api",
         "python.routes.approval_scopes",
-        "python.routes.ws_modules",
         "python.routes.docs",
         "python.routes.sigma_api",
         "python.routes.editable_schema",
@@ -95,7 +90,6 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.forge",
         "python.routes.liminals",
         "python.routes.artifacts",
-        "python.routes.module_config_api",
     ]
     tabs = []
     for mod_name in modules:
@@ -167,9 +161,9 @@ def collect_doc_meta() -> list[dict]:
         "chat.py", "agents.py", "memory.py", "edcm.py",
         "system.py", "tools.py", "heartbeat_api.py", "pcna_api.py",
         "billing.py", "contexts.py", "openai_api.py",
-        "zfae_api.py", "approval_scopes.py", "ws_modules.py", "docs.py",
+        "zfae_api.py", "approval_scopes.py", "docs.py",
         "sigma_api.py", "editable_schema.py", "cli.py", "forge.py",
-        "artifacts.py", "module_config_api.py", "instances_api.py",
+        "artifacts.py", "instances_api.py",
     ]
     results: list[dict] = []
     for fname in route_files:
@@ -199,4 +193,4 @@ def collect_doc_meta() -> list[dict]:
 # === END CONTRACTS ===
 # 171:16
 
-# 168:17
+# 162:17

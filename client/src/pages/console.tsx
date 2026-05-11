@@ -1,21 +1,18 @@
-// 187:7
+// 172:7
 import { useState, useEffect, type ComponentType } from "react";
 import { AlertTriangle, Loader2, Pencil, PencilOff } from "lucide-react";
 import { useUiStructure } from "@/hooks/use-ui-structure";
 import { useBillingStatus } from "@/hooks/use-billing-status";
 import { useSEO } from "@/hooks/use-seo";
-import { useWsEditModeProvider, WsEditContext } from "@/hooks/use-ws-edit-mode";
 import ConsoleSidebar from "@/components/console-sidebar";
 import TabRenderer from "@/components/TabRenderer";
 import ApprovalScopesTab from "@/components/ApprovalScopesTab";
-import WsModulesTab from "@/components/WsModulesTab";
 import DocsTab from "@/components/DocsTab";
 import SigmaTab from "@/components/SigmaTab";
 import AgentsTab from "@/components/AgentsTab";
 import CliKeysTab from "@/components/CliKeysTab";
 import ForgeTab from "@/components/ForgeTab";
 import LiminalsTab from "@/components/LiminalsTab";
-import ModuleConfigEditor from "@/components/ModuleConfigEditor";
 import type { TabDef } from "@/hooks/use-ui-structure";
 
 const STORAGE_KEY = "a0p_active_tab";
@@ -26,14 +23,12 @@ const STORAGE_KEY = "a0p_active_tab";
 // silent generic placeholder for these ids.
 export const CUSTOM_TAB_RENDERERS: Record<string, ComponentType> = {
   approval_scopes: ApprovalScopesTab,
-  ws_modules: WsModulesTab,
   docs: DocsTab,
   sigma: SigmaTab,
   agents: AgentsTab,
   cli_keys: CliKeysTab,
   forge: ForgeTab,
   liminals: LiminalsTab,
-  module_config: ModuleConfigEditor,
 };
 
 function MissingRendererError({ tabId }: { tabId: string }) {
@@ -111,8 +106,6 @@ export default function ConsolePage() {
   const { activeTab, selectTab } = usePersistedTab(tabs);
   const currentTab = tabs.find((t) => t.tab_id === activeTab);
 
-  const wsEditContext = useWsEditModeProvider(isWs);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full" data-testid="console-loading">
@@ -130,28 +123,20 @@ export default function ConsolePage() {
   }
 
   return (
-    <WsEditContext.Provider value={wsEditContext}>
       <div className="flex flex-col h-full" data-testid="console-page">
         {isWs && (
           <div className="shrink-0 h-9 border-b border-border flex items-center justify-end px-4 gap-2 bg-background">
-            {wsEditContext.schemaLoading && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-            )}
             <button
-              onClick={wsEditContext.toggleEditMode}
-              className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded transition-colors ${
-                wsEditContext.editMode
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
+              onClick={() => {}}
+              className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded transition-colors bg-muted text-muted-foreground hover:bg-muted/80"
               data-testid="button-edit-mode-toggle"
             >
-              {wsEditContext.editMode ? (
+              {false ? (
                 <PencilOff className="h-3 w-3" />
               ) : (
                 <Pencil className="h-3 w-3" />
               )}
-              {wsEditContext.editMode ? "Exit Edit Mode" : "Edit Mode"}
+              Edit Mode
             </button>
           </div>
         )}
@@ -207,7 +192,6 @@ export default function ConsolePage() {
           </div>
         </div>
       </div>
-    </WsEditContext.Provider>
   );
 }
-// 187:7
+// 172:7

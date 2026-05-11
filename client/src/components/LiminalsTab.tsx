@@ -1,4 +1,4 @@
-// 186:2
+// 171:1
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -55,8 +55,7 @@ function ItemRow({ category, item }: { category: string; item: CategoryItem }) {
   const ts = item.started_at || item.updated_at || item.created_at;
   const stamp = relTime(ts);
 
-  // Click destination: archived & sub-agent convs jump to chat with that conv;
-  // ws_modules jump to that tab in the console; drafts have no destination yet.
+  // Click destination: archived & sub-agent convs jump to chat with that conv.
   let body = (
     <div className="flex items-start justify-between gap-3 px-3 py-2 hover-elevate active-elevate-2 rounded-md">
       <div className="min-w-0 flex-1">
@@ -92,21 +91,6 @@ function ItemRow({ category, item }: { category: string; item: CategoryItem }) {
         onClick={() => {
           try {
             localStorage.setItem("a0p_active_conv_id", String(item.id));
-          } catch {}
-        }}
-        data-testid={`liminal-link-${category}-${item.id}`}
-      >
-        {body}
-      </Link>
-    );
-  }
-  if (category === "inactive_ws_modules") {
-    return (
-      <Link
-        href="/console"
-        onClick={() => {
-          try {
-            localStorage.setItem("a0p_active_tab", "ws_modules");
           } catch {}
         }}
         data-testid={`liminal-link-${category}-${item.id}`}
@@ -200,4 +184,4 @@ export default function LiminalsTab() {
     </TabShell>
   );
 }
-// 186:2
+// 171:1
