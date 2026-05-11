@@ -90,7 +90,6 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.forge",
         "python.routes.liminals",
         "python.routes.artifacts",
-        "python.routes.instances_api",
     ]
     tabs = []
     for mod_name in modules:

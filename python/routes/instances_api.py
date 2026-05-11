@@ -22,38 +22,6 @@
 # DOC endpoint: GET /api/v1/agents/instances/{id}/archives | List chat archives
 """Model-instantiation (D&D party) CRUD and sub-routes."""
 
-UI_META = {
-    "tab_id": "instances",
-    "label": "Instances",
-    "icon": "Bot",
-    "order": 16,
-    "sections": [
-        {
-            "id": "instance_roster",
-            "label": "Instance Roster",
-            "endpoint": "/api/v1/agents/instances",
-            "fields": [
-                {"key": "canonical_name", "type": "text", "label": "Name"},
-                {"key": "kind", "type": "badge", "label": "Kind"},
-                {"key": "vendor", "type": "badge", "label": "Vendor"},
-                {"key": "model_id", "type": "text", "label": "Model"},
-                {"key": "role_slot", "type": "badge", "label": "Slot"},
-                {"key": "memory_count", "type": "text", "label": "Memory"},
-                {"key": "open_task_count", "type": "text", "label": "Open Tasks"},
-                {"key": "created_at", "type": "text", "label": "Created"},
-            ],
-        },
-        {
-            "id": "model_catalog",
-            "label": "Model Catalog",
-            "endpoint": "/api/v1/agents/models",
-            "fields": [
-                {"key": "vendor", "type": "badge", "label": "Vendor"},
-                {"key": "models", "type": "json", "label": "Models"},
-            ],
-        },
-    ],
-}
 
 import uuid
 import os
@@ -124,21 +92,68 @@ def _provider_data() -> dict:
 
 @router.get("/agents/models")
 async def list_models():
-    """All models from providers.json, grouped by vendor."""
+    """All models from providers.json, grouped by vendor.
+
+    Returns flagship models from providers{} plus all sub-models referenced
+    in presets{} so every model that can be used in a slot or preset can also
+    be instantiated and given instance memory.
+    """
     data = _provider_data()
+    providers = data.get("providers", {})
+    presets = data.get("presets", {})
+
+    # Build per-provider capability index for preset sub-model entries.
+    provider_meta: dict[str, dict] = {
+        pid: {
+            "vendor": p.get("vendor", "unknown"),
+            "supports_thinking": bool(p.get("supports_thinking")),
+            "supports_vision": bool(p.get("supports_vision")),
+            "supports_reasoning_effort": bool(p.get("supports_reasoning_effort")),
+            "min_tier": p.get("min_tier", "free"),
+        }
+        for pid, p in providers.items()
+    }
+
     by_vendor: dict[str, list] = {}
-    for pid, p in data.get("providers", {}).items():
+    seen: set[str] = set()
+
+    # Flagship model per top-level provider entry.
+    for pid, p in providers.items():
         vendor = p.get("vendor", "unknown")
+        model_id = p.get("model", pid)
         by_vendor.setdefault(vendor, []).append({
             "provider_id": pid,
-            "model_id": p.get("model", pid),
+            "model_id": model_id,
             "label": p.get("label", pid),
             "vendor": vendor,
             "supports_thinking": bool(p.get("supports_thinking")),
             "supports_vision": bool(p.get("supports_vision")),
             "supports_reasoning_effort": bool(p.get("supports_reasoning_effort")),
             "min_tier": p.get("min_tier", "free"),
+            "is_flagship": True,
         })
+        seen.add(model_id)
+
+    # Sub-models from presets that aren't already in the flagship list.
+    for pid, preset_map in presets.items():
+        meta = provider_meta.get(pid, {})
+        vendor = meta.get("vendor", "unknown")
+        for _preset_name, slot_map in preset_map.items():
+            for _slot, mid in slot_map.items():
+                if mid not in seen:
+                    by_vendor.setdefault(vendor, []).append({
+                        "provider_id": pid,
+                        "model_id": mid,
+                        "label": mid,
+                        "vendor": vendor,
+                        "supports_thinking": meta.get("supports_thinking", False),
+                        "supports_vision": meta.get("supports_vision", False),
+                        "supports_reasoning_effort": meta.get("supports_reasoning_effort", False),
+                        "min_tier": meta.get("min_tier", "free"),
+                        "is_flagship": False,
+                    })
+                    seen.add(mid)
+
     return [{"vendor": v, "models": ms} for v, ms in by_vendor.items()]
 
 

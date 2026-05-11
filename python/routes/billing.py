@@ -171,13 +171,11 @@ async def ensure_admin_emails() -> None:
     if not env_emails:
         return
     async with engine.begin() as conn:
-        existing = (await conn.execute(text("SELECT COUNT(*) FROM admin_emails"))).scalar()
-        if existing == 0:
-            for em in env_emails:
-                await conn.execute(
-                    text("INSERT INTO admin_emails (email) VALUES (:e) ON CONFLICT DO NOTHING"),
-                    {"e": em},
-                )
+        for em in env_emails:
+            await conn.execute(
+                text("INSERT INTO admin_emails (email) VALUES (:e) ON CONFLICT DO NOTHING"),
+                {"e": em},
+            )
     print(f"[admin] Seeded {len(env_emails)} admin email(s) from ADMIN_EMAIL env var")
 
 
