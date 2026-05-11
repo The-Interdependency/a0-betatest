@@ -1,13 +1,14 @@
 // 316:2
 // N:M
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, Plus, Send, Archive } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Trash2, Plus, Send, Archive, Save } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useBillingStatus } from "@/hooks/use-billing-status";
@@ -46,6 +47,11 @@ export function InstanceDrawer({
   const [memContent, setMemContent] = useState("");
   const [memTier, setMemTier] = useState("st");
   const [taskTitle, setTaskTitle] = useState("");
+  const [swarmDraft, setSwarmDraft] = useState(instance?.swarm_context ?? "");
+
+  useEffect(() => {
+    setSwarmDraft(instance?.swarm_context ?? "");
+  }, [instance?.id]);
 
   const iid = instance?.id ?? "";
 
@@ -90,6 +96,20 @@ export function InstanceDrawer({
     onError: (e: Error) => toast({ title: "Archive failed", description: e.message, variant: "destructive" }),
   });
 
+  const saveSwarm = useMutation({
+    mutationFn: async () => {
+      const r = await apiRequest("PATCH", `/api/v1/agents/instances/${iid}`, {
+        swarm_context: swarmDraft.trim() || null,
+      });
+      return r.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/v1/agents/instances"] });
+      toast({ title: "Swarm context saved" });
+    },
+    onError: (e: Error) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+  });
+
   const addMem = useMutation({
     mutationFn: async () => {
       const r = await apiRequest("POST", `/api/v1/agents/instances/${iid}/memory`,
@@ -99,6 +119,7 @@ export function InstanceDrawer({
     onSuccess: () => {
       setMemContent("");
       qc.invalidateQueries({ queryKey: [`/api/v1/agents/instances/${iid}/memory`] });
+      qc.invalidateQueries({ queryKey: ["/api/v1/agents/instances"] });
     },
     onError: (e: Error) => toast({ title: "Add failed", description: e.message, variant: "destructive" }),
   });
@@ -241,6 +262,37 @@ export function InstanceDrawer({
         {/* Memory tab */}
         {tab === "memory" && (
           <div className="flex flex-col flex-1 overflow-hidden">
+
+            {/* Swarm context editor */}
+            <div className="px-3 pt-3 pb-2 border-b border-border shrink-0">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Swarm Context</span>
+                {isAdmin && swarmDraft !== (instance.swarm_context ?? "") && (
+                  <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1 px-2"
+                    onClick={() => saveSwarm.mutate()} disabled={saveSwarm.isPending}
+                    data-testid="btn-save-swarm">
+                    {saveSwarm.isPending ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Save className="h-2.5 w-2.5" />}
+                    Save
+                  </Button>
+                )}
+              </div>
+              <Textarea
+                value={swarmDraft}
+                onChange={(e) => setSwarmDraft(e.target.value)}
+                placeholder={isAdmin
+                  ? "Role description, standing instructions… Clear to stop injection."
+                  : "No swarm context set."}
+                readOnly={!isAdmin}
+                className="text-xs font-mono resize-none min-h-[72px]"
+                data-testid="textarea-swarm-context"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Injected first on every call. Clear + save to disable.
+              </p>
+            </div>
+
+            <Separator />
+
             <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2" data-testid="instance-memory-list">
               {memQ.isLoading && <Loader2 className="h-4 w-4 animate-spin mx-auto mt-6 text-muted-foreground" />}
               {(memQ.data ?? []).map((m) => (
