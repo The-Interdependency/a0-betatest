@@ -1,4 +1,4 @@
-# 172:17
+# 174:17
 from .chat import router as chat_router
 from .agents import router as agents_router
 from .memory import router as memory_router
@@ -33,6 +33,7 @@ from .fleet import router as fleet_router
 from .transcripts import router as transcripts_router
 from .models import router as models_router
 from .module_config_api import router as module_config_router
+from .instances_api import router as instances_router
 
 ALL_ROUTERS = [
     chat_router,
@@ -71,6 +72,7 @@ ALL_ROUTERS = [
     transcripts_router,
     models_router,
     module_config_router,
+    instances_router,
 ]
 
 
@@ -173,7 +175,7 @@ def collect_doc_meta() -> list[dict]:
         "billing.py", "contexts.py", "openai_api.py",
         "zfae_api.py", "approval_scopes.py", "ws_modules.py", "docs.py",
         "sigma_api.py", "editable_schema.py", "cli.py", "forge.py",
-        "artifacts.py", "module_config_api.py",
+        "artifacts.py", "module_config_api.py", "instances_api.py",
     ]
     results: list[dict] = []
     for fname in route_files:
@@ -203,4 +205,4 @@ def collect_doc_meta() -> list[dict]:
 # === END CONTRACTS ===
 # 171:16
 
-# 172:17
+# 174:17

@@ -1,4 +1,4 @@
-# 350:382
+# 393:398
 import os
 import time
 from contextlib import asynccontextmanager
@@ -583,6 +583,65 @@ async def lifespan(app: FastAPI):
         ):
             await _sess.execute(_sa_text(_idx))
     print("[bandit_pulls] audit-log table ensured")
+    # Task #148 — model-instantiation / D&D party tables
+    async with get_session() as _sess:
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS model_instances (
+                id VARCHAR PRIMARY KEY,
+                canonical_name TEXT UNIQUE NOT NULL,
+                kind VARCHAR(20) NOT NULL DEFAULT 'zfae',
+                vendor VARCHAR(40) NOT NULL,
+                model_id TEXT NOT NULL,
+                swarm_context TEXT,
+                remote_url TEXT,
+                remote_secret_ref TEXT,
+                role_slot VARCHAR(20),
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT uq_model_instance_slot UNIQUE (role_slot)
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS instance_memory (
+                id VARCHAR PRIMARY KEY,
+                instance_id VARCHAR NOT NULL,
+                tier VARCHAR(4) NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text(
+            "CREATE INDEX IF NOT EXISTS idx_instance_memory_iid ON instance_memory(instance_id)"
+        ))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS instance_tasks (
+                id VARCHAR PRIMARY KEY,
+                instance_id VARCHAR NOT NULL,
+                title TEXT NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'open',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS instance_chats (
+                id VARCHAR PRIMARY KEY,
+                instance_id VARCHAR NOT NULL,
+                role VARCHAR(20) NOT NULL,
+                content TEXT NOT NULL,
+                archive_id VARCHAR,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS instance_chat_archives (
+                id VARCHAR PRIMARY KEY,
+                instance_id VARCHAR NOT NULL,
+                label TEXT NOT NULL,
+                archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                merge_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+            )
+        """))
+    print("[model_instances] tables ensured")
     # Task #112 — bandit_arms is fully retired. Live arm state lives
     # on PCNAEngine.bandit_state (see GET /api/v1/bandits/state); the
     # append-only audit log lives in bandit_pulls. We snapshot row
@@ -773,4 +832,4 @@ if IS_PROD and os.path.isdir(STATIC_DIR):
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))
-# 350:382
+# 393:398

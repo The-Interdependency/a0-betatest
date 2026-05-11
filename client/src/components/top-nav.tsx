@@ -110,7 +110,7 @@ export default function TopNav() {
   const [location] = useLocation();
   const { data } = useUiStructure();
   const { user } = useAuth();
-  const { tier, tierLabel } = useBillingStatus();
+  const { tier, tierLabel, isWs, isAdmin } = useBillingStatus();
   const { toast } = useToast();
   const { skin, setSkin } = useSkin();
   const { mode, setMode } = useThemeMode();

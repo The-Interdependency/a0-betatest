@@ -1,4 +1,4 @@
-// 411:33
+// 364:7
 // N:M
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -14,18 +14,14 @@ export interface PendingAttachment {
   storage_url: string;
   mime_type: string;
   name?: string;
-  preview?: string;       // object URL for image previews; absent for documents
+  preview?: string;
   kind?: "image" | "document";
   bytes?: number;
 }
 
 const MAX_BYTES = 25 * 1024 * 1024;
-// Keep in sync with server/attachments.ts. Browsers honor the union of MIME
-// types and extensions, so we cover both for code/text files which often
-// arrive with empty or octet-stream mime types.
 const ACCEPT_ATTR = [
-  "image/*",
-  "application/pdf",
+  "image/*", "application/pdf",
   "text/plain", "text/markdown", "text/csv", "text/html",
   "application/json", "application/xml", "application/yaml", "text/yaml",
   "application/zip",
@@ -38,26 +34,34 @@ const ACCEPT_ATTR = [
 export interface ChatSendOpts {
   orchestration_mode?: string;
   providers?: string[];
-  cut_mode?: string;
-  // Resolved providers list as displayed in the picker — surfaced so the
-  // page can render placeholder LiveOrchProgress cards before the server
-  // emits orchestration_start (which only fires once the chat handler
-  // reaches the multi-model branch).
   resolved_providers?: string[];
-  // Per-message model id chosen in the composer's single-mode picker. When
-  // present the backend pins this turn to that model; when absent the
-  // backend falls back through agent_model > active_provider > conv.model.
   model?: string;
+  instances?: string[];
 }
 
-const MODES = [
-  { id: "single", label: "single", multi: false },
-  { id: "fan_out", label: "fan-out", multi: true },
-  { id: "council", label: "council", multi: true },
-  { id: "daisy_chain", label: "daisy chain", multi: true },
-] as const;
+// vendor → base provider_id for backward-compat fan-out routing
+const VENDOR_TO_PROVIDER: Record<string, string> = {
+  google: "gemini",
+  openai: "openai",
+  anthropic: "claude",
+  xai: "grok",
+};
 
-interface AvailEntry { id: string; label: string; available: boolean; active: boolean; enabled?: boolean; disabled_models?: string[] }
+const VENDOR_COLORS: Record<string, string> = {
+  google: "bg-green-500",
+  openai: "bg-blue-500",
+  anthropic: "bg-orange-500",
+  xai: "bg-purple-400",
+};
+
+interface InstanceRow {
+  id: string;
+  canonical_name: string;
+  vendor: string;
+  model_id: string;
+  role_slot?: string | null;
+}
+
 interface PrefsRes { orchestration_mode?: string; cut_mode?: string; providers?: string[] }
 
 export function ChatInput({
@@ -68,13 +72,7 @@ export function ChatInput({
 }: {
   onSend: (content: string, attachmentIds: number[], opts?: ChatSendOpts) => void;
   isSending: boolean;
-  // Forge surfaces wire ChatInput but discard `opts` — surfacing a picker
-  // there would mislead the user (the chosen model would silently do
-  // nothing). Forge agents also carry their own configured model_id, so a
-  // per-message override would conflict with that design. Pass true to
-  // hide the picker on those surfaces.
   hideModelPicker?: boolean;
-  // When true, removes the top border so a parent wrapper can apply its own.
   hideBorderTop?: boolean;
 }) {
   const { toast } = useToast();
@@ -83,36 +81,18 @@ export function ChatInput({
   const [uploading, setUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [mode, setMode] = useState<string>("single");
-  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
-  const [showOrch, setShowOrch] = useState(false);
-  // Per-message model override (single mode only). null = "auto" — let the
-  // backend resolve via agent model > active_provider > conv.model.
+  const [selectedInstances, setSelectedInstances] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
 
-  const { data: availability = [] } = useQuery<AvailEntry[]>({
-    queryKey: ["/api/v1/agents/energy-providers"],
+  const instancesQ = useQuery<InstanceRow[]>({
+    queryKey: ["/api/v1/agents/instances"],
     refetchInterval: 60_000,
   });
-
-  const { data: prefs } = useQuery<PrefsRes>({
-    queryKey: ["/api/v1/users/me/preferences"],
-  });
-
-  useEffect(() => {
-    if (!prefs) return;
-    if (prefs.orchestration_mode) setMode(prefs.orchestration_mode);
-    if (Array.isArray(prefs.providers) && prefs.providers.length) {
-      setSelectedProviders(prefs.providers);
-    }
-  }, [prefs]);
+  const instances = instancesQ.data ?? [];
 
   const savePrefs = useMutation({
     mutationFn: async () => {
-      const body: Record<string, unknown> = { orchestration_mode: mode };
-      if (selectedProviders.length) body.extras = { providers: selectedProviders };
-      const r = await apiRequest("PATCH", "/api/v1/users/me/preferences", body);
+      const r = await apiRequest("PATCH", "/api/v1/users/me/preferences", { orchestration_mode: "single" });
       return r.json();
     },
     onSuccess: () => {
@@ -122,28 +102,9 @@ export function ChatInput({
     onError: (e: Error) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
   });
 
-  const currentMode = MODES.find((m) => m.id === mode) ?? MODES[0];
-  // Hide providers that the user has switched OFF in the energy settings —
-  // the server will 400 them anyway, so don't dangle them in the chip row.
-  const availableProviders = availability.filter(
-    (a) => a.available && a.enabled !== false,
-  );
-
-  // Reconcile selectedProviders when availability changes. If a provider is
-  // disabled in Energy settings, drop it from the selection so we don't ship
-  // it in the request body and earn a 400.
-  useEffect(() => {
-    if (!availability.length) return;
-    const allowed = new Set(availableProviders.map((a) => a.id));
-    setSelectedProviders((prev) => {
-      const next = prev.filter((id) => allowed.has(id));
-      return next.length === prev.length ? prev : next;
-    });
-  }, [availability, availableProviders]);
-
-  const toggleProvider = (pid: string) => {
-    setSelectedProviders((prev) =>
-      prev.includes(pid) ? prev.filter((p) => p !== pid) : [...prev, pid]
+  const toggleInstance = (id: string) => {
+    setSelectedInstances((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 
@@ -208,23 +169,33 @@ export function ChatInput({
   const handleSubmit = () => {
     const trimmed = input.trim();
     if ((!trimmed && attachments.length === 0) || isSending || uploading) return;
-    const opts: ChatSendOpts = { orchestration_mode: mode };
-    if (currentMode.multi && selectedProviders.length > 0) {
-      opts.providers = selectedProviders;
-      opts.resolved_providers = selectedProviders;
-    } else if (currentMode.multi && availableProviders.length > 0) {
-      // Default fan-out: server resolves to all available providers when
-      // body.providers is absent. Mirror that here so the live placeholder
-      // cards match what the server is about to call.
-      opts.resolved_providers = availableProviders.map((a) => a.id);
+
+    const opts: ChatSendOpts = {};
+
+    if (selectedInstances.length === 0) {
+      // Auto mode — single, model from picker or auto
+      opts.orchestration_mode = "single";
+      if (selectedModel) opts.model = selectedModel;
+    } else if (selectedInstances.length === 1) {
+      // Single instance pinned
+      const inst = instances.find((i) => i.id === selectedInstances[0]);
+      opts.orchestration_mode = "single";
+      opts.instances = selectedInstances;
+      if (inst) opts.model = inst.model_id;
+    } else {
+      // Multi-lane fan-out — map vendors to provider IDs (dedup)
+      const providerSet = new Set<string>();
+      const selectedInst = instances.filter((i) => selectedInstances.includes(i.id));
+      selectedInst.forEach((i) => {
+        const pid = VENDOR_TO_PROVIDER[i.vendor];
+        if (pid) providerSet.add(pid);
+      });
+      opts.orchestration_mode = "fan_out";
+      opts.providers = Array.from(providerSet);
+      opts.resolved_providers = Array.from(providerSet);
+      opts.instances = selectedInstances;
     }
-    // Single-mode model override is meaningless in fan-out / council /
-    // daisy-chain (those route to multiple providers) — only attach it
-    // when we're in single mode and the user picked something other than
-    // auto.
-    if (!currentMode.multi && selectedModel) {
-      opts.model = selectedModel;
-    }
+
     onSend(trimmed, attachments.map((a) => a.id), opts);
     setInput("");
     setAttachments((prev) => {
@@ -253,115 +224,72 @@ export function ChatInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeProviderId =
-    availability.find((a) => a.active)?.id || availableProviders[0]?.id;
-
   return (
     <div className={`px-4 py-3 ${hideBorderTop ? "" : "border-t border-border"}`} data-testid="chat-input-area">
-      <div className="mb-2 flex flex-col gap-1.5">
-        <div
-          role="tablist"
-          aria-label="Orchestration mode"
-          className="flex items-center gap-0.5 rounded-md border border-border bg-muted/40 p-0.5 text-[10px] uppercase tracking-wider w-fit"
-          data-testid="tabs-orchestration-mode"
-        >
-          {MODES.map((m) => {
-            const selected = m.id === mode;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => setMode(m.id)}
-                className={
-                  "px-2 py-0.5 rounded-sm transition-colors hover-elevate " +
-                  (selected
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground")
-                }
-                data-testid={`tab-mode-${m.id}`}
-              >
-                {m.label}
-                {m.multi && selected && selectedProviders.length > 0 && (
-                  <span className="ml-1 text-primary normal-case">
-                    ×{selectedProviders.length}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap text-[10px]">
-          {currentMode.multi ? (
-            <>
-              <span className="text-muted-foreground">providers:</span>
-              {availableProviders.length === 0 && (
-                <span className="text-muted-foreground italic">
-                  none available
-                </span>
-              )}
-              {availableProviders.map((p) => {
-                const on = selectedProviders.includes(p.id);
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => toggleProvider(p.id)}
-                    aria-pressed={on}
-                    className={
-                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 hover-elevate " +
-                      (on
-                        ? "bg-primary/15 border-primary text-primary"
-                        : "border-border text-muted-foreground")
-                    }
-                    data-testid={`chip-provider-${p.id}`}
-                    title={on ? `Click to exclude ${p.id}` : `Click to include ${p.id}`}
-                  >
-                    {on && <Check className="h-2.5 w-2.5" />}
-                    {p.id}
-                  </button>
-                );
-              })}
-              {availableProviders.length > 0 && (
+
+      {/* Instance lane selector */}
+      {instances.length > 0 && (
+        <div className="mb-2 flex items-center gap-1.5 flex-wrap text-[10px]">
+          <span className="text-muted-foreground shrink-0">lanes:</span>
+          <div className="flex items-center gap-1 flex-wrap overflow-x-auto">
+            {instances.map((inst) => {
+              const on = selectedInstances.includes(inst.id);
+              const dot = VENDOR_COLORS[inst.vendor] ?? "bg-muted-foreground";
+              return (
                 <button
+                  key={inst.id}
                   type="button"
-                  onClick={() =>
-                    setSelectedProviders(
-                      selectedProviders.length === availableProviders.length
-                        ? []
-                        : availableProviders.map((a) => a.id),
-                    )
-                  }
-                  className="text-muted-foreground hover:text-foreground underline underline-offset-2"
-                  data-testid="btn-toggle-all-providers"
+                  onClick={() => toggleInstance(inst.id)}
+                  aria-pressed={on}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition-colors hover-elevate shrink-0 ${
+                    on
+                      ? "bg-primary/15 border-primary text-primary"
+                      : "border-border text-muted-foreground"
+                  }`}
+                  title={inst.canonical_name}
+                  data-testid={`chip-instance-${inst.id}`}
                 >
-                  {selectedProviders.length === availableProviders.length
-                    ? "none"
-                    : "all"}
+                  {on && <Check className="h-2.5 w-2.5" />}
+                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${dot}`} />
+                  <span className="font-mono max-w-[120px] truncate">{inst.model_id}</span>
+                  {inst.role_slot && <span className="opacity-60">({inst.role_slot})</span>}
                 </button>
-              )}
-            </>
-          ) : hideModelPicker ? (
-            <span className="text-muted-foreground">
-              provider:{" "}
-              <span className="text-foreground">{activeProviderId ?? "—"}</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              );
+            })}
+            {selectedInstances.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedInstances([])}
+                className="text-muted-foreground hover:text-foreground underline underline-offset-2"
+                data-testid="btn-clear-instances"
+              >
+                clear
+              </button>
+            )}
+          </div>
+          {!hideModelPicker && selectedInstances.length === 0 && (
+            <span className="ml-auto inline-flex items-center gap-1 text-muted-foreground shrink-0">
               model:
               <ModelPicker value={selectedModel} onChange={setSelectedModel} />
-              {!selectedModel && activeProviderId && (
-                <span
-                  className="text-foreground/70"
-                  data-testid="text-default-provider"
-                  title="Default provider when picker is set to auto"
-                >
-                  → {activeProviderId}
-                </span>
-              )}
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => savePrefs.mutate()}
+            disabled={savePrefs.isPending}
+            className="ml-auto text-muted-foreground hover:text-primary underline underline-offset-2 shrink-0"
+            data-testid="btn-save-orchestration-default"
+          >
+            {savePrefs.isPending ? "saving…" : "save as default"}
+          </button>
+        </div>
+      )}
+
+      {/* Model picker when no instances exist */}
+      {instances.length === 0 && !hideModelPicker && (
+        <div className="mb-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span>model:</span>
+          <ModelPicker value={selectedModel} onChange={setSelectedModel} />
           <button
             type="button"
             onClick={() => savePrefs.mutate()}
@@ -372,7 +300,8 @@ export function ChatInput({
             {savePrefs.isPending ? "saving…" : "save as default"}
           </button>
         </div>
-      </div>
+      )}
+
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2" data-testid="chat-attachments-tray">
           {attachments.map((a) => {
@@ -417,6 +346,7 @@ export function ChatInput({
           })}
         </div>
       )}
+
       <div className="flex gap-2 items-end">
         <input
           ref={fileInputRef}
@@ -467,4 +397,4 @@ export function ChatInput({
   );
 }
 // N:M
-// 411:33
+// 364:7
