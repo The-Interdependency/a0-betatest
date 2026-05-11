@@ -201,7 +201,7 @@ async def create_instance(request: Request, body: InstanceCreate):
             " remote_url, remote_secret_ref, created_at) "
             "VALUES (:id,:cn,:kind,:vendor,:mid,:sc,:ru,:rsr,:ts)"
         ), {"id": iid, "cn": canonical, "kind": body.kind, "vendor": body.vendor,
-            "model_id": body.model_id, "sc": body.swarm_context,
+            "mid": body.model_id, "sc": body.swarm_context,
             "ru": body.remote_url, "rsr": body.remote_secret_ref, "ts": now})
     return {"id": iid, "canonical_name": canonical, "kind": body.kind,
             "vendor": body.vendor, "model_id": body.model_id}
