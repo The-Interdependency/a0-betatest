@@ -191,7 +191,7 @@ async def create_instance(request: Request, body: InstanceCreate):
     await require_admin(request)
     if body.kind not in ("zfae", "bare", "remote"):
         raise HTTPException(400, "kind must be zfae, bare, or remote")
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     canonical = f"zeta({body.model_id}){now.strftime('%Y-%m-%dT%H:%M:%SZ')}"
     iid = str(uuid.uuid4())
     async with get_session() as s:

@@ -201,9 +201,18 @@ async def build_info(request: Request):
     uid = request.headers.get("x-user-id")
     role = request.headers.get("x-user-role", "")
     if role not in ("admin", "ws"):
-        from ..storage import storage as _s
-        row = await _s.get_user(uid) if uid else None
-        if not row or row.get("role") not in ("admin", "ws"):
+        db_role = None
+        if uid:
+            from sqlalchemy import text as _sa_text
+            from ..database import get_session
+            async with get_session() as _sess:
+                _r = await _sess.execute(
+                    _sa_text("SELECT role FROM users WHERE id = :uid LIMIT 1"),
+                    {"uid": uid},
+                )
+                _row = _r.first()
+                db_role = _row[0] if _row else None
+        if db_role not in ("admin", "ws"):
             raise HTTPException(status_code=403, detail="ws/admin only")
     try:
         raw = _subprocess.check_output(
@@ -242,9 +251,18 @@ async def get_doc_file(file: str, request: Request):
     uid = request.headers.get("x-user-id")
     role = request.headers.get("x-user-role", "")
     if role not in ("admin", "ws"):
-        from ..storage import storage as _s
-        row = await _s.get_user(uid) if uid else None
-        if not row or row.get("role") not in ("admin", "ws"):
+        db_role = None
+        if uid:
+            from sqlalchemy import text as _sa_text
+            from ..database import get_session
+            async with get_session() as _sess:
+                _r = await _sess.execute(
+                    _sa_text("SELECT role FROM users WHERE id = :uid LIMIT 1"),
+                    {"uid": uid},
+                )
+                _row = _r.first()
+                db_role = _row[0] if _row else None
+        if db_role not in ("admin", "ws"):
             raise HTTPException(status_code=403, detail="ws/admin only")
     if file not in _ALLOWED_DOCS:
         raise HTTPException(status_code=400, detail=f"Unknown file. Allowed: {list(_ALLOWED_DOCS)}")
