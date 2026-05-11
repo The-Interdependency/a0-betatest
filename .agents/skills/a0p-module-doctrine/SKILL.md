@@ -207,24 +207,26 @@ Quick summary:
 
 ## 11. Consumer-Dependency Declaration (optional, best-practice)
 
-When a module or function depends on a specific service, symbol, or endpoint, declare it inline with a `# CONSUMES` comment. This makes dependency graphs machine-readable and lets grep surface the full consumer tree for any given symbol.
+Import statements already declare symbol dependencies — don't duplicate them. Use `# CONSUMES` only for runtime dependencies that don't appear in imports:
+
+- **HTTP endpoints** called via `fetch`, `httpx`, or similar
+- **Environment variables** read via `os.getenv` / `import.meta.env`
+- **Config or data files** opened at runtime
 
 ```python
 def my_function():
-    # CONSUMES default_provider
     # CONSUMES /api/v1/conversations
-    provider = default_provider()
+    # CONSUMES XAI_API_KEY
     ...
 ```
 
 Rules:
-- Place `# CONSUMES` lines **inside** the function or class body that has the dependency, immediately before the consuming call or at the top of the body
+- Place `# CONSUMES` lines inside the function or class body, at the top or immediately before the consuming call
 - One `# CONSUMES` line per dependency
-- Use the import-path form for Python symbols: `# CONSUMES energy_registry.cache_breakdown` or just `# CONSUMES cache_breakdown` when the module is obvious
-- Use the URL path form for HTTP dependencies: `# CONSUMES /api/v1/models`
-- Use the file path form for config or data files: `# CONSUMES python/config/providers.json`
+- URL path form for HTTP: `# CONSUMES /api/v1/models`
+- Env var name for secrets/config: `# CONSUMES STRIPE_SECRET_KEY`
+- Repo-relative path for files: `# CONSUMES python/config/providers.json`
 - These are comment lines (count toward M, never N) — no runtime effect
-- Do **not** add `# CONSUMES` to every trivial stdlib call; reserve it for a0p-internal services, HTTP endpoints, and config files
 
 ---
 

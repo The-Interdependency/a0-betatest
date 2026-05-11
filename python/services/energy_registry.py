@@ -77,7 +77,6 @@ def default_provider() -> str | None:
     Environment-driven only — no DB, no admin setting. Callers that need a
     specific provider should pass it explicitly; this is the fallback of last
     resort when no model is pinned at the call site.
-    # CONSUMES BUILTIN_PROVIDERS
     """
     for pid, info in BUILTIN_PROVIDERS.items():
         env_key = info.get("env_key", "")
@@ -198,9 +197,7 @@ def get_per_call_usage() -> dict:
 
 
 async def _aimmh_call_fn(model_id, messages, system_context=None, max_history=30):
-    """Bridge aimmh-lib's CallFn signature into call_provider.
-    # CONSUMES call_provider
-    """
+    """Bridge aimmh-lib's CallFn signature into call_provider."""
     from .inference import call_provider as _cep
     from . import orch_progress as _op
     state = _per_call_usage_cv.get()
