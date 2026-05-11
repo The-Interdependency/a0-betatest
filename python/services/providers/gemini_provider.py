@@ -44,8 +44,6 @@ async def call(
     (3-pro with thinking_config). Defaults to gemini3 since that's the
     runtime active provider.
     """
-    if provider_id not in ("gemini", "gemini3"):
-        raise ValueError(f"gemini_provider got provider_id={provider_id!r}; expected gemini|gemini3")
     if supports_thinking is None:
         supports_thinking = provider_id == "gemini3"
     key = api_key or os.environ.get("GEMINI_API_KEY", "").strip()

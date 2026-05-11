@@ -646,7 +646,9 @@ async def call_provider(
         payload_messages.append({"role": "system", "content": system_prompt})
     payload_messages.extend(messages)
 
-    if provider_id == "claude":
+    vendor = spec.get("vendor", "")
+
+    if vendor == "anthropic":
         return await _call_anthropic(
             api_key, spec["model"], payload_messages, max_tokens,
             use_tools=use_tools,
@@ -654,7 +656,7 @@ async def call_provider(
             enable_caching=spec.get("supports_prompt_caching", False),
         )
 
-    if provider_id in ("gemini", "gemini3"):
+    if vendor == "google":
         from .providers.gemini_provider import call as gemini_call
         return await gemini_call(
             payload_messages,
@@ -664,9 +666,10 @@ async def call_provider(
             use_tools=use_tools,
             reasoning_effort=reasoning_effort,
             provider_id=provider_id,
+            supports_thinking=bool(spec.get("supports_thinking")),
         )
 
-    if provider_id == "grok":
+    if vendor == "xai":
         from .providers.xai_provider import call as grok_call
         return await grok_call(
             payload_messages,
@@ -678,12 +681,12 @@ async def call_provider(
             progress_callback=progress_callback,
         )
 
-    # No-silent-fallback doctrine: don't quietly route an unknown provider
-    # to the openai-compat endpoint. If we got here, the provider id is not
-    # one of the four we ship — raise so the caller sees a real error.
+    # No-silent-fallback doctrine: if we got here the spec exists in
+    # BUILTIN_PROVIDERS but its vendor isn't wired to a call path — raise so
+    # the caller sees a real error rather than a silent no-op.
     raise ValueError(
-        f"Unknown provider_id={provider_id!r} reached inference dispatcher. "
-        f"Supported: openai, claude, gemini, gemini3, grok."
+        f"provider_id={provider_id!r} vendor={vendor!r} has no call path in "
+        f"the inference dispatcher. Add a vendor branch or fix providers.json."
     )
 
 
