@@ -70,7 +70,6 @@ ALL_ROUTERS = [
 def collect_ui_meta() -> list[dict]:
     import importlib
     modules = [
-        "python.routes.chat",
         "python.routes.agents",
         "python.routes.memory",
         "python.routes.edcm",
@@ -87,7 +86,6 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.sigma_api",
         "python.routes.editable_schema",
         "python.routes.cli",
-        "python.routes.forge",
         "python.routes.liminals",
         "python.routes.artifacts",
     ]

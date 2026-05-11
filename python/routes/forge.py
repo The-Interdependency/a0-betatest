@@ -33,13 +33,6 @@ from .forge_archetypes import ARCHETYPES, TOOL_CATEGORIES
 # DOC endpoint: POST /api/v1/forge/duel | (stub) Start an agent-vs-agent match
 # DOC notes: Stubs return 501 for combat/levelling — DB columns are live so UI can wire later.
 
-UI_META = {
-    "tab_id": "forge",
-    "label": "Forge",
-    "icon": "Hammer",
-    "order": 3,
-    "custom_renderer": True,
-}
 
 router = APIRouter(prefix="/api/v1/forge", tags=["forge"])
 

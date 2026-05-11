@@ -11,7 +11,6 @@ import DocsTab from "@/components/DocsTab";
 import SigmaTab from "@/components/SigmaTab";
 import AgentsTab from "@/components/AgentsTab";
 import CliKeysTab from "@/components/CliKeysTab";
-import ForgeTab from "@/components/ForgeTab";
 import LiminalsTab from "@/components/LiminalsTab";
 import type { TabDef } from "@/hooks/use-ui-structure";
 
@@ -27,7 +26,6 @@ export const CUSTOM_TAB_RENDERERS: Record<string, ComponentType> = {
   sigma: SigmaTab,
   agents: AgentsTab,
   cli_keys: CliKeysTab,
-  forge: ForgeTab,
   liminals: LiminalsTab,
 };
 

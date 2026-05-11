@@ -103,35 +103,6 @@ def _attach_cost_usd(usage: dict | None, provider_id: str | None) -> None:
 # DOC endpoint: GET /api/v1/conversations/{id}/messages | List messages in a conversation
 # DOC endpoint: POST /api/v1/conversations/{id}/messages | Send a message and receive a reply
 
-UI_META = {
-    "tab_id": "chat",
-    "label": "Chat",
-    "icon": "MessageSquare",
-    "order": 1,
-    "sections": [
-        {
-            "id": "conversations",
-            "label": "Conversations",
-            "endpoint": "/api/v1/conversations",
-            "fields": [
-                {"key": "id", "type": "text", "label": "ID"},
-                {"key": "title", "type": "text", "label": "Title"},
-                {"key": "model", "type": "badge", "label": "Model"},
-                {"key": "created_at", "type": "text", "label": "Created"},
-            ],
-        },
-        {
-            "id": "messages",
-            "label": "Messages",
-            "endpoint": "/api/v1/conversations/{id}/messages",
-            "fields": [
-                {"key": "role", "type": "badge", "label": "Role"},
-                {"key": "content", "type": "text", "label": "Content"},
-                {"key": "model", "type": "badge", "label": "Model"},
-            ],
-        },
-    ],
-}
 
 DATA_SCHEMA = {
     "endpoints": [
