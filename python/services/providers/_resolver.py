@@ -10,7 +10,7 @@ Resolution order (highest precedence first):
      OPENAI_MODEL_PERFORM, GROK_MODEL_PRACTICE). Env wins so an operator can
      pin a model without touching DB or code.
   2. Persisted seed `route_config.model_assignments[role]` for that provider
-     (the admin UI's writable surface — see routes/energy.py).
+     (persisted in ws_modules.route_config.model_assignments).
   3. Provider spec primary (`BUILTIN_PROVIDERS[provider_id]["model"]`) which
      comes from python/config/providers.json. This is the doctrine baseline.
 

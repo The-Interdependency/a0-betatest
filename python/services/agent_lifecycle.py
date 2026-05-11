@@ -46,7 +46,7 @@ from typing import Optional
 
 from ..agents.zfae import sub_agent_name
 from ..engine import PCNAEngine, InstanceMerge
-from .energy_registry import energy_registry
+from .energy_registry import default_provider
 
 _lock = threading.Lock()
 _sub_agents: dict[str, tuple[PCNAEngine, dict]] = {}
@@ -69,7 +69,7 @@ def spawn_sub_agent(
     """
     global _counter
     child, fork_result = InstanceMerge.fork(parent)
-    p = provider or energy_registry.get_active_provider()
+    p = provider or default_provider()
     with _lock:
         _counter += 1
         idx = _counter

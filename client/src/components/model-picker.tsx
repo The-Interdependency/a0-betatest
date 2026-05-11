@@ -1,29 +1,30 @@
-// 68:10
+// 68:5
 // Per-conversation model picker for the chat composer (single mode only).
-// Reads /api/energy/providers, groups enabled models by provider, lets the
-// user pick one model for the next send. "auto" means: don't include a
-// `model` field in the request body — backend falls back through its
-// resolution chain (agent model > active_provider > conv model). The
-// picker reuses the public read of /api/energy/providers (no admin needed)
-// so this works for every signed-in user, not just admins.
+// Reads /api/v1/models, groups enabled models by provider, lets the user
+// pick one model for the next send. "auto" means: don't include a `model`
+// field in the request body — backend falls back through its resolution
+// chain (agent model > default_provider > conv model).
 
 import { useQuery } from "@tanstack/react-query";
 
-interface AvailableModel {
-  id: string;
+interface ModelEntry {
+  model_id: string;
   label?: string;
+  disabled?: boolean;
 }
 
 interface ProviderEntry {
-  id: string;
+  provider_id: string;
   label: string;
-  available: boolean;
-  active: boolean;
-  route_config: {
-    enabled?: boolean;
-    disabled_models?: string[];
-    available_models?: AvailableModel[];
-  };
+  enabled: boolean;
+  key_present: boolean;
+  tier_blocked: boolean;
+  models: ModelEntry[];
+}
+
+interface ModelsResponse {
+  user_tier: string;
+  providers: ProviderEntry[];
 }
 
 export function ModelPicker({
@@ -33,23 +34,19 @@ export function ModelPicker({
   value: string | null;
   onChange: (modelId: string | null) => void;
 }) {
-  const { data: providers = [] } = useQuery<ProviderEntry[]>({
-    queryKey: ["/api/energy/providers"],
+  const { data } = useQuery<ModelsResponse>({
+    queryKey: ["/api/v1/models"],
     refetchInterval: 60_000,
   });
 
-  // Build the option list: "auto" + each enabled-and-available provider's
-  // enabled models. We mirror the same gating logic the providers page
-  // uses so the picker stays consistent with what the backend will accept.
+  const providers = data?.providers ?? [];
+
   const groups = providers
-    .filter((p) => p.available && p.route_config.enabled !== false)
-    .map((p) => {
-      const disabled = new Set(p.route_config.disabled_models ?? []);
-      const models = (p.route_config.available_models ?? []).filter(
-        (m) => !disabled.has(m.id),
-      );
-      return { provider: p, models };
-    })
+    .filter((p) => p.key_present && p.enabled && !p.tier_blocked)
+    .map((p) => ({
+      provider: p,
+      models: p.models.filter((m) => !m.disabled),
+    }))
     .filter((g) => g.models.length > 0);
 
   return (
@@ -65,17 +62,17 @@ export function ModelPicker({
       </option>
       {groups.map((g) => (
         <optgroup
-          key={g.provider.id}
+          key={g.provider.provider_id}
           label={g.provider.label}
-          data-testid={`optgroup-provider-${g.provider.id}`}
+          data-testid={`optgroup-provider-${g.provider.provider_id}`}
         >
           {g.models.map((m) => (
             <option
-              key={m.id}
-              value={m.id}
-              data-testid={`option-model-${m.id}`}
+              key={m.model_id}
+              value={m.model_id}
+              data-testid={`option-model-${m.model_id}`}
             >
-              {m.label || m.id}
+              {m.label || m.model_id}
             </option>
           ))}
         </optgroup>
@@ -83,4 +80,4 @@ export function ModelPicker({
     </select>
   );
 }
-// 68:10
+// 68:5

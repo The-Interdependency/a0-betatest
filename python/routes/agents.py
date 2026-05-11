@@ -1,4 +1,4 @@
-# 299:41
+# 251:31
 import time
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ from ..agents.zfae import (
     ZFAE_AGENT_DEF, compose_name, sub_agent_name,
     is_deprecated, DEPRECATED_NAMES,
 )
-from ..services.energy_registry import energy_registry
+from ..services.energy_registry import default_provider, BUILTIN_PROVIDERS
 from ..engine import PCNAEngine, InstanceMerge
 from ..services.agent_lifecycle import (
     # Task #122 — re-export the canonical registry from agent_lifecycle so
@@ -25,11 +25,9 @@ from ._admin_gate import require_admin
 
 # DOC module: agents
 # DOC label: Agents
-# DOC description: Manages agent instances, energy providers, and spawning. Controls which AI provider is active and allows merging named agent configurations.
+# DOC description: Manages agent instances and sub-agent spawning. Lists running agents and supports manual merge operations.
 # DOC tier: free
 # DOC endpoint: GET /api/v1/agents | List all agent instances
-# DOC endpoint: GET /api/v1/agents/energy-providers | List available AI energy providers
-# DOC endpoint: POST /api/v1/agents/energy-providers/active | Set the active energy provider
 # DOC endpoint: POST /api/v1/agents/spawn | Spawn a new agent instance
 # DOC endpoint: POST /api/v1/agents/{name}/merge | Merge a named agent configuration
 
@@ -50,17 +48,6 @@ UI_META = {
                 {"key": "last_tick_at", "type": "text", "label": "Last Tick"},
             ],
         },
-        {
-            "id": "energy_providers",
-            "label": "Energy Providers",
-            "endpoint": "/api/v1/agents/energy-providers",
-            "fields": [
-                {"key": "id", "type": "text", "label": "ID"},
-                {"key": "label", "type": "text", "label": "Label"},
-                {"key": "available", "type": "badge", "label": "Available"},
-                {"key": "active", "type": "badge", "label": "Active"},
-            ],
-        },
     ],
 }
 
@@ -69,8 +56,6 @@ DATA_SCHEMA = {
         {"method": "GET", "path": "/api/v1/agents"},
         {"method": "GET", "path": "/api/v1/agents/{name}"},
         {"method": "POST", "path": "/api/v1/agents/spawn"},
-        {"method": "GET", "path": "/api/v1/agents/energy-providers"},
-        {"method": "POST", "path": "/api/v1/agents/energy-providers/active"},
     ],
 }
 
@@ -84,16 +69,12 @@ class SpawnRequest(BaseModel):
     provider: Optional[str] = None
 
 
-class SetProviderRequest(BaseModel):
-    provider_id: str
-
-
 async def ensure_primary_agent(pcna: PCNAEngine):
     from ..database import get_session
     from sqlalchemy import text
 
-    _provider = energy_registry.get_active_provider()
-    _pinfo = energy_registry.get_provider(_provider) if _provider else None
+    _provider = default_provider()
+    _pinfo = BUILTIN_PROVIDERS.get(_provider) if _provider else None
     _model_id = _pinfo.get("spec_model") if _pinfo else None
     agent_name = compose_name(_provider, model_id=_model_id)
 
@@ -136,8 +117,8 @@ async def ensure_primary_agent(pcna: PCNAEngine):
 
 @router.get("/agents")
 async def list_agents():
-    active_provider = energy_registry.get_active_provider()
-    _ap_info = energy_registry.get_provider(active_provider) if active_provider else None
+    active_provider = default_provider()
+    _ap_info = BUILTIN_PROVIDERS.get(active_provider) if active_provider else None
     _ap_model = _ap_info.get("spec_model") if _ap_info else None
     primary_name = compose_name(active_provider, model_id=_ap_model)
     agents = [
@@ -148,7 +129,6 @@ async def list_agents():
             "is_persistent": True,
             "tools": ZFAE_AGENT_DEF["tools"],
             "sentinel_seeds": ZFAE_AGENT_DEF["sentinel_seed_indices"],
-            "energy_provider": active_provider,
         }
     ]
     for idx, sa in enumerate(_lifecycle_list()):
@@ -157,42 +137,10 @@ async def list_agents():
             "slot": f"zeta{idx}",
             "status": "active",
             "is_persistent": False,
-            "energy_provider": sa.get("provider") or active_provider,
             "uptime_s": sa["uptime_s"],
         })
     return agents
 
-
-@router.get("/agents/energy-providers")
-async def list_energy_providers():
-    """List providers + per-provider enable/disable state from the seed.
-
-    `enabled` defaults to True when the field is absent in route_config so
-    existing seed rows behave as before. `disabled_models` is the per-model
-    deny list (empty when unset). Both are surfaced here so the chat input
-    can hide killed providers without a separate fetch.
-    """
-    base = energy_registry.list_providers()
-    # Read each provider's seed once. _get_seed_module is cheap and we only
-    # have a handful of providers, so the N round-trips are fine.
-    from .energy import _get_seed_module
-    for entry in base:
-        seed = await _get_seed_module(entry["id"])
-        rc = (seed or {}).get("route_config") or {}
-        entry["enabled"] = bool(rc.get("enabled", True))
-        dm = rc.get("disabled_models") or []
-        entry["disabled_models"] = list(dm) if isinstance(dm, list) else []
-    return base
-
-
-@router.post("/agents/energy-providers/active")
-async def set_active_provider(request: Request, body: SetProviderRequest):
-    await require_admin(request)
-    if not await energy_registry.set_active_provider_persistent(body.provider_id):
-        raise HTTPException(status_code=400, detail="unknown provider")
-    _new_pinfo = energy_registry.get_provider(body.provider_id)
-    _new_model = _new_pinfo.get("spec_model") if _new_pinfo else None
-    return {"active": body.provider_id, "agent_name": compose_name(body.provider_id, model_id=_new_model)}
 
 
 @router.post("/agents/spawn")
@@ -201,7 +149,7 @@ async def spawn_sub_agent(request: Request, body: SpawnRequest):
     await require_admin(request)
     from ..main import get_pcna
     parent = get_pcna()
-    provider = body.provider or energy_registry.get_active_provider()
+    provider = body.provider or default_provider()
     return _lifecycle_spawn(parent, provider=provider)
 
 
@@ -361,16 +309,4 @@ async def learning_summary(limit: int = 200):
     }
 
 
-from ..services.editable_registry import editable_registry, EditableField
-editable_registry.register(EditableField(
-    key="active_energy_provider",
-    label="Active Energy Provider",
-    description="Which LLM powers the agent. Changes take effect on the next inference.",
-    control_type="select",
-    module="agents",
-    get_endpoint="/api/v1/agents/energy-providers",
-    patch_endpoint="/api/v1/agents/energy-providers/active",
-    query_key="/api/v1/agents/energy-providers",
-    options=["grok", "gemini", "claude"],
-))
-# 299:41
+# 251:31

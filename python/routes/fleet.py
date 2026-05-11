@@ -20,7 +20,7 @@ from sqlalchemy import text as _sa_text
 
 from ..database import get_session
 from ..services.inference_modes import run_inference_with_mode
-from ..services import energy_registry
+from ..services.energy_registry import cache_breakdown, estimate_cost
 
 # DOC module: fleet
 # DOC label: Fleet
@@ -364,10 +364,10 @@ async def _run_one_contestant(
     cost_usd = 0.0
     try:
         if isinstance(usage, dict):
-            cb = energy_registry.cache_breakdown(usage)
+            cb = cache_breakdown(usage)
             prompt_tokens = int(cb.get("fresh_input", 0))
             completion_tokens = int(cb.get("output", 0))
-            cost_usd = float(energy_registry.estimate_cost(
+            cost_usd = float(estimate_cost(
                 provider_list[0],
                 prompt_tokens, completion_tokens,
                 int(cb.get("cache_read", 0)), int(cb.get("cache_write", 0)),

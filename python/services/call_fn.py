@@ -21,21 +21,21 @@ Two flavors:
 Honest semantics:
   - Unknown model_id → ValueError (no silent fallback to a default).
   - Tier-blocked model + user_id supplied → PermissionError with reason.
-  - Provider key missing → underlying call_energy_provider raises; we let
+  - Provider key missing → underlying call_provider raises; we let
     that propagate rather than masking it.
   - user_id is threaded through to the OpenAI approval-scope plumbing.
 
-What this REPLACES (eventually): scattered `call_energy_provider(
-provider_id=..., ...)` invocations in chat / focus / cli / spawn / forge
-that each do their own provider routing. Once everything routes through
-make_call_fn the only place that knows about provider_id is this module
-plus the inference layer beneath it.
+What this REPLACES (eventually): scattered `call_provider(provider_id=...,
+...)` invocations in chat / focus / cli / spawn / forge that each do their
+own provider routing. Once everything routes through make_call_fn the only
+place that knows about provider_id is this module plus the inference layer
+beneath it.
 """
 from __future__ import annotations
 
 from typing import Awaitable, Callable, Optional
 
-from .inference import call_energy_provider
+from .inference import call_provider
 from .model_catalog import (
     _TIER_ORDER,
     _user_tier,
@@ -77,7 +77,7 @@ async def call_model(
     enforce_enabled: bool = True,
 ) -> tuple[str, dict]:
     """Module-level full-shape call. Resolves model_id → provider_id, gates
-    on tier + provider-enabled flag, and delegates to call_energy_provider.
+    on tier + provider-enabled flag, and delegates to call_provider.
 
     Default tier is "free" when user_id is None — gating is enforced for
     anonymous callers too, matching chat.py semantics. Pass
@@ -98,11 +98,11 @@ async def call_model(
             raise PermissionError(
                 f"Provider {provider_id!r} is disabled in route_config"
             )
-    # call_energy_provider raises RuntimeError on missing api_key or unknown
+    # call_provider raises RuntimeError on missing api_key or unknown
     # provider — we let it propagate (no silent-fallback doctrine). Earlier
     # versions returned a fake "[provider API key not configured…]" string;
     # that sentinel detection is gone now that the upstream raises directly.
-    content, usage = await call_energy_provider(
+    content, usage = await call_provider(
         provider_id=provider_id,
         messages=messages,
         system_prompt=system_prompt,

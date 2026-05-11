@@ -20,7 +20,7 @@ import json
 from typing import Any
 
 from ..swarm import SchemaCallError, swarm
-# call_energy_provider is imported lazily inside _make_call_fn — top-level
+# call_provider is imported lazily inside _make_call_fn — top-level
 # import causes a circular: inference.py loads tool_executor at import
 # time, which triggers tool registry discovery, which imports this file.
 
@@ -111,20 +111,20 @@ SCHEMA = {
 
 
 def _make_call_fn(provider_id: str):
-    """Adapt call_energy_provider to the aimmh CallFn shape:
+    """Adapt call_provider to the aimmh CallFn shape:
     async (model_id, messages) -> str. We discard usage; the producer
     side does its own per-batch timing via swarm()'s elapsed_ms."""
-    from ..inference import call_energy_provider  # lazy: see top-of-file note
+    from ..inference import call_provider  # lazy: see top-of-file note
 
     async def _call(_model_unused: str, messages: list[dict]) -> str:
-        # call_energy_provider expects messages WITHOUT a leading system
+        # call_provider expects messages WITHOUT a leading system
         # turn (it threads system_prompt separately). Split if present.
         sys_prompt = None
         body = messages
         if messages and messages[0].get("role") == "system":
             sys_prompt = messages[0].get("content") or ""
             body = messages[1:]
-        content, _usage = await call_energy_provider(
+        content, _usage = await call_provider(
             provider_id=provider_id,
             messages=body,
             system_prompt=sys_prompt,

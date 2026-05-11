@@ -2,11 +2,11 @@
 """
 ZetaEngine — Zeta Function Alpha Echo
 
-ZFAE passively learns from every energy provider response.
+ZFAE passively learns from every model response.
 Every assistant reply is evaluated by EDCM (no LLM), producing a coherence
 score that drives PCNA phi/psi/omega reward backprop.
 
-Naming: a0(zeta fun alpha echo) {provider}
+Naming: a0(model)zfae
   - zeta   = the observer function
   - fun    = the phi ring coherence transform
   - alpha  = the learning rate parameter

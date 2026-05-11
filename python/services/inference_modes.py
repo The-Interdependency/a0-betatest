@@ -23,8 +23,8 @@ from typing import Any, Optional
 from .run_logger import get_run_logger
 from .cut_modes import tools_for_cut_mode
 from .energy_registry import (
-    energy_registry, resolve_providers, get_multi_model_hub,
-    reset_per_call_usage,
+    resolve_providers, get_multi_model_hub, reset_per_call_usage,
+    cache_breakdown, estimate_cost,
 )
 from . import orch_progress as _op
 
@@ -73,8 +73,8 @@ def _emit_provider_response(
                 "missing_usage": True,
             })
             return
-        cb = energy_registry.cache_breakdown(usage)
-        cost = energy_registry.estimate_cost(
+        cb = cache_breakdown(usage)
+        cost = estimate_cost(
             provider,
             cb.get("fresh_input", 0),
             cb.get("output", 0),
@@ -117,7 +117,7 @@ def _attach_per_voice_usage(
     serialized response card.
 
     Keying is `(model_id, call_idx)` — the call_idx is a per-model counter
-    assigned by _aimmh_call_fn at call START (see energy_registry doc), so
+    assigned by _aimmh_call_fn at call START (see energy_registry.py), so
     two calls returning identical text from the same model still attribute
     usage to the right card. We reconstruct each result's call_idx by its
     per-model occurrence position in `serialized` (0-based).
@@ -157,8 +157,8 @@ def _attach_per_voice_usage(
         raw_usage = rec.get("usage")
         if not raw_usage:
             continue
-        cb = energy_registry.cache_breakdown(raw_usage)
-        cost = energy_registry.estimate_cost(
+        cb = cache_breakdown(raw_usage)
+        cost = estimate_cost(
             model,
             cb.get("fresh_input", 0),
             cb.get("output", 0),
@@ -257,7 +257,7 @@ async def run_inference_with_mode(
     if not resolved:
         raise RuntimeError(
             f"run_inference_with_mode: no providers resolved from {providers!r}. "
-            "Set the active provider via energy_registry or pass an explicit list."
+            "Pass an explicit providers list or ensure a provider API key is configured."
         )
 
     # Tool filtering: the chat path that takes the single branch already
@@ -270,10 +270,10 @@ async def run_inference_with_mode(
         _filtered = None
 
     if orchestration_mode == "single":
-        from .inference import call_energy_provider
+        from .inference import call_provider
         provider = resolved[0]
         t0 = time.perf_counter()
-        content, usage = await call_energy_provider(
+        content, usage = await call_provider(
             provider_id=provider,
             messages=messages,
             system_prompt=system_prompt,
@@ -282,14 +282,14 @@ async def run_inference_with_mode(
         )
         elapsed_ms = int((time.perf_counter() - t0) * 1000)
         try:
-            cb = energy_registry.cache_breakdown(usage)
+            cb = cache_breakdown(usage)
             logger = get_run_logger()
             logger.emit("provider_response", {
                 "provider": provider,
                 "prompt_tokens": cb.get("fresh_input", 0),
                 "completion_tokens": cb.get("output", 0),
                 "cache_hit_tokens": cb.get("cache_read", 0),
-                "cost_usd_estimate": round(float(energy_registry.estimate_cost(
+                "cost_usd_estimate": round(float(estimate_cost(
                     provider, cb.get("fresh_input", 0), cb.get("output", 0),
                     cb.get("cache_read", 0), cb.get("cache_write", 0),
                 )), 6),

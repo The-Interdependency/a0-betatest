@@ -96,8 +96,8 @@ async def maybe_summarize(
     provider = _caller_provider.get()
     if not provider:
         try:
-            from .energy_registry import energy_registry
-            provider = energy_registry.get_active_provider()
+            from .energy_registry import default_provider
+            provider = default_provider()
         except Exception:
             provider = None
     if not provider:
@@ -116,8 +116,8 @@ async def maybe_summarize(
     user_msg = f"Tool: {name}\nArgs: {args_preview}\n\n---\n\n{head}"
 
     try:
-        from .inference import call_energy_provider
-        text, _usage = await call_energy_provider(
+        from .inference import call_provider
+        text, _usage = await call_provider(
             provider,
             messages=[{"role": "user", "content": user_msg}],
             system_prompt=skill_prompt,
@@ -136,7 +136,7 @@ async def maybe_summarize(
                     "non-empty 'claim', 'verbatim', and 'source' fields. No "
                     "prose, no markdown fences. Same content rules apply."
                 )
-                text2, _ = await call_energy_provider(
+                text2, _ = await call_provider(
                     provider,
                     messages=[
                         {"role": "user", "content": user_msg},

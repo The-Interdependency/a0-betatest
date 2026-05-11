@@ -29,7 +29,7 @@ Honest single-concern:
     (fan_out, council, daisy_chain, etc.) get a NotImplementedError
     until their own modules land — no silent fallback to single-mode.
   * Provider resolution honors the row's `providers` list. "active"
-    resolves to energy_registry.get_active_provider(). Anything else is
+    resolves to default_provider(). Anything else is
     used as the model_id directly (resolve_model_id handles legacy
     provider-id matching). Failure to resolve raises and the row is
     marked failed — not silently rerouted.
@@ -142,7 +142,7 @@ from typing import Any, Optional
 from sqlalchemy import text as _sa_text
 
 from .agent_instance import AgentInstance
-from .energy_registry import energy_registry
+from .energy_registry import default_provider
 from .run_context import bind_run, reset_run
 from .run_logger import get_run_logger
 
@@ -403,7 +403,7 @@ def _resolve_provider(
 ) -> str:
     """Resolve providers field → provider_id string.
 
-    "active" resolves to energy_registry.get_active_provider().
+    "active" resolves to default_provider().
     Explicit provider ids are returned as-is. Malformed input raises.
     """
     if isinstance(providers, str):
@@ -418,7 +418,7 @@ def _resolve_provider(
         raise ValueError("first provider entry is empty")
 
     if pid == _SENTINEL_ACTIVE:
-        active = energy_registry.get_active_provider()
+        active = default_provider()
         if not active:
             raise ValueError("no active provider configured for 'active' binding")
         return active

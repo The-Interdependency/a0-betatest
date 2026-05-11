@@ -1,4 +1,4 @@
-# 133:76
+# 131:76
 """model_catalog — single source of truth for "what models can this user use".
 
 Today three surfaces answer this question independently:
@@ -27,11 +27,10 @@ from typing import Any, Optional
 from sqlalchemy import text as sa_text
 
 from ..database import get_session
-from . import energy_registry as _er_mod
 from .energy_registry import (
     BUILTIN_PROVIDERS,
     _PROVIDER_PRESETS,
-    energy_registry,
+    default_provider,
 )
 
 # Tier ordering for min_tier comparisons. Lower index = lower tier.
@@ -159,9 +158,8 @@ async def list_models_for_user(user_id: Optional[str]) -> dict[str, Any]:
         ]
       }
     """
-    await energy_registry.load_from_db()
     user_tier = await _user_tier(user_id)
-    active = energy_registry.get_active_provider()
+    active = default_provider()
     out_providers: list[dict[str, Any]] = []
 
     # Pull each provider's persisted route_config so we honor enabled flag,
@@ -241,4 +239,4 @@ async def list_models_for_user(user_id: Optional[str]) -> dict[str, Any]:
         })
 
     return {"user_tier": user_tier, "providers": out_providers}
-# 133:76
+# 131:76

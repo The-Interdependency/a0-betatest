@@ -1,4 +1,4 @@
-# 111:88
+# 110:88
 # DOC module: cli
 # DOC label: CLI Keys
 # DOC description: API key management for CLI and Termux access. Users generate bearer tokens (a0k_...) used to authenticate one-shot or interactive terminal sessions without a browser session.
@@ -153,8 +153,7 @@ class CliChatBody(BaseModel):
 @router.post("/chat")
 async def cli_chat(body: CliChatBody, request: Request):
     """Stateless CLI chat — authenticates via Authorization: Bearer a0k_... header."""
-    from ..services.inference import call_energy_provider
-    from ..services.energy_registry import energy_registry
+    from ..services.energy_registry import default_provider
     from ..storage import storage
     from .chat import _build_system_prompt
 
@@ -202,7 +201,7 @@ async def cli_chat(body: CliChatBody, request: Request):
     try:
         provider_id, _ = await _rmi(model_id)
     except ValueError:
-        provider_id = energy_registry.get_active_provider() or model_id
+        provider_id = default_provider() or model_id
     system_prompt = await _build_system_prompt(tier)
 
     await storage.create_message({
@@ -236,4 +235,4 @@ async def cli_chat(body: CliChatBody, request: Request):
         "tier": tier,
         "usage": usage,
     }
-# 111:88
+# 110:88

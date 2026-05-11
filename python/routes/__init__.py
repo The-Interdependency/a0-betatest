@@ -1,4 +1,4 @@
-# 171:17
+# 168:17
 from .chat import router as chat_router
 from .agents import router as agents_router
 from .memory import router as memory_router
@@ -22,7 +22,6 @@ from .editable_schema import router as editable_schema_router
 from .cli import router as cli_router
 from .focus import router as focus_router
 from .forge import router as forge_router
-from .energy import router as energy_router, pcna_router as energy_pcna_router
 from .liminals import router as liminals_router
 from .artifacts import router as artifacts_router
 from .runs import router as runs_router
@@ -59,8 +58,6 @@ ALL_ROUTERS = [
     cli_router,
     focus_router,
     forge_router,
-    energy_router,
-    energy_pcna_router,
     liminals_router,
     artifacts_router,
     runs_router,
@@ -202,4 +199,4 @@ def collect_doc_meta() -> list[dict]:
 # === END CONTRACTS ===
 # 171:16
 
-# 171:17
+# 168:17

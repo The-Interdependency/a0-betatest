@@ -6,7 +6,7 @@ ZFAE_AGENT_DEF = {
     "directives": (
         "Observe coherence across phi/psi/omega rings. "
         "Maintain sentinel seeds 10-12 as integrity monitors. "
-        "Borrow energy from active provider for inference. "
+        "Run inference via the active model. "
         "Sub-agents fork PCNA; merge on completion."
     ),
     "sentinel_seed_indices": [10, 11, 12],

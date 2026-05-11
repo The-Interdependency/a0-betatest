@@ -239,8 +239,8 @@ class HeartbeatService:
 
     async def _run_conversation_review(self) -> str:
         from ..storage import storage
-        from ..services.inference import call_energy_provider
-        from ..services.energy_registry import energy_registry
+        from ..services.inference import call_provider
+        from ..services.energy_registry import default_provider
 
         _DEFAULT_REVIEW_INTERVAL_S = 21600
 
@@ -283,15 +283,15 @@ class HeartbeatService:
         # explicitly configured active_provider. Skipping a tick is
         # preferable to silently sending Gemini-bound traffic when the
         # admin intended a different provider.
-        provider_id = energy_registry.get_active_provider()
+        provider_id = default_provider()
         if not provider_id:
             return (
-                "conversation_review_skipped: no active_provider configured "
-                "(set via POST /api/agents/active-provider)"
+                "conversation_review_skipped: no provider key configured "
+                "(check API key environment variables)"
             )
 
         try:
-            raw_content, _ = await call_energy_provider(
+            raw_content, _ = await call_provider(
                 provider_id=provider_id,
                 messages=[{"role": "user", "content": prompt_text}],
                 max_tokens=800,

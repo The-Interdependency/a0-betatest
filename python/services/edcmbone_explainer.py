@@ -14,7 +14,7 @@ from sqlalchemy import text as _sa_text
 
 from ..database import engine, get_session
 from ..services.energy_registry import BUILTIN_PROVIDERS
-from ..services.inference import call_energy_provider
+from ..services.inference import call_provider
 from ..services.run_logger import get_run_logger
 from ..storage import storage
 
@@ -328,7 +328,7 @@ async def explain_report(
       1. Return cached explanation if one already exists (no re-bill).
       2. Decrement one credit (free first, then paid). 402 if none.
       3. Build prompt from rollup + per-round messages.
-      4. Call gpt-5.5 via call_energy_provider.
+      4. Call gpt-5.5 via call_provider.
       5. Parse strict-JSON output. On parse/model failure: refund the
          credit and re-raise.
       6. Persist the explanation, record cost, emit observability event.
@@ -373,7 +373,7 @@ async def explain_report(
 
     spec = BUILTIN_PROVIDERS.get(EXPLAINER_PROVIDER_ID, {})
     try:
-        content, usage = await call_energy_provider(
+        content, usage = await call_provider(
             EXPLAINER_PROVIDER_ID,
             messages=[{"role": "user", "content": user_prompt}],
             system_prompt=_SYSTEM_PROMPT,

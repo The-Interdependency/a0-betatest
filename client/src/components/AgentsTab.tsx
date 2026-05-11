@@ -1,4 +1,4 @@
-// 394:6
+// 393:6
 // N:M
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -37,7 +37,6 @@ interface AgentRow {
   slot: string;
   status: string;
   is_persistent: boolean;
-  energy_provider?: string;
   uptime_s?: number;
   tools?: string[];
 }
@@ -405,8 +404,8 @@ export default function AgentsTab() {
                         {sa.uptime_s !== undefined && (
                           <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{fmtUptime(sa.uptime_s)}</span>
                         )}
-                        {sa.energy_provider && (
-                          <span className="flex items-center gap-0.5"><Radio className="h-2.5 w-2.5" />{sa.energy_provider}</span>
+                        {false && (
+                          <span className="flex items-center gap-0.5"><Radio className="h-2.5 w-2.5" /></span>
                         )}
                       </div>
                     </div>
@@ -431,4 +430,4 @@ export default function AgentsTab() {
   );
 }
 // N:M
-// 394:6
+// 393:6

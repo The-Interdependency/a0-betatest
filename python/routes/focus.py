@@ -95,8 +95,8 @@ async def regain_focus(conv_id: int, request: Request):
         raise HTTPException(status_code=401, detail="Authentication required")
     conv = await _assert_conv_owner(conv_id, uid)
 
-    from ..services.inference import call_energy_provider
-    from ..services.energy_registry import energy_registry
+    from ..services.inference import call_provider
+    from ..services.energy_registry import default_provider
     from .chat import _build_system_prompt
 
     tier = "free"
@@ -124,7 +124,7 @@ async def regain_focus(conv_id: int, request: Request):
     # matches the provider call_model will actually dispatch to (catches
     # the case where conv.get("model") is a real model name like
     # "gpt-5-mini" rather than a provider id).
-    _candidate = energy_registry.get_active_provider() or conv.get("model", "grok")
+    _candidate = default_provider() or conv.get("model", "grok")
     from ..services.model_catalog import resolve_model_id as _rmi
     try:
         provider_id, _ = await _rmi(_candidate)
@@ -213,8 +213,8 @@ async def launch_subagent(body: SubagentBody, request: Request):
 
 
 async def _run_subagent(conv_id: int, task: str, model: Optional[str], uid: Optional[str]):
-    from ..services.inference import call_energy_provider
-    from ..services.energy_registry import energy_registry
+    from ..services.inference import call_provider
+    from ..services.energy_registry import default_provider
     from .chat import _build_system_prompt
 
     try:
@@ -228,7 +228,7 @@ async def _run_subagent(conv_id: int, task: str, model: Optional[str], uid: Opti
                 if rec:
                     tier = rec["subscription_tier"]
 
-        provider_id = energy_registry.get_active_provider() or model or "grok"
+        provider_id = default_provider() or model or "grok"
         system_prompt = await _build_system_prompt(tier)
         subagent_directive = (
             "\n\n## Sub-agent Mode\n"
@@ -237,7 +237,7 @@ async def _run_subagent(conv_id: int, task: str, model: Optional[str], uid: Opti
             "Return a clear, structured result with findings, conclusions, and any recommended next steps."
         )
 
-        content, usage = await call_energy_provider(
+        content, usage = await call_provider(
             provider_id=provider_id,
             messages=[{"role": "user", "content": task}],
             system_prompt=(system_prompt or "") + subagent_directive,

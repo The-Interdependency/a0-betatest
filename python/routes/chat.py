@@ -1,4 +1,4 @@
-# 666:180
+# 657:177
 import time
 import traceback
 from fastapi import APIRouter, HTTPException, Request
@@ -7,8 +7,8 @@ from typing import Optional
 
 from ..storage import storage
 from ..services.stripe_service import get_tier_context_name
-from ..services.energy_registry import energy_registry
-from ..services.inference import call_energy_provider
+from ..services.energy_registry import default_provider, BUILTIN_PROVIDERS, cache_breakdown, estimate_cost
+from ..services.inference import call_provider
 from ..services.bg_tasks import spawn as _spawn_bg
 from .contexts import get_context_value
 
@@ -72,11 +72,11 @@ def _attach_cost_usd(usage: dict | None, provider_id: str | None) -> None:
         return
     if not provider_id or provider_id == "system":
         return
-    if not energy_registry.get_provider(provider_id):
+    if not BUILTIN_PROVIDERS.get(provider_id):
         return
     try:
-        cb = energy_registry.cache_breakdown(usage)
-        cost = energy_registry.estimate_cost(
+        cb = cache_breakdown(usage)
+        cost = estimate_cost(
             provider_id,
             cb.get("fresh_input", 0),
             cb.get("output", 0),
@@ -229,7 +229,7 @@ async def create_conversation(body: CreateConversation, request: Request):
     # set the system has no way to route chat, so refuse instead of silently
     # binding to "gemini" (the old behavior). Admin can fix by calling
     # POST /api/agents/active-provider {provider_id}.
-    model = body.model or energy_registry.get_active_provider()
+    model = body.model or default_provider()
     if not model:
         raise HTTPException(
             status_code=503,
@@ -424,7 +424,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         model_id = (
             body.model
             or agent_model_id
-            or energy_registry.get_active_provider()
+            or default_provider()
             or conv.get("model")
         )
         if not model_id:
@@ -432,9 +432,8 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                 status_code=503,
                 detail=(
                     "No model resolvable for this turn: no body.model, no agent "
-                    "model, no active_provider set, and conversation has no "
-                    "stored model. Set the global default via "
-                    "POST /api/agents/active-provider."
+                    "model, no default provider (check API key env vars), and "
+                    "conversation has no stored model."
                 ),
             )
         # Resolve model_id → provider_id via the catalog so forge agents
@@ -459,7 +458,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                         f"catalog. Refresh the providers list or pick 'auto'."
                     ),
                 )
-            provider_id = energy_registry.get_active_provider() or model_id
+            provider_id = default_provider() or model_id
 
         # Tier-gate restricted models (e.g. gemini3 = ws/admin only).
         # Gate the *resolved* provider list — never raw body.providers — so
@@ -473,24 +472,13 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
             providers_to_gate = _resolve(body.providers) or [provider_id]
         else:
             providers_to_gate = [provider_id]
-        # Read seed flags once for the providers we're about to call.
-        from .energy import _get_seed_module as _gsm
         for _pid in providers_to_gate:
-            _meta = energy_registry.get_provider(_pid) or {}
+            _meta = BUILTIN_PROVIDERS.get(_pid) or {}
             _mt = _meta.get("min_tier")
             if _mt and _ranks.get(tier, 0) < _ranks.get(_mt, 0):
                 raise HTTPException(
                     status_code=403,
                     detail=f"Model '{_pid}' requires tier '{_mt}' or higher (current: {tier})",
-                )
-            # Per-provider kill switch from seed route_config.enabled.
-            # Default True when missing so existing seeds keep working.
-            _seed = await _gsm(_pid)
-            _rc = (_seed or {}).get("route_config") or {}
-            if _rc.get("enabled") is False:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Provider '{_pid}' is disabled in energy settings",
                 )
 
         # Parse both up front. Explicit per-gate approval takes priority
@@ -550,7 +538,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                 _gate_tools = pending.get("enabled_tools")
                 _t_gate_at = _set_at(list(_gate_tools) if isinstance(_gate_tools, list) else None)
                 try:
-                    approved_content, approved_usage = await call_energy_provider(
+                    approved_content, approved_usage = await call_provider(
                         provider_id=replay_provider,
                         messages=pending["history"],
                         system_prompt=pending["system_prompt"],
@@ -579,7 +567,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                     "gate_approved": gate_id_to_approve,
                     "scope_bonus": scope_to_grant if scope_note.startswith("\n\n[SCOPE BONUS]") else None,
                     "usage": approved_usage,
-                    "cache": energy_registry.cache_breakdown(approved_usage),
+                    "cache": cache_breakdown(approved_usage),
                 },
             })
             return {
@@ -665,7 +653,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                         list(_scope_gate_tools) if isinstance(_scope_gate_tools, list) else None
                     )
                     try:
-                        replay_content, replay_usage = await call_energy_provider(
+                        replay_content, replay_usage = await call_provider(
                             provider_id=pending["provider_id"],
                             messages=pending["history"],
                             system_prompt=pending["system_prompt"],
@@ -878,7 +866,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
             "metadata": {
                 "tier": tier,
                 "usage": usage,
-                "cache": energy_registry.cache_breakdown(usage),
+                "cache": cache_breakdown(usage),
                 "orchestration_mode": eff_mode,
                 "cut_mode": eff_cut,
             },
@@ -929,4 +917,4 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
 #   class: correctness
 #   call:  python.tests.contracts.chat.test_unknown_body_model_400
 # === END CONTRACTS ===
-# 666:180
+# 657:177

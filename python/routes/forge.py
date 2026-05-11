@@ -1,9 +1,9 @@
-# 226:39
+# 218:39
 """The Forge — character-sheet style agent instantiation.
 
 Self-updating tool/model docs DB:
   - GET /forge/tools introspects TOOL_SCHEMAS_CHAT every call → always fresh.
-  - GET /forge/models introspects energy_registry.list_providers() every call.
+  - GET /forge/models delegates to list_models_for_user from model_catalog.
 
 Personality + RPG fields are stored on agent_instances; combat/levelling
 endpoints stubbed (return 501) so DB shape is locked but UI ships.
@@ -14,7 +14,7 @@ from typing import Optional
 from sqlalchemy import text as sa_text
 
 from ..database import get_session
-from ..services.energy_registry import energy_registry
+from ..services.energy_registry import default_provider
 from ..services.tool_executor import TOOL_SCHEMAS_CHAT
 from ._admin_gate import require_admin
 from .forge_archetypes import ARCHETYPES, TOOL_CATEGORIES
@@ -25,7 +25,7 @@ from .forge_archetypes import ARCHETYPES, TOOL_CATEGORIES
 # DOC tier: free
 # DOC endpoint: GET /api/v1/forge/templates | List built-in archetype templates
 # DOC endpoint: GET /api/v1/forge/tools | Live tool catalog (auto-introspected from TOOL_SCHEMAS_CHAT)
-# DOC endpoint: GET /api/v1/forge/models | Live model catalog (auto-introspected from energy_registry)
+# DOC endpoint: GET /api/v1/forge/models | Live model catalog (delegated to model_catalog.list_models_for_user)
 # DOC endpoint: GET /api/v1/forge/agents | List the caller's forged agents
 # DOC endpoint: POST /api/v1/forge/instantiate | Create an agent from a template + customizations
 # DOC endpoint: PATCH /api/v1/forge/agents/{id} | Update name, model, tools, personality
@@ -129,23 +129,15 @@ async def list_tools() -> dict:
 
 @router.get("/models")
 async def list_models(request: Request) -> dict:
-    """Self-updating: introspects energy_registry every call.
+    """Delegates to list_models_for_user from model_catalog.
 
-    Returns user_tier alongside the models list so the UI can disable
-    entries whose `min_tier` exceeds the caller's tier without a second
-    round-trip.
+    Returns user_tier alongside the providers/models list so the UI can
+    disable entries whose `min_tier` exceeds the caller's tier without a
+    second round-trip.
     """
-    await energy_registry.load_from_db()
-    user_tier = "free"
     uid = request.headers.get("x-user-id") or request.headers.get("X-User-Id")
-    if uid:
-        async with get_session() as session:
-            row = (await session.execute(sa_text(
-                "SELECT subscription_tier FROM users WHERE id = :id"
-            ), {"id": uid})).mappings().first()
-            if row:
-                user_tier = row["subscription_tier"]
-    return {"models": energy_registry.list_providers(), "user_tier": user_tier}
+    from ..services.model_catalog import list_models_for_user
+    return await list_models_for_user(uid)
 
 
 @router.get("/agents")
@@ -171,7 +163,7 @@ async def instantiate(request: Request, body: InstantiateRequest) -> dict:
     personality = body.personality_override or arche["personality"]
     # No silent fallback to "gemini": forge requires either an explicit
     # model_id in the body or a configured global active_provider.
-    model_id = body.model_id or energy_registry.get_active_provider()
+    model_id = body.model_id or default_provider()
     if not model_id:
         raise HTTPException(
             status_code=503,
@@ -308,4 +300,4 @@ async def duel_stub(request: Request) -> dict:
 def _jsonb(value) -> str:
     import json
     return json.dumps(value) if value is not None else "null"
-# 226:39
+# 218:39

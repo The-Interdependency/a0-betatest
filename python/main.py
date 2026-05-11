@@ -1,4 +1,4 @@
-# 377:344
+# 356:328
 import os
 import time
 from contextlib import asynccontextmanager
@@ -15,7 +15,7 @@ from .routes import ALL_ROUTERS, collect_ui_meta
 from .services.heartbeat import heartbeat_service
 from .engine.module_registry import initialize_registry, get_registry
 from .agents.zfae import compose_name, ZFAE_AGENT_DEF
-from .services.energy_registry import energy_registry
+from .services.energy_registry import default_provider, BUILTIN_PROVIDERS as _BP_MAIN
 
 _pcna: PCNAEngine | None = None
 _pcna_8: PCNAEngine | None = None
@@ -36,44 +36,6 @@ def get_pcna_8() -> PCNAEngine:
         _pcna_8 = PCNAEngine(phases=8)
     return _pcna_8
 
-
-# Per-provider PCNA cores — lazy-forked from the primary p7 engine on the first
-# chat turn routed through that provider. Each core receives infer signals from
-# its provider's chat turns; rewards stay explicit (pcna_reward tool routes via
-# caller_provider). Converge back to primary is admin-triggered via
-# /api/v1/pcna/converge/{provider_id} (already wired in routes/energy.py).
-_provider_pcna_cores: dict[str, PCNAEngine] = {}
-
-
-def get_provider_pcna_cores() -> dict[str, PCNAEngine]:
-    """Return the live registry of forked provider cores. Empty until first call."""
-    return _provider_pcna_cores
-
-
-async def get_or_fork_provider_pcna(provider_id: str) -> PCNAEngine:
-    """Lazy-fork primary into a provider-scoped core on first call.
-
-    Sets _checkpoint_key so save_checkpoint persists under
-    `pcna_provider_<id>`; tries to load the prior checkpoint so per-provider
-    learning persists across restarts (silent return if none exists, which is
-    the normal case on first-ever fork).
-    """
-    existing = _provider_pcna_cores.get(provider_id)
-    if existing is not None:
-        return existing
-    from .engine import InstanceMerge
-    parent = get_pcna()
-    child, fork_meta = InstanceMerge.fork(parent)
-    child._checkpoint_key = f"pcna_provider_{provider_id}"
-    await child.load_checkpoint()
-    _provider_pcna_cores[provider_id] = child
-    _instances[child.theta.instance_id] = child
-    print(
-        f"[pcna] forked provider core '{provider_id}' "
-        f"(parent={fork_meta.get('parent_id', '')[:12]}, "
-        f"child={fork_meta.get('child_id', '')[:12]})"
-    )
-    return child
 
 
 _ZFAE_TOOL_SPECS = {
@@ -189,9 +151,8 @@ async def lifespan(app: FastAPI):
     pcna_8 = get_pcna_8()
     await pcna_8.load_checkpoint()
     print(f"[python] PCNA p8 online — blueprint {pcna_8.blueprint_hash[:12]}...")
-    await energy_registry.load_from_db()
-    provider = energy_registry.get_active_provider()
-    _pinfo = energy_registry.get_provider(provider) if provider else None
+    provider = default_provider()
+    _pinfo = _BP_MAIN.get(provider) if provider else None
     agent_name = compose_name(provider, model_id=(_pinfo.get("spec_model") if _pinfo else None))
     print(f"[python] Agent: {agent_name}")
     from .routes.agents import ensure_primary_agent
@@ -600,10 +561,8 @@ async def lifespan(app: FastAPI):
     print("[model_instances] tables ensured")
     await _seed_system_shadow_modules()
     print("[ws_modules] system shadows seeded")
-    from .services.provider_seeds_bootstrap import seed_provider_modules
     from .services.energy_registry import BUILTIN_PROVIDERS as _BP
-    _prov_changed = await seed_provider_modules()
-    print(f"[providers] {_prov_changed} provider seed(s) upserted ({len(_BP)} total in catalog)")
+    print(f"[providers] {len(_BP)} provider(s) in catalog (no DB bootstrap)")
     _hot_count = await get_registry().load_all_active()
     if _hot_count:
         print(f"[module_registry] {_hot_count} hot-swap module(s) mounted")
@@ -721,15 +680,15 @@ for r in ALL_ROUTERS:
 @app.get("/api/health")
 async def health():
     pcna = get_pcna()
-    provider = energy_registry.get_active_provider()
-    _hp = energy_registry.get_provider(provider) if provider else None
+    provider = default_provider()
+    _hp = _BP_MAIN.get(provider) if provider else None
     return {
         "status": "ok",
         "service": "python-backend",
         "pcna": "online",
         "instance_id": pcna.theta.instance_id,
         "agent": compose_name(provider, model_id=(_hp.get("spec_model") if _hp else None)),
-        "energy_provider": provider,
+        "provider": provider,
         "uptime_s": round(time.time() - pcna.created_at, 1),
         "heartbeat": heartbeat_service.status(),
     }
@@ -745,10 +704,8 @@ async def ui_structure():
     return {
         "tabs": all_tabs,
         "agent": compose_name(
-            energy_registry.get_active_provider(),
-            model_id=(
-                (energy_registry.get_provider(energy_registry.get_active_provider()) or {}).get("spec_model")
-            ),
+            default_provider(),
+            model_id=((_BP_MAIN.get(default_provider()) or {}).get("spec_model")),
         ),
         "version": "2.0.0",
     }
@@ -762,4 +719,4 @@ if IS_PROD and os.path.isdir(STATIC_DIR):
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))
-# 377:344
+# 356:328

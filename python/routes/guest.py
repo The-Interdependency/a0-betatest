@@ -1,9 +1,9 @@
-# 34:4
+# 34:1
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..services.inference import call_energy_provider
-from ..services.energy_registry import energy_registry
+from ..services.inference import call_provider
+from ..services.energy_registry import default_provider
 
 router = APIRouter(prefix="/api/v1/guest", tags=["guest"])
 
@@ -23,18 +23,15 @@ async def guest_chat(body: GuestChatBody):
     if not body.message or not body.message.strip():
         raise HTTPException(status_code=400, detail="message is required")
 
-    # No silent fallback: guest chat can only run if an admin has
-    # explicitly set the global active_provider. Refusing with 503 is
-    # honest — silently routing to "gemini" disguised the operator
-    # intent and made provider switching feel broken.
-    provider_id = energy_registry.get_active_provider()
+    # No silent fallback: guest chat can only run if a provider key is present.
+    provider_id = default_provider()
     if not provider_id:
         raise HTTPException(
             status_code=503,
-            detail="Guest chat unavailable: no active_provider configured.",
+            detail="Guest chat unavailable: no provider API key configured.",
         )
 
-    content, usage = await call_energy_provider(
+    content, usage = await call_provider(
         provider_id=provider_id,
         messages=[{"role": "user", "content": body.message.strip()}],
         system_prompt=SYSTEM_PROMPT,
@@ -48,4 +45,4 @@ async def guest_chat(body: GuestChatBody):
         tokens_used = max(10, len(body.message.split()) + len(content.split()))
 
     return {"content": content, "tokens_used": tokens_used}
-# 34:4
+# 34:1

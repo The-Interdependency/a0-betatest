@@ -1,4 +1,4 @@
-# 51:8
+# 47:8
 """pcna_reward — apply a reward signal to the PCNA engine."""
 import json
 
@@ -44,16 +44,12 @@ async def handle(score: float = 0.0, reason: str = "", **_) -> str:
     invocation, batch jobs, etc.) reward primary. Both paths are observable
     in the returned `routed_to` field — no silent fallback.
     """
-    from ...main import get_pcna, get_or_fork_provider_pcna
+    from ...main import get_pcna
     from ..tool_distill import get_caller_provider
     score = float(score)
     caller = get_caller_provider()
-    if caller:
-        target = await get_or_fork_provider_pcna(caller)
-        routed_to = f"provider_{caller}"
-    else:
-        target = get_pcna()
-        routed_to = "primary"
+    target = get_pcna()
+    routed_to = f"primary (caller={caller})" if caller else "primary"
     target.reward(winner="agent", outcome=score)
     return json.dumps({
         "applied_score": score,
@@ -62,4 +58,4 @@ async def handle(score: float = 0.0, reason: str = "", **_) -> str:
         "last_coherence": round(target.last_coherence, 4),
         "routed_to": routed_to,
     })
-# 51:8
+# 47:8

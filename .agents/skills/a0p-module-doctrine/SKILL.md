@@ -205,6 +205,29 @@ Quick summary:
 
 ---
 
+## 11. Consumer-Dependency Declaration (optional, best-practice)
+
+When a module or function depends on a specific service, symbol, or endpoint, declare it inline with a `# CONSUMES` comment. This makes dependency graphs machine-readable and lets grep surface the full consumer tree for any given symbol.
+
+```python
+def my_function():
+    # CONSUMES default_provider
+    # CONSUMES /api/v1/conversations
+    provider = default_provider()
+    ...
+```
+
+Rules:
+- Place `# CONSUMES` lines **inside** the function or class body that has the dependency, immediately before the consuming call or at the top of the body
+- One `# CONSUMES` line per dependency
+- Use the import-path form for Python symbols: `# CONSUMES energy_registry.cache_breakdown` or just `# CONSUMES cache_breakdown` when the module is obvious
+- Use the URL path form for HTTP dependencies: `# CONSUMES /api/v1/models`
+- Use the file path form for config or data files: `# CONSUMES python/config/providers.json`
+- These are comment lines (count toward M, never N) — no runtime effect
+- Do **not** add `# CONSUMES` to every trivial stdlib call; reserve it for a0p-internal services, HTTP endpoints, and config files
+
+---
+
 ## 10. Annotation Script Reference
 
 ```bash
