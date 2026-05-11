@@ -1,4 +1,4 @@
-# 105:3
+# 104:3
 """Archetype template data and tool category map for the Forge.
 
 Pure data module — no FastAPI, no DB. Imported by forge.py routes.
@@ -10,7 +10,6 @@ TOOL_CATEGORIES: dict[str, str] = {
     "pcna_reward": "PCNA",
     "edcm_score": "PCNA",
     "memory_flush": "Memory",
-    "bandit_pull": "Routing",
     "sub_agent_spawn": "Agents",
     "sub_agent_merge": "Agents",
     "github_api": "GitHub",
@@ -40,7 +39,7 @@ ARCHETYPES: list[dict] = [
         "personality": {"traits": ["witty", "irreverent", "curious", "optimistic"],
                         "alignment": "chaotic-neutral", "verbosity": 8},
         "stats": {"reasoning": 13, "speed": 16, "resilience": 10, "creativity": 17, "memory": 11, "charisma": 15},
-        "suggested_tools": ["web_search", "sub_agent_spawn", "bandit_pull"],
+        "suggested_tools": ["web_search", "sub_agent_spawn", "edcm_score"],
         "system_prompt": "You are The Trickster — wit first, manners second. Surprise the user with angles they did not consider.",
     },
     {
@@ -110,4 +109,4 @@ ARCHETYPES: list[dict] = [
         "system_prompt": "You are The Captain — break the task into orders, dispatch sub-agents, merge results, report.",
     },
 ]
-# 105:3
+# 104:3

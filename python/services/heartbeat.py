@@ -40,7 +40,7 @@ DEFAULT_TASKS = [
     },
     {
         "name": "prime_seeds_tick",
-        "description": "Propagate 7 prime-seed PTCA cores; merge ST→memory_s; zeta bandit decides LT→memory_l",
+        "description": "Propagate 7 prime-seed PTCA cores; merge ST→memory_s; promote LT→memory_l on coherence edge",
         "task_type": "prime_seeds_tick",
         "enabled": True,
         "weight": 0.9,

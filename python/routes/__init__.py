@@ -1,9 +1,8 @@
-# 174:17
+# 171:17
 from .chat import router as chat_router
 from .agents import router as agents_router
 from .memory import router as memory_router
 from .edcm import router as edcm_router
-from .bandits import router as bandits_router
 from .system import router as system_router
 from .tools import router as tools_router
 from .heartbeat_api import router as heartbeat_api_router
@@ -40,7 +39,6 @@ ALL_ROUTERS = [
     agents_router,
     memory_router,
     edcm_router,
-    bandits_router,
     system_router,
     tools_router,
     heartbeat_api_router,
@@ -83,7 +81,6 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.agents",
         "python.routes.memory",
         "python.routes.edcm",
-        "python.routes.bandits",
         "python.routes.system",
         "python.routes.tools",
         "python.routes.heartbeat_api",
@@ -170,7 +167,7 @@ def collect_doc_meta() -> list[dict]:
     import os
     route_dir = os.path.dirname(os.path.abspath(__file__))
     route_files = [
-        "chat.py", "agents.py", "memory.py", "edcm.py", "bandits.py",
+        "chat.py", "agents.py", "memory.py", "edcm.py",
         "system.py", "tools.py", "heartbeat_api.py", "pcna_api.py",
         "billing.py", "contexts.py", "openai_api.py",
         "zfae_api.py", "approval_scopes.py", "ws_modules.py", "docs.py",
@@ -205,4 +202,4 @@ def collect_doc_meta() -> list[dict]:
 # === END CONTRACTS ===
 # 171:16
 
-# 174:17
+# 171:17

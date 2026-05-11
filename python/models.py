@@ -1,4 +1,4 @@
-# 406:37
+# 386:31
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, Float, DateTime, JSON,
     ARRAY, ForeignKey, UniqueConstraint, Index, text
@@ -251,37 +251,6 @@ class MemoryTensorSnapshot(Base):
     created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 
-class BanditPull(Base):
-    """Append-only audit log of bandit decisions + their rewards.
-
-    Live arm state lives on the PCNA core (``PCNAEngine.bandit_state``)
-    as of Task #112; this table records each pull/reward event for
-    historical analysis. Never read on the hot path of selecting the
-    next arm — the live state is the source of truth there.
-    """
-    __tablename__ = "bandit_pulls"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    spawn_id = Column(Text, nullable=False)
-    parent_pcna_id = Column(Text, nullable=False)
-    domain = Column(Text, nullable=False)
-    arm_id = Column(Text, nullable=False)
-    reward = Column(Float, nullable=False)
-    reward_shape = Column(Text, nullable=False, server_default="coherence_per_dollar")
-    cost_usd = Column(Float, nullable=False, server_default=text("0"))
-    ts = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-
-
-class BanditCorrelation(Base):
-    __tablename__ = "bandit_correlations"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    tool_arm = Column(Text)
-    model_arm = Column(Text)
-    ptca_arm = Column(Text)
-    pcna_arm = Column(Text)
-    joint_reward = Column(Float, nullable=False, server_default="0")
-    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-
-
 class SystemToggle(Base):
     __tablename__ = "system_toggles"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -520,4 +489,4 @@ class GeneratedImage(Base):
     featured = Column(Boolean, nullable=False, server_default=text("false"))
     tags = Column(JSONB, server_default=text("'[]'::jsonb"))
     skill_origin = Column(Text)
-# 406:37
+# 386:31

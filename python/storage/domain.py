@@ -1,4 +1,4 @@
-# 676:41
+# 663:41
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from sqlalchemy import select, update, delete, func, desc, asc, text as _sa_text
@@ -6,7 +6,7 @@ from sqlalchemy import select, update, delete, func, desc, asc, text as _sa_text
 from ..database import get_session
 from ..models import (
     HeartbeatTask, EdcmMetricSnapshot, MemorySeed, MemoryProjection,
-    MemoryTensorSnapshot, BanditCorrelation, SystemToggle, DiscoveryDraft,
+    MemoryTensorSnapshot, SystemToggle, DiscoveryDraft,
     TranscriptSource, TranscriptReport, TranscriptUpload, TranscriptMessage,
     TranscriptExplanation, ExplanationCredits,
     Deal, HeartbeatLog,
@@ -466,21 +466,6 @@ class DatabaseStorage(_CoreStorage):
             )
             return [_row_to_dict(r) for r in result.scalars().all()]
 
-    async def add_bandit_correlation(self, corr: Dict[str, Any]) -> Dict[str, Any]:
-        async with get_session() as session:
-            c = BanditCorrelation(**corr)
-            session.add(c)
-            await session.flush()
-            await session.refresh(c)
-            return _row_to_dict(c)
-
-    async def get_bandit_correlations(self, limit: int = 50) -> List[Dict[str, Any]]:
-        async with get_session() as session:
-            result = await session.execute(
-                select(BanditCorrelation).order_by(desc(BanditCorrelation.joint_reward)).limit(limit)
-            )
-            return [_row_to_dict(r) for r in result.scalars().all()]
-
     async def get_system_toggles(self) -> List[Dict[str, Any]]:
         async with get_session() as session:
             result = await session.execute(select(SystemToggle).order_by(asc(SystemToggle.subsystem)))
@@ -804,4 +789,4 @@ class DatabaseStorage(_CoreStorage):
 
 
 storage = DatabaseStorage()
-# 676:41
+# 663:41

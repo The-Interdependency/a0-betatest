@@ -12,7 +12,7 @@ ZFAE_AGENT_DEF = {
     "sentinel_seed_indices": [10, 11, 12],
     "tools": [
         "pcna_infer", "pcna_reward", "memory_flush",
-        "bandit_pull", "edcm_score", "web_search",
+        "edcm_score", "web_search",
         "sub_agent_spawn", "sub_agent_merge", "github_api",
     ],
     "is_persistent": True,

@@ -1,4 +1,4 @@
-# 393:398
+# 377:344
 import os
 import time
 from contextlib import asynccontextmanager
@@ -87,10 +87,6 @@ _ZFAE_TOOL_SPECS = {
     },
     "memory_flush": {
         "description": "Flush active memory seeds to checkpoint — persists summarized context for long-term retrieval",
-        "handler_type": "internal",
-    },
-    "bandit_pull": {
-        "description": "Pull a bandit arm from the EDCM reward router — selects energy provider based on expected coherence yield",
         "handler_type": "internal",
     },
     "edcm_score": {
@@ -278,7 +274,6 @@ async def lifespan(app: FastAPI):
                 orchestration_mode VARCHAR(40) NOT NULL DEFAULT 'single',
                 cut_mode VARCHAR(10) NOT NULL DEFAULT 'soft',
                 providers JSONB NOT NULL DEFAULT '[]'::jsonb,
-                bandit_pull JSONB,
                 spawned_by_tool VARCHAR(80),
                 task_summary TEXT,
                 started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -287,12 +282,6 @@ async def lifespan(app: FastAPI):
                 total_cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0
             )
         """))
-        # Task #112 — bandit_pull captures {domain, arm_id, ucb_score,
-        # pulls_before, pcna_id} so post-crash reward attribution is
-        # explicit, not inferred from the providers list.
-        await _sess.execute(_sa_text(
-            "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS bandit_pull JSONB"
-        ))
         # Task #122 — sub-agent supervision hardening. Worker liveness,
         # crash reaping, and explicit retry policy. last_heartbeat_at is
         # advanced by the per-run heartbeat task; the stale-sweep loop
@@ -550,39 +539,6 @@ async def lifespan(app: FastAPI):
             print(f"[transcript_explanations] FK skipped: {_e}")
     print("[transcript_explanations/explanation_credits] tables ensured")
     print("[agent_runs/agent_logs/settings] tables ensured")
-    # Task #112 — bandit_pulls is the append-only audit log for each
-    # bandit-driven spawn. Live state lives on the PCNA core
-    # (PCNAEngine.bandit_state); this table is for time-series
-    # analysis only — never required to make the next decision.
-    async with get_session() as _sess:
-        await _sess.execute(_sa_text("""
-            CREATE TABLE IF NOT EXISTS bandit_pulls (
-                id SERIAL PRIMARY KEY,
-                spawn_id VARCHAR NOT NULL,
-                parent_pcna_id VARCHAR NOT NULL,
-                domain VARCHAR(40) NOT NULL,
-                arm_id TEXT NOT NULL,
-                reward REAL NOT NULL,
-                reward_shape VARCHAR(40) NOT NULL DEFAULT 'coherence_per_dollar',
-                cost_usd REAL NOT NULL DEFAULT 0,
-                ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-        # cost_usd added after initial deploy — backfill column on existing tables.
-        await _sess.execute(_sa_text(
-            "ALTER TABLE bandit_pulls ADD COLUMN IF NOT EXISTS "
-            "cost_usd REAL NOT NULL DEFAULT 0"
-        ))
-        for _idx in (
-            "CREATE INDEX IF NOT EXISTS idx_bandit_pulls_domain_ts "
-            "ON bandit_pulls(domain, ts DESC)",
-            "CREATE INDEX IF NOT EXISTS idx_bandit_pulls_arm_ts "
-            "ON bandit_pulls(domain, arm_id, ts DESC)",
-            "CREATE INDEX IF NOT EXISTS idx_bandit_pulls_spawn "
-            "ON bandit_pulls(spawn_id)",
-        ):
-            await _sess.execute(_sa_text(_idx))
-    print("[bandit_pulls] audit-log table ensured")
     # Task #148 — model-instantiation / D&D party tables
     async with get_session() as _sess:
         await _sess.execute(_sa_text("""
@@ -642,32 +598,6 @@ async def lifespan(app: FastAPI):
             )
         """))
     print("[model_instances] tables ensured")
-    # Task #112 — bandit_arms is fully retired. Live arm state lives
-    # on PCNAEngine.bandit_state (see GET /api/v1/bandits/state); the
-    # append-only audit log lives in bandit_pulls. We snapshot row
-    # count to the log on the way out so operators are not surprised
-    # by data loss on first boot after the migration.
-    #
-    # The probe and the drop MUST run in separate sessions: if
-    # bandit_arms doesn't exist, the probe SELECT raises UndefinedTable
-    # which poisons the transaction (asyncpg) — a subsequent DROP in
-    # the same session then fails with "current transaction is aborted"
-    # and crashes the entire FastAPI lifespan. Two sessions = two
-    # independent transactions.
-    try:
-        async with get_session() as _sess:
-            n = (await _sess.execute(_sa_text(
-                "SELECT COUNT(*) AS n FROM bandit_arms"
-            ))).scalar() or 0
-            if n:
-                print(f"[bandit_arms] dropping legacy table ({n} rows); "
-                      "live state moved to PCNAEngine.bandit_state.")
-    except Exception:
-        # Table may already be gone on a re-boot after first migration.
-        pass
-    async with get_session() as _sess:
-        await _sess.execute(_sa_text("DROP TABLE IF EXISTS bandit_arms"))
-    print("[bandit_arms] legacy table dropped (Task #112)")
     await _seed_system_shadow_modules()
     print("[ws_modules] system shadows seeded")
     from .services.provider_seeds_bootstrap import seed_provider_modules
@@ -832,4 +762,4 @@ if IS_PROD and os.path.isdir(STATIC_DIR):
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))
-# 393:398
+# 377:344

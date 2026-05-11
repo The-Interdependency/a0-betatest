@@ -40,7 +40,6 @@ class AllowEntry(NamedTuple):
 # owner-gated via require_admin). The contract enforces this.
 FORBIDDEN_ALLOWLIST_FILES: frozenset[str] = frozenset({
     "agents.py",       # sub-agent spawn/merge alters shared PCNA
-    "bandits.py",      # bandit reward writes shared learning state
     "edcm.py",         # EDCM weights are instrument-level
     "heartbeat_api.py",
     "memory.py",       # memory mutations are instrument-level

@@ -1,4 +1,4 @@
-# 155:50
+# 141:42
 """
 PrimeSeedLayer — 7 independent PTCACore instances seeded from sigma tensor slices.
 
@@ -8,15 +8,10 @@ Each core is parameterized by its prime N, initialized from a sigma tensor
 slice at boot, and propagates on every heartbeat tick (task_type="prime_seeds_tick").
 
   N=17  → seed_s (short-term) — merged into pcna.memory_s on every tick
-  N=19  → seed_l (long-term)  — promoted into pcna.memory_l when zeta bandit decides
-
-Bandit domain: "prime_seeds"
-  arm "tick_active" — rewarded with avg seed coherence after each tick cycle
-  arm "lt_promote"  — rewarded with LT coherence when promotion fires;
-                       bandit accumulates signal and decides future promotions
+  N=19  → seed_l (long-term)  — promoted into pcna.memory_l when LT coherence exceeds ST coherence
 
 Injection context (for zeta prompt composition):
-  LT (N=19) → prompt cache prefix  (stable, promoted explicitly/bandit)
+  LT (N=19) → prompt cache prefix  (stable, promoted on coherence edge)
   ST (N=17) → after cache          (volatile, merged every tick)
   sub-agent seeds → volatile       (not persisted, not injected into cache)
 """
@@ -98,9 +93,8 @@ class PrimeSeedLayer:
     # ------------------------------------------------------------------
 
     def tick(self) -> dict:
-        """Propagate all 7 seeds; merge ST→memory_s; zeta bandit decides LT→memory_l."""
+        """Propagate all 7 seeds; merge ST→memory_s; promote LT→memory_l on coherence edge."""
         from ..main import get_pcna
-        from ..services.bandit import ensure_arm, update_arm_stats
 
         pcna = get_pcna()
 
@@ -110,32 +104,13 @@ class PrimeSeedLayer:
         st = self.cores[_SEED_N_ST]
         lt = self.cores[_SEED_N_LT]
 
-        # ST always merges into memory_s
         pcna.memory_s.absorb(st.tensor)
 
-        # LT promotion: bandit arms accumulate signal; promote when bandit
-        # has positive avg_reward AND LT coherence exceeds ST coherence.
-        arms = pcna.bandit_state.setdefault("prime_seeds", [])
-        ensure_arm(arms, "lt_promote")
-        ensure_arm(arms, "tick_active")
-
         promoted = False
-        lt_arm = next((a for a in arms if a["arm_id"] == "lt_promote"), None)
-        if lt_arm:
-            coherence_edge = lt.ring_coherence > st.ring_coherence
-            # First pull (pulls==0) treated as explore → promote once to seed LT.
-            first_pull = lt_arm.get("pulls", 0) == 0
-            bandit_positive = lt_arm.get("avg_reward", 0.0) > 0.0
-            if coherence_edge and (first_pull or bandit_positive):
-                pcna.memory_l.absorb(lt.tensor)
-                update_arm_stats(lt_arm, reward=lt.ring_coherence)
-                self.last_lt_promotion = time.time()
-                promoted = True
-
-        tick_arm = next((a for a in arms if a["arm_id"] == "tick_active"), None)
-        if tick_arm:
-            avg_coh = float(np.mean([c.ring_coherence for c in self.cores.values()]))
-            update_arm_stats(tick_arm, reward=avg_coh)
+        if lt.ring_coherence > st.ring_coherence:
+            pcna.memory_l.absorb(lt.tensor)
+            self.last_lt_promotion = time.time()
+            promoted = True
 
         self.tick_count += 1
         return {
@@ -244,4 +219,4 @@ _prime_seeds = PrimeSeedLayer()
 
 def get_prime_seeds() -> PrimeSeedLayer:
     return _prime_seeds
-# 155:50
+# 141:42
