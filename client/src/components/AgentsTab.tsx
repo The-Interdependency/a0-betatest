@@ -43,15 +43,40 @@ interface AgentRow {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const SLOTS = ["conduct", "perform", "practice", "record", "derive"] as const;
+const SLOTS = ["conduct", "perform", "practice", "record", "derive", "edcmbone"] as const;
 type Slot = typeof SLOTS[number];
 
-const SLOT_META: Record<Slot, { label: string; color: string }> = {
-  conduct: { label: "Conduct", color: "border-emerald-500/30 bg-emerald-500/5 text-emerald-400" },
-  perform: { label: "Perform", color: "border-amber-500/30 bg-amber-500/5 text-amber-400" },
-  practice: { label: "Practice", color: "border-blue-500/30 bg-blue-500/5 text-blue-400" },
-  record: { label: "Record", color: "border-slate-500/30 bg-slate-500/5 text-slate-400" },
-  derive: { label: "Derive", color: "border-violet-500/30 bg-violet-500/5 text-violet-400" },
+const SLOT_META: Record<Slot, { label: string; color: string; desc: string }> = {
+  conduct: {
+    label: "Conduct",
+    color: "border-emerald-500/30 bg-emerald-500/5 text-emerald-400",
+    desc: "Primary reasoning. Drives main conversation turns and generates assistant replies.",
+  },
+  perform: {
+    label: "Perform",
+    color: "border-amber-500/30 bg-amber-500/5 text-amber-400",
+    desc: "Active execution. Handles tool calls and agentic work during task runs.",
+  },
+  practice: {
+    label: "Practice",
+    color: "border-blue-500/30 bg-blue-500/5 text-blue-400",
+    desc: "Shadow / calibration. Runs in parallel with conduct for comparison and bandit scoring.",
+  },
+  record: {
+    label: "Record",
+    color: "border-slate-500/30 bg-slate-500/5 text-slate-400",
+    desc: "Structured logging. Responsible for note-taking, output formatting, and record-keeping.",
+  },
+  derive: {
+    label: "Derive",
+    color: "border-violet-500/30 bg-violet-500/5 text-violet-400",
+    desc: "Synthesis. Post-turn derivation, PCNA reward signals, and aggregate analysis.",
+  },
+  edcmbone: {
+    label: "EDCMbone",
+    color: "border-rose-500/30 bg-rose-500/5 text-rose-400",
+    desc: "Transcript analysis. Called for EDCMbone scoring and explanation generation.",
+  },
 };
 
 const VENDOR_COLORS: Record<string, string> = {
@@ -212,23 +237,26 @@ export default function AgentsTab() {
                   data-testid={`slot-card-${slot}`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`text-[10px] font-semibold uppercase tracking-widest shrink-0 ${inst ? meta.color.split(" ").find((c) => c.startsWith("text-")) : "text-muted-foreground/40"}`}>
-                        {meta.label}
-                      </span>
-                      {inst ? (
-                        <button
-                          type="button"
-                          className="flex items-center gap-1.5 min-w-0 hover:opacity-80 transition-opacity"
-                          onClick={() => setSelectedInstance(inst)}
-                          data-testid={`btn-open-slot-${slot}`}
-                        >
-                          <VendorDot vendor={inst.vendor} />
-                          <span className="font-mono text-xs truncate">{inst.canonical_name}</span>
-                        </button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground/50 italic">Empty — assign from stable</span>
-                      )}
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-semibold uppercase tracking-widest shrink-0 ${inst ? meta.color.split(" ").find((c) => c.startsWith("text-")) : "text-muted-foreground/40"}`}>
+                          {meta.label}
+                        </span>
+                        {inst ? (
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 min-w-0 hover:opacity-80 transition-opacity"
+                            onClick={() => setSelectedInstance(inst)}
+                            data-testid={`btn-open-slot-${slot}`}
+                          >
+                            <VendorDot vendor={inst.vendor} />
+                            <span className="font-mono text-xs truncate">{inst.canonical_name}</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/50 italic">Empty</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground/60 leading-snug">{meta.desc}</span>
                     </div>
                     {isAdmin && (
                       <div className="flex items-center gap-1 shrink-0">

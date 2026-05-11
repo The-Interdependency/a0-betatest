@@ -39,7 +39,7 @@ router = APIRouter(prefix="/api/v1", tags=["instances"])
 
 # ── Pydantic ──────────────────────────────────────────────────────────────────
 
-VALID_SLOTS = {"conduct", "perform", "practice", "record", "derive"}
+VALID_SLOTS = {"conduct", "perform", "practice", "record", "derive", "edcmbone"}
 
 
 class InstanceCreate(BaseModel):

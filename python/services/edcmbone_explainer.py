@@ -371,10 +371,31 @@ async def explain_report(
         credits = await storage.get_or_seed_explanation_credits(user_id)
         raise InsufficientCredits(_credits_view(credits))
 
-    spec = BUILTIN_PROVIDERS.get(EXPLAINER_PROVIDER_ID, {})
+    # Resolve provider: prefer the model assigned to the edcmbone slot if one exists.
+    resolved_provider_id = EXPLAINER_PROVIDER_ID
+    try:
+        async with get_session() as _slot_sess:
+            _slot_row = (await _slot_sess.execute(
+                _sa_text(
+                    "SELECT model_id FROM model_instances "
+                    "WHERE role_slot='edcmbone' LIMIT 1"
+                )
+            )).first()
+            if _slot_row:
+                _slot_mid = _slot_row[0]
+                _match = next(
+                    (pid for pid, p in BUILTIN_PROVIDERS.items() if p.get("model") == _slot_mid),
+                    None,
+                )
+                if _match:
+                    resolved_provider_id = _match
+    except Exception:
+        pass  # fall back to default on any DB error
+
+    spec = BUILTIN_PROVIDERS.get(resolved_provider_id, {})
     try:
         content, usage = await call_provider(
-            EXPLAINER_PROVIDER_ID,
+            resolved_provider_id,
             messages=[{"role": "user", "content": user_prompt}],
             system_prompt=_SYSTEM_PROMPT,
             max_tokens=4000,
