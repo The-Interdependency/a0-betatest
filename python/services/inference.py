@@ -57,36 +57,6 @@ def _load_doctrine() -> str:
     return ""
 
 
-async def _instance_memory_block(provider_id: str) -> str:
-    """Fetch persisted instance memory entries for the model mapped to provider_id.
-
-    Queries instance_memory joined on model_instances.model_id matching the
-    provider's primary model string from BUILTIN_PROVIDERS. Returns a formatted
-    block to append to the system prompt, or "" if no entries exist or on any error.
-    """
-    from ..database import get_session
-    from sqlalchemy import text as _sa_text
-    try:
-        spec = BUILTIN_PROVIDERS.get(provider_id, {})
-        model_id = (spec.get("model") or "").strip()
-        if not model_id:
-            return ""
-        async with get_session() as session:
-            rows = (await session.execute(_sa_text(
-                "SELECT im.tier, im.content "
-                "FROM instance_memory im "
-                "JOIN model_instances mi ON mi.id = im.instance_id "
-                "WHERE mi.model_id = :mid "
-                "ORDER BY im.tier DESC, im.created_at DESC LIMIT 40"
-            ), {"mid": model_id})).mappings().all()
-        if not rows:
-            return ""
-        lines = [f"[instance:{(row['tier'] or '').upper()}] {row['content']}" for row in rows]
-        return "\n".join(lines)
-    except Exception:
-        return ""
-
-
 def _prime_seed_context_lines() -> tuple[str, str]:
     """Return (lt_line, st_line) compact one-line memory tags from prime seeds.
 
@@ -573,9 +543,6 @@ async def call_provider(
       - Gemini: honored only on the native SDK path (gemini3 spec.supports_thinking)
     """
     system_prompt = _prepend_doctrine(system_prompt)
-    _imem = await _instance_memory_block(provider_id)
-    if _imem:
-        system_prompt = (system_prompt or "") + "\n\n## Instance Memory\n" + _imem
     messages = _build_provider_messages(messages, provider_id)
 
     if provider_id == "openai":
