@@ -100,6 +100,40 @@ async def _instance_memory_block(provider_id: str) -> str:
         return ""
 
 
+async def _slot_instance_block(slot: str) -> str:
+    """Fetch instance memory for the instance assigned to the given role slot.
+
+    Queries model_instances by role_slot, then fetches instance_memory rows.
+    Also prepends swarm_context if set. Returns "" when no instance is assigned
+    to the slot, no entries exist, or on any error — inference is never blocked.
+    """
+    from ..database import get_session
+    from sqlalchemy import text as _sa_text
+    try:
+        async with get_session() as session:
+            inst = (await session.execute(_sa_text(
+                "SELECT id, swarm_context FROM model_instances "
+                "WHERE role_slot = :slot LIMIT 1"
+            ), {"slot": slot})).mappings().first()
+            if not inst:
+                return ""
+            iid = str(inst["id"])
+            sc = (inst["swarm_context"] or "").strip()
+            rows = (await session.execute(_sa_text(
+                "SELECT tier, content FROM instance_memory "
+                "WHERE instance_id = :iid "
+                "ORDER BY tier DESC, created_at DESC LIMIT 40"
+            ), {"iid": iid})).mappings().all()
+        parts: list[str] = []
+        if sc:
+            parts.append(sc)
+        for r in rows:
+            parts.append(f"[{(r['tier'] or '').upper()}] {r['content']}")
+        return "\n".join(parts)
+    except Exception:
+        return ""
+
+
 def _prime_seed_context_lines() -> tuple[str, str]:
     """Return (lt_line, st_line) compact one-line memory tags from prime seeds.
 
@@ -586,7 +620,15 @@ async def call_provider(
       - Gemini: honored only on the native SDK path (gemini3 spec.supports_thinking)
     """
     system_prompt = _prepend_doctrine(system_prompt)
-    _imem = await _instance_memory_block(provider_id)
+    # Conductor slot routing: classify task → pick slot → inject that slot's instance memory.
+    # resolve_role does keyword matching against routing rules; defaults to "conduct".
+    # Falls back to provider model_id match if no instance is assigned to the resolved slot.
+    from .openai_router import resolve_role as _resolve_role
+    _task_text = next(
+        (m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), ""
+    )
+    _slot = _resolve_role(_task_text)
+    _imem = await _slot_instance_block(_slot) or await _instance_memory_block(provider_id)
     if _imem:
         system_prompt = (system_prompt or "") + "\n\n## Instance Memory\n" + _imem
     messages = _build_provider_messages(messages, provider_id)
