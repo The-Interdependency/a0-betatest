@@ -93,7 +93,7 @@ PostgreSQL via SQLAlchemy (Python) and Drizzle ORM (schema management).
 | `derive` | Synthesis — post-turn PCNA reward signals and analysis |
 | `edcmbone` | Transcript analysis — EDCMbone scoring and explanation |
 
-Only `edcmbone` is currently wired into inference routing. `conduct`/`perform`/`practice`/`record`/`derive` are assigned and stored but not yet consulted by `inference.py`.
+All six slots are wired into inference routing via `_slot_routing_info()` in `inference.py`. When a task is classified to a slot, the model_instance assigned to that slot determines both the injected instance memory and the provider that handles the call (matched via `BUILTIN_PROVIDERS` model field). `edcmbone` additionally has its own dedicated lookup in `edcmbone_explainer.py`.
 
 > Full slot contract + wiring milestone: `docs/ARCHITECTURE.md` → Party Slots
 

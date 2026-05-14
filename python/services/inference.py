@@ -107,17 +107,32 @@ async def _slot_instance_block(slot: str) -> str:
     Also prepends swarm_context if set. Returns "" when no instance is assigned
     to the slot, no entries exist, or on any error — inference is never blocked.
     """
+    mem, _ = await _slot_routing_info(slot)
+    return mem
+
+
+async def _slot_routing_info(slot: str) -> tuple[str, "str | None"]:
+    """Return (instance_memory_block, resolved_provider_id) for a role slot.
+
+    Extends _slot_instance_block by also resolving which provider_id to use
+    based on the model_id stored on the assigned model_instances row.
+    Matches model_id against BUILTIN_PROVIDERS so the slot can route across
+    vendors (grok, gemini, claude, openai-*), not just inject memory.
+    Returns ("", None) when no instance is assigned, on any error, or when
+    the model_id does not match any known provider — inference is never blocked.
+    """
     from ..database import get_session
     from sqlalchemy import text as _sa_text
     try:
         async with get_session() as session:
             inst = (await session.execute(_sa_text(
-                "SELECT id, swarm_context FROM model_instances "
+                "SELECT id, model_id, swarm_context FROM model_instances "
                 "WHERE role_slot = :slot LIMIT 1"
             ), {"slot": slot})).mappings().first()
             if not inst:
-                return ""
+                return "", None
             iid = str(inst["id"])
+            model_id = (inst["model_id"] or "").strip()
             sc = (inst["swarm_context"] or "").strip()
             rows = (await session.execute(_sa_text(
                 "SELECT tier, content FROM instance_memory "
@@ -129,9 +144,14 @@ async def _slot_instance_block(slot: str) -> str:
             parts.append(sc)
         for r in rows:
             parts.append(f"[{(r['tier'] or '').upper()}] {r['content']}")
-        return "\n".join(parts)
+        mem = "\n".join(parts)
+        resolved = next(
+            (pid for pid, p in BUILTIN_PROVIDERS.items() if p.get("model") == model_id),
+            None,
+        )
+        return mem, resolved
     except Exception:
-        return ""
+        return "", None
 
 
 def _prime_seed_context_lines() -> tuple[str, str]:
@@ -640,9 +660,13 @@ async def call_provider(
         (m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), ""
     )
     _slot = _resolve_role(_task_text)
-    _imem = await _slot_instance_block(_slot) or await _instance_memory_block(provider_id)
+    _imem, _slot_provider = await _slot_routing_info(_slot)
+    if not _imem:
+        _imem = await _instance_memory_block(provider_id)
     if _imem:
         system_prompt = (system_prompt or "") + "\n\n## Instance Memory\n" + _imem
+    if _slot_provider:
+        provider_id = _slot_provider
     messages = _build_provider_messages(messages, provider_id)
 
     if provider_id == "openai":
