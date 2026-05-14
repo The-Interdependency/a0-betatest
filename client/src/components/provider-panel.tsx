@@ -1,6 +1,5 @@
 // 362:2
 import { useMemo, useState } from "react";
-import { useProviderActions } from "@/hooks/use-provider-actions";
 import {
   Loader2,
   RefreshCw,
@@ -9,7 +8,6 @@ import {
   AlertTriangle,
   Cpu,
   Zap,
-  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -238,7 +236,7 @@ export function ProviderPanel({ p, isAdmin }: { p: Provider; isAdmin: boolean })
   const assignments = rc.model_assignments || {};
   const disabledIds = new Set(rc.disabled_models || []);
   const [pendingPreset, setPendingPreset] = useState<Preset>(rc.active_preset || "balance");
-  const { patchSeed, applyPreset, refreshPricing, discoverModels } = useProviderActions(p.id, p.label);
+  const { patchSeed, applyPreset, refreshPricing } = useProviderActions(p.id, p.label);
 
   const rolesByModel = useMemo(() => {
     const map = new Map<string, RoleKey[]>();
@@ -325,22 +323,6 @@ export function ProviderPanel({ p, isAdmin }: { p: Provider; isAdmin: boolean })
           )}
           <span className="ml-1">Refresh pricing</span>
         </Button>
-        {p.available && (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={!isAdmin || discoverModels.isPending}
-            onClick={() => discoverModels.mutate()}
-            data-testid={`button-discover-${p.id}`}
-          >
-            {discoverModels.isPending ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Search className="w-3.5 h-3.5" />
-            )}
-            <span className="ml-1">Discover models</span>
-          </Button>
-        )}
       </div>
       <div className="text-xs text-muted-foreground" data-testid={`text-prices-updated-${p.id}`}>
         Active preset:{" "}
