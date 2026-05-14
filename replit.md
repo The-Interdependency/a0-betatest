@@ -82,7 +82,20 @@ PostgreSQL via SQLAlchemy (Python) and Drizzle ORM (schema management).
 
 **Prime-Seed PTCA Layer** — 7 PTCACore instances (N=3…19) seeded from sigma at boot. N=17→memory_s every 60s tick; N=19→memory_l on bandit promotion (persisted to DB). LT tag injected into prompt cache prefix; ST tag injected after `## Memory` marker. Fail-safe: returns `("","")` on any error.
 
-> Full engine + prompt caching detail: `docs/ARCHITECTURE.md`
+**Party Slots** — six named role slots, each holds at most one model instance (`agent_instances.role_slot`). Allowlist enforced by `instances_api.py`.
+
+| Slot | Role |
+|------|------|
+| `conduct` | Primary reasoning — main conversation turns |
+| `perform` | Active execution — tool calls and agentic task runs |
+| `practice` | Shadow / calibration — parallel run for bandit scoring |
+| `record` | Structured logging — note-taking and output formatting |
+| `derive` | Synthesis — post-turn PCNA reward signals and analysis |
+| `edcmbone` | Transcript analysis — EDCMbone scoring and explanation |
+
+Only `edcmbone` is currently wired into inference routing. `conduct`/`perform`/`practice`/`record`/`derive` are assigned and stored but not yet consulted by `inference.py`.
+
+> Full slot contract + wiring milestone: `docs/ARCHITECTURE.md` → Party Slots
 
 ## Hard Rules
 - No file over 400 lines

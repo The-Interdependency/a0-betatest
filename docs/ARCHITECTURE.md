@@ -119,6 +119,28 @@ Anthropic gets two cache breakpoints (before/after `## Memory`). OpenAI/Grok aut
 | grok 4 fast | 25% input | n/a (auto) |
 | gemini 2.5 flash | not wired | requires cachedContents API |
 
+## Party Slots (inference routing contract)
+
+Six named role slots that an admin can assign model instances to. Slot assignment drives inference routing — the slot name is the lookup key, not a display label.
+
+| Slot | Purpose |
+|------|---------|
+| `conduct` | Primary reasoning. Drives main conversation turns and generates assistant replies. |
+| `perform` | Active execution. Handles tool calls and agentic work during task runs. |
+| `practice` | Shadow / calibration. Runs in parallel with conduct for comparison and bandit scoring. |
+| `record` | Structured logging. Responsible for note-taking, output formatting, and record-keeping. |
+| `derive` | Synthesis. Post-turn derivation, PCNA reward signals, and aggregate analysis. |
+| `edcmbone` | Transcript analysis. Called for EDCMbone scoring and explanation generation. |
+
+**Contract:**
+- At most one instance per slot at any time (enforced by `instances_api.py` PATCH endpoint).
+- `VALID_SLOTS = {"conduct","perform","practice","record","derive","edcmbone"}` is the allowlist.
+- Slot is stored as `agent_instances.role_slot` (nullable text column).
+- Inference code resolves a slot by querying `SELECT … FROM model_instances WHERE role_slot=:slot LIMIT 1`; caller falls back to any available instance when slot is empty.
+- Slots are **not yet wired** into main inference routing (as of 2026-05-14) — `edcmbone` is the only slot with live routing, in `edcmbone_explainer.py`. Wiring `conduct`, `perform`, `practice`, `record`, `derive` into `inference.py` is the next milestone.
+
+**UI:** `client/src/components/AgentsTab.tsx` — Party Slots section; admin-only assign/unassign controls.
+
 ## The Forge
 
 Character-sheet agent creation. `python/routes/forge.py` + `forge_archetypes.py` + `client/src/components/ForgeTab.tsx`.
