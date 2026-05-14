@@ -30,6 +30,7 @@ from .fleet import router as fleet_router
 from .transcripts import router as transcripts_router
 from .models import router as models_router
 from .instances_api import router as instances_router
+from .energy import router as energy_router
 
 ALL_ROUTERS = [
     chat_router,
@@ -64,6 +65,7 @@ ALL_ROUTERS = [
     transcripts_router,
     models_router,
     instances_router,
+    energy_router,
 ]
 
 
@@ -88,6 +90,7 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.cli",
         "python.routes.liminals",
         "python.routes.artifacts",
+        "python.routes.energy",
     ]
     tabs = []
     for mod_name in modules:
