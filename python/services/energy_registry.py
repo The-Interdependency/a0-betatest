@@ -84,6 +84,33 @@ def default_provider() -> str | None:
     return None
 
 
+# Cheapest-first preference for internal/automated callers (heartbeat, reviews).
+# Ordered by input_per_1m ascending. Falls back down to default_provider().
+_CHEAP_PROVIDER_ORDER = [
+    "openai-nano",    # gpt-5-nano  $0.05/1M
+    "gemini-lite",    # gemini-2.5-flash-lite $0.10/1M
+    "grok-fast-nr",   # grok-4-fast-non-reasoning $0.20/1M
+    "grok",           # grok-4-fast-reasoning $0.20/1M
+    "gemini",         # gemini-2.5-flash $0.30/1M
+    "openai",         # gpt-5-mini $0.25/1M
+]
+
+
+def cheap_provider() -> str | None:
+    """Return the cheapest available provider by input cost.
+
+    Intended for internal/automated callers (heartbeat tasks, programmatic
+    reviews) where output quality requirements are low but call frequency is
+    high. Never returns a flagship model unless it is the only option.
+    """
+    for pid in _CHEAP_PROVIDER_ORDER:
+        info = BUILTIN_PROVIDERS.get(pid, {})
+        env_key = info.get("env_key", "")
+        if env_key and os.environ.get(env_key):
+            return pid
+    return default_provider()
+
+
 def estimate_cost(
     provider_id: str,
     prompt_tokens: int,

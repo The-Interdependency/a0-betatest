@@ -163,11 +163,18 @@ def _prime_seed_context_lines() -> tuple[str, str]:
         return "", ""
 
 
-def _prepend_doctrine(system_prompt: Optional[str]) -> Optional[str]:
+def _prepend_doctrine(
+    system_prompt: Optional[str],
+    skip_manifest: bool = False,
+) -> Optional[str]:
     """Prepend the doctrine + a0 skill manifest as the first cacheable blocks
     of any system prompt. Both blocks are byte-stable across calls (manifest
     is alphabetically sorted) so prompt caches latch onto the same prefix
     until either a doctrine edit or a SKILL.md edit invalidates it.
+
+    skip_manifest=True omits the skill manifest from the prefix. Use for
+    internal/automated callers (heartbeat, review tasks) that never invoke
+    skill_load — saves ~500 tokens per call with no semantic loss.
 
     Prime-seed injection:
       LT (N=19) tag → inserted into the stable prefix block, after the skill
@@ -179,10 +186,12 @@ def _prepend_doctrine(system_prompt: Optional[str]) -> Optional[str]:
         (second Anthropic breakpoint) and is refreshed every 60s heartbeat tick.
     """
     doctrine = _load_doctrine()
-    try:
-        manifest = get_a0_skill_manifest()
-    except Exception:
-        manifest = ""
+    manifest = ""
+    if not skip_manifest:
+        try:
+            manifest = get_a0_skill_manifest()
+        except Exception:
+            manifest = ""
     lt_line, st_line = _prime_seed_context_lines()
     # ST: inject into system_prompt after the ## Memory marker (volatile block).
     # The split marker is "\n\n## Memory\n" — same literal the Claude path uses
@@ -606,12 +615,15 @@ async def call_provider(
     skip_approval: bool = False,
     reasoning_effort: Optional[str] = None,
     progress_callback: Optional[Callable[[int, int], None]] = None,
+    skip_manifest: bool = False,
 ) -> tuple[str, dict]:
     """
     Forward messages to the named provider with the system prompt prepended.
     Returns (content, usage_dict).
     user_id is threaded into the OpenAI path for approval-scope checking.
     skip_approval=True bypasses the approval gate (used for replay after explicit APPROVE).
+    skip_manifest=True omits the skill manifest from the doctrine prefix (saves
+    ~500 tokens; use for internal/automated callers that never invoke skill_load).
     reasoning_effort is mapped per-provider, gated by capability flags in
     providers.json (single source of truth — no model slugs in code):
       - OpenAI: passed via openai_router call_cfg (ignored on the openai branch)
@@ -619,7 +631,7 @@ async def call_provider(
       - Claude: mapped to thinking.budget_tokens when spec.supports_thinking
       - Gemini: honored only on the native SDK path (gemini3 spec.supports_thinking)
     """
-    system_prompt = _prepend_doctrine(system_prompt)
+    system_prompt = _prepend_doctrine(system_prompt, skip_manifest=skip_manifest)
     # Conductor slot routing: classify task → pick slot → inject that slot's instance memory.
     # resolve_role does keyword matching against routing rules; defaults to "conduct".
     # Falls back to provider model_id match if no instance is assigned to the resolved slot.

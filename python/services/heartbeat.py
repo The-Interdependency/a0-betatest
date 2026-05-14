@@ -240,7 +240,7 @@ class HeartbeatService:
     async def _run_conversation_review(self) -> str:
         from ..storage import storage
         from ..services.inference import call_provider
-        from ..services.energy_registry import default_provider
+        from ..services.energy_registry import cheap_provider
 
         _DEFAULT_REVIEW_INTERVAL_S = 21600
 
@@ -272,18 +272,17 @@ class HeartbeatService:
             return "conversation_review_skip: no new messages"
 
         msg_lines = []
-        for m in messages[-100:]:
+        for m in messages[-20:]:
             role = m.get("role", "?")
             content = (m.get("content") or "")[:200]
             msg_lines.append(f"[{role}]: {content}")
         transcript = "\n".join(msg_lines)
 
         prompt_text = REVIEW_PROMPT + transcript
-        # No silent fallback: heartbeat conversation reviews require an
-        # explicitly configured active_provider. Skipping a tick is
-        # preferable to silently sending Gemini-bound traffic when the
-        # admin intended a different provider.
-        provider_id = default_provider()
+        # Use the cheapest available provider for conversation reviews —
+        # this is a structured extraction task, not a creative/reasoning one.
+        # skip_manifest=True: review never needs to know about a0 skills.
+        provider_id = cheap_provider()
         if not provider_id:
             return (
                 "conversation_review_skipped: no provider key configured "
@@ -295,6 +294,8 @@ class HeartbeatService:
                 provider_id=provider_id,
                 messages=[{"role": "user", "content": prompt_text}],
                 max_tokens=800,
+                use_tools=False,
+                skip_manifest=True,
             )
         except Exception as e:
             return f"conversation_review_error: inference failed: {e}"

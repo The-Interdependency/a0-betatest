@@ -698,6 +698,13 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                 ]
             history.append(entry)
 
+        # Cap context window: keep first message (task anchor) + last N-1 messages.
+        # Prevents runaway input costs on long write-heavy sessions (e.g. website
+        # construction) where assistant messages accumulate large file content.
+        _MAX_HISTORY = 40
+        if len(history) > _MAX_HISTORY:
+            history = history[:1] + history[-(_MAX_HISTORY - 1):]
+
         from ..services.tool_executor import (
             set_approval_scope_user_id,
             set_allowed_tools, reset_allowed_tools,
