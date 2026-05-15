@@ -1,4 +1,4 @@
-# 92:52
+# 91:55
 # N:M
 """Canonical in-memory sub-agent registry (Task #122).
 
@@ -46,8 +46,6 @@ from typing import Optional
 
 from ..agents.zfae import sub_agent_name
 from ..engine import PCNAEngine, InstanceMerge
-from .energy_registry import default_provider
-
 _lock = threading.Lock()
 _sub_agents: dict[str, tuple[PCNAEngine, dict]] = {}
 _counter = 0
@@ -62,6 +60,10 @@ def spawn_sub_agent(
 ) -> dict:
     """Fork a child PCNA from `parent` and register it under a fresh name.
 
+    `provider` must be pre-resolved by the caller via active_provider() —
+    no silent fallback to default_provider(). All current call sites
+    (agents.py spawn route, spawn_executor) resolve it before calling.
+
     `parent_run_id` / `run_id` are stored in metadata so the
     concurrent-live cap and the no-orphan contract can reconcile the
     registry against `agent_runs` rows. Both default to None so the HTTP
@@ -69,7 +71,7 @@ def spawn_sub_agent(
     """
     global _counter
     child, fork_result = InstanceMerge.fork(parent)
-    p = provider or default_provider()
+    p = provider
     with _lock:
         _counter += 1
         idx = _counter
@@ -165,4 +167,4 @@ def registry_snapshot() -> list[dict]:
         for name, (_e, meta) in items
     ]
 # N:M
-# 92:52
+# 91:55

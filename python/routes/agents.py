@@ -1,4 +1,4 @@
-# 256:31
+# 262:31
 import time
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -73,7 +73,10 @@ async def ensure_primary_agent(pcna: PCNAEngine):
     from ..database import get_session
     from sqlalchemy import text
 
-    _provider = default_provider()
+    try:
+        _provider = await active_provider()
+    except RuntimeError:
+        _provider = default_provider()
     _pinfo = BUILTIN_PROVIDERS.get(_provider) if _provider else None
     _model_id = _pinfo.get("spec_model") if _pinfo else None
     agent_name = compose_name(_provider, model_id=_model_id)
@@ -117,7 +120,10 @@ async def ensure_primary_agent(pcna: PCNAEngine):
 
 @router.get("/agents")
 async def list_agents():
-    _display_provider = default_provider()
+    try:
+        _display_provider = await active_provider()
+    except RuntimeError:
+        _display_provider = default_provider()
     _ap_info = BUILTIN_PROVIDERS.get(_display_provider) if _display_provider else None
     _ap_model = _ap_info.get("spec_model") if _ap_info else None
     primary_name = compose_name(_display_provider, model_id=_ap_model)
@@ -314,4 +320,4 @@ async def learning_summary(limit: int = 200):
     }
 
 
-# 256:31
+# 262:31

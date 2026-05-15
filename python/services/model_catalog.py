@@ -1,4 +1,4 @@
-# 105:66
+# 109:66
 """model_catalog — single source of truth for "what models can this user use".
 
 Today three surfaces answer this question independently:
@@ -130,7 +130,11 @@ async def list_models_for_user(user_id: Optional[str]) -> dict[str, Any]:
       }
     """
     user_tier = await _user_tier(user_id)
-    active = default_provider()
+    try:
+        from .energy_registry import active_provider as _ap
+        active = await _ap()
+    except RuntimeError:
+        active = default_provider()
     out_providers: list[dict[str, Any]] = []
 
     cfgs: dict[str, dict] = {}
@@ -201,4 +205,4 @@ async def list_models_for_user(user_id: Optional[str]) -> dict[str, Any]:
         })
 
     return {"user_tier": user_tier, "providers": out_providers}
-# 105:66
+# 109:66
