@@ -1,4 +1,4 @@
-# 286:68
+# 289:68
 import logging
 import contextvars
 import json
@@ -95,11 +95,14 @@ async def active_provider() -> str:
     try:
         from ..database import get_session
         from sqlalchemy import text as _sa_text
+        from sqlalchemy.exc import SQLAlchemyError
         async with get_session() as _sess:
             _row = (await _sess.execute(_sa_text(
                 "SELECT model_id FROM model_instances"
                 " WHERE role_slot = 'conduct' LIMIT 1"
             ))).mappings().first()
+    except SQLAlchemyError as _exc:
+        raise RuntimeError(f"DB error reading conduct slot: {_exc}") from _exc
     except Exception as _exc:
         raise RuntimeError("No instantiation selected") from _exc
     if not _row:
@@ -409,4 +412,4 @@ async def resolve_providers(providers: list[str] | None) -> list[str]:
         elif p in BUILTIN_PROVIDERS and p not in out:
             out.append(p)
     return out
-# 286:68
+# 289:68

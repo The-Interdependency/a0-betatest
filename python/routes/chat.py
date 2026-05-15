@@ -1,4 +1,4 @@
-# 597:173
+# 599:173
 import time
 import traceback
 from fastapi import APIRouter, HTTPException, Request
@@ -338,12 +338,14 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         # cannot route, so refuse — same principle as the inference
         # dispatcher's no-silent-fallback contract.
         model_from_body = bool(body.model)
-        model_id = body.model or agent_model_id or conv.get("model")
+        model_id = body.model or agent_model_id
         if not model_id:
             try:
                 model_id = await active_provider()
-            except RuntimeError as e:
-                raise HTTPException(status_code=503, detail=str(e))
+            except RuntimeError:
+                model_id = conv.get("model") or ""
+        if not model_id:
+            raise HTTPException(status_code=503, detail="No instantiation selected")
         # Resolve model_id → provider_id via the catalog so forge agents
         # whose model_id is a real model name (e.g. "gpt-5-mini") route
         # correctly downstream. The fallback below is intentionally
@@ -848,4 +850,4 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
 #   class: correctness
 #   call:  python.tests.contracts.chat.test_unknown_body_model_400
 # === END CONTRACTS ===
-# 597:173
+# 599:173
