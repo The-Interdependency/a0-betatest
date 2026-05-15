@@ -1,4 +1,4 @@
-// 45:0
+// 45:0 0:0 0:2
 "use client"
 
 import * as React from "react"
@@ -50,4 +50,4 @@ const AvatarFallback = React.forwardRef<
 AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
 
 export { Avatar, AvatarImage, AvatarFallback }
-// 45:0
+// 45:0 0:0 0:2

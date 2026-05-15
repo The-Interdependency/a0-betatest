@@ -1,4 +1,4 @@
-# 101:2
+# 101:2 0:0 1:0
 """github_api — authenticated GitHub REST call."""
 import json
 import os
@@ -108,4 +108,4 @@ async def call_github_api(method: str, endpoint: str, body: dict | None = None) 
 
 async def handle(method: str = "GET", endpoint: str = "/user", body: dict | None = None, **_) -> str:
     return await call_github_api(method, endpoint, body)
-# 101:2
+# 101:2 0:0 1:0

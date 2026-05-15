@@ -1,4 +1,4 @@
-# 28:19
+# 28:19 0:0 6:0
 """Base class for private cognitive cores.
 
 Private cores:
@@ -60,4 +60,4 @@ class PrivateCore:
             is_active=True,
             structural_variance=0.0,
         )
-# 28:19
+# 28:19 0:0 6:0

@@ -1,4 +1,4 @@
-# 38:5
+# 38:5 0:0 7:0
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Literal
@@ -51,4 +51,4 @@ class A0Response:
 
     def __post_init__(self) -> None:
         self.hmmm = normalize_hmmm(self.hmmm)
-# 38:5
+# 38:5 0:0 7:0

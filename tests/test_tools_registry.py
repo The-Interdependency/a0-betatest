@@ -1,4 +1,4 @@
-# 37:7
+# 37:7 0:0 0:0
 # DOC module: tests.test_tools_registry
 # DOC label: Tools registry
 # DOC description: Self-declaring per-tool module discovery — every file in
@@ -57,4 +57,4 @@ def test_skill_tools_still_present():
     names = {t["function"]["name"] for t in TOOL_SCHEMAS_CHAT}
     assert "skill_recommend" in names
     assert "skill_load" in names
-# 37:7
+# 37:7 0:0 0:0

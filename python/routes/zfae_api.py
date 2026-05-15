@@ -1,4 +1,4 @@
-# 113:37
+# 113:37 0:7 1:3
 """
 ZFAE API — Zeta Function Alpha Echo routes.
 
@@ -185,4 +185,4 @@ async def remove_directory_resolution(body: RemoveDirectoryResolutionBody, reque
     config = _get_zeta().remove_directory_resolution(body.path)
     await _persist_resolution(config)
     return config
-# 113:37
+# 113:37 0:7 1:3

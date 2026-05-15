@@ -1,4 +1,4 @@
-// 33:0
+// 33:0 0:4 0:0
 import { useCallback, useEffect, useState } from "react";
 
 export const SKINS = ["tensor", "synthwave", "copper"] as const;
@@ -41,4 +41,4 @@ export const SKIN_LABELS: Record<Skin, string> = {
   synthwave: "Synthwave Mesh",
   copper: "Copper Codex",
 };
-// 33:0
+// 33:0 0:4 0:0

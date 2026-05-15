@@ -1,4 +1,4 @@
-// 356:44
+// 356:44 1:1 1:3
 import crypto from "crypto";
 import type { Express, Request, Response } from "express";
 import { authStorage } from "./storage";
@@ -434,4 +434,4 @@ export function registerAuthRoutes(app: Express) {
     }
   });
 }
-// 356:44
+// 356:44 1:1 1:3

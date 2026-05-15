@@ -1,4 +1,4 @@
-# 71:3
+# 71:3 0:0 3:0
 """Architectural center — what the system IS.
 
 Source: PTCA/PCTA/PCNA/Jury/Guardian Thread-Integrated Core Compression v1.3.2
@@ -76,4 +76,4 @@ FROZEN_CORE_STATEMENT = {
         "no_user_facing_shell_outside_guardian": True,
     },
 }
-# 71:3
+# 71:3 0:0 3:0

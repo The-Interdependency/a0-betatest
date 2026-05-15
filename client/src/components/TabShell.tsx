@@ -1,4 +1,4 @@
-// 73:0
+// 73:0 0:1 0:2
 import { Component, type ReactNode } from "react";
 import { RefreshCw, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -76,4 +76,4 @@ export default function TabShell({ label, icon, onRefresh, isRefreshing, childre
     </div>
   );
 }
-// 73:0
+// 73:0 0:1 0:2

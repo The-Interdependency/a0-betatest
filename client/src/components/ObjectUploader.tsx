@@ -1,4 +1,4 @@
-// 64:34
+// 64:34 0:1 0:4
 import { useState } from "react";
 import type { ReactNode } from "react";
 import Uppy from "@uppy/core";
@@ -102,4 +102,4 @@ export function ObjectUploader({
   );
 }
 
-// 64:34
+// 64:34 0:1 0:4

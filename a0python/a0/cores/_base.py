@@ -1,4 +1,4 @@
-# 28:10
+# 28:10 0:0 6:0
 """Base class for private cognitive cores.
 
 Law 1: Private process is not public output.
@@ -49,4 +49,4 @@ class PrivateCore:
             is_active=True,
             structural_variance=0.0,
         )
-# 28:10
+# 28:10 0:0 6:0

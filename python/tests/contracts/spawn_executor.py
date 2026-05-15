@@ -1,4 +1,4 @@
-# 484:80
+# 484:80 0:0 1:2
 """Contract tests for python.services.spawn_executor.
 
 Each test is referenced from the CONTRACTS block in
@@ -612,4 +612,4 @@ async def test_no_orphan_invariant() -> None:
         with _life._lock:
             _life._sub_agents.pop(orphan_name, None)
         await _delete_run(worker_orphan_id)
-# 484:80
+# 484:80 0:0 1:2

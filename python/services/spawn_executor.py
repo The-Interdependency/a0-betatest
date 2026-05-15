@@ -1,4 +1,4 @@
-# 545:268
+# 545:268 0:0 2:7
 # N:M
 """spawn_executor — execute the rows that sub_agent_spawn writes.
 
@@ -893,4 +893,4 @@ async def check_no_orphan_invariant() -> dict:
         "worker_id": WORKER_ID,
     }
 # N:M
-# 545:268
+# 545:268 0:0 2:7

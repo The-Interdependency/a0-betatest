@@ -1,4 +1,4 @@
-# 66:16
+# 66:16 0:0 2:0
 """Out-of-band progress bus for live multi-model orchestration meters.
 
 aimmh-lib's CallFn is non-streaming, so progress is published on a
@@ -101,4 +101,4 @@ def owner_matches(client_run_id: str, user_id: Optional[str]) -> bool:
     if not client_run_id or client_run_id not in _OWNERSHIP:
         return False
     return (_OWNERSHIP[client_run_id] or "") == (user_id or "")
-# 66:16
+# 66:16 0:0 2:0

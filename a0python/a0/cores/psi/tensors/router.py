@@ -1,4 +1,4 @@
-# 152:37
+# 152:37 0:0 4:12
 from __future__ import annotations
 
 from pathlib import Path
@@ -226,4 +226,4 @@ def handle(
         result={"text": resp.get("text", ""), "artifacts": []},
         hmmm=req.hmmm,
     )
-# 152:37
+# 152:37 0:0 4:12

@@ -1,4 +1,4 @@
-# 25:6
+# 25:6 0:0 0:0
 # DOC module: tests.test_route_imports
 # DOC label: Route-import smoke
 # DOC description: Imports every route module under python/routes/ to catch
@@ -39,4 +39,4 @@ def test_ui_meta_collection_runs():
     for t in tabs:
         assert "tab_id" in t, f"tab missing tab_id: {t}"
         assert "label" in t
-# 25:6
+# 25:6 0:0 0:0

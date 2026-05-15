@@ -1,4 +1,4 @@
-# 220:29
+# 220:29 0:0 0:4
 # N:M
 """swarm_classify — schema-validated parallel fan-out tool.
 
@@ -271,4 +271,4 @@ async def handle(
         ],
     })
 # N:M
-# 220:29
+# 220:29 0:0 0:4

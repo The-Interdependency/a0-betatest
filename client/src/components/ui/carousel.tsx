@@ -1,4 +1,4 @@
-// 231:0
+// 231:0 0:0 0:2
 import * as React from "react"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
@@ -259,4 +259,4 @@ export {
   CarouselPrevious,
   CarouselNext,
 }
-// 231:0
+// 231:0 0:0 0:2

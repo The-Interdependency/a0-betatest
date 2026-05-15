@@ -1,4 +1,4 @@
-# 210:29
+# 210:29 0:0 3:1
 """Unified artifacts archive — Replit Object Storage backed.
 
 Every byte stream a0 produces (images, reports, evidence files, generated
@@ -277,4 +277,4 @@ async def set_public(artifact_id: str, public: bool) -> dict | None:
             {"p": public, "id": artifact_id},
         )
     return await _fetch_row(artifact_id)
-# 210:29
+# 210:29 0:0 3:1

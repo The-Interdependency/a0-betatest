@@ -1,4 +1,4 @@
-// 23:0
+// 23:0 0:0 0:2
 "use client"
 
 import * as React from "react"
@@ -29,4 +29,4 @@ const TooltipContent = React.forwardRef<
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
-// 23:0
+// 23:0 0:0 0:2

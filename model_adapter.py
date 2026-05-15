@@ -1,4 +1,4 @@
-# 11:3
+# 11:3 0:0 4:0
 # a0/model_adapter.py
 # hmmm: single interface; swap providers freely.
 
@@ -17,4 +17,4 @@ class LocalEchoAdapter:
         # Minimal safe default: echoes last user content.
         last = next((m["content"] for m in reversed(messages) if m.get("role") == "user"), "")
         return {"text": f"(local-echo) {last}", "raw": {"messages": messages, "kwargs": kwargs}}
-# 11:3
+# 11:3 0:0 4:0

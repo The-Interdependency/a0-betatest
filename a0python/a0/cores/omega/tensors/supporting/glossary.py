@@ -1,4 +1,4 @@
-# 54:3
+# 54:3 0:0 2:0
 """Glossary — canonical term definitions across the system."""
 
 GLOSSARY = {
@@ -57,4 +57,4 @@ GLOSSARY = {
         "A diagnostic label, not a judgment."
     ),
 }
-# 54:3
+# 54:3 0:0 2:0

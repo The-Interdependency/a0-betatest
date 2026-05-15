@@ -1,4 +1,4 @@
-# 104:8
+# 104:8 0:0 0:2
 # N:M
 """bash_run — run a shell command. Admin-only, gated behind code_self_modify.
 
@@ -118,4 +118,4 @@ async def handle(command: str = "", timeout_seconds: int = 60, cwd: str = ".", *
         "stderr": stderr.decode("utf-8", errors="replace")[:8192],
     })
 # N:M
-# 104:8
+# 104:8 0:0 0:2

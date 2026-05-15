@@ -1,4 +1,4 @@
-# 62:10
+# 62:10 0:0 0:1
 """Auto-archive wrapper for tools that declare a `produces` SCHEMA key.
 
 Filename starts with underscore so the tool discovery scanner in this
@@ -80,4 +80,4 @@ async def wrap(
             "size_bytes": rec["size_bytes"],
         })
     return {"artifacts": archived, "count": len(archived)}
-# 62:10
+# 62:10 0:0 0:1

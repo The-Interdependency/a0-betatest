@@ -1,4 +1,4 @@
-# 28:25
+# 28:25 0:0 5:1
 """resolve_model_for_role — env > spec primary.
 
 Purpose: every provider module asks one question on every call:
@@ -62,4 +62,4 @@ async def resolve_model_for_role(provider_id: str, role: str) -> str:
         f"No model resolvable for provider={provider_id!r} role={role_norm!r} "
         f"(checked env {prefix or '?'}{role_norm.upper()} and providers.json primary)"
     )
-# 28:25
+# 28:25 0:0 5:1

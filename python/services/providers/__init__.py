@@ -1,4 +1,4 @@
-# 2:18
+# 2:18 0:0 0:1
 """providers — one module per upstream LLM API.
 
 Each provider module exposes:
@@ -23,4 +23,4 @@ pass `role` instead and let the resolver pick.
 from ._resolver import resolve_model_for_role
 
 __all__ = ["resolve_model_for_role"]
-# 2:18
+# 2:18 0:0 0:1

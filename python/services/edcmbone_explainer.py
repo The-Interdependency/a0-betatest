@@ -1,4 +1,4 @@
-# 258:200
+# 258:200 0:0 2:5
 """EDCMbone scoring report → 200-400 word human explanation with cited
 quoted spans from the transcript. Owner-only, idempotent per report
 (UNIQUE on report_id), strict-JSON output, refund-on-failure.
@@ -512,4 +512,4 @@ def _credits_view(row: Dict[str, Any]) -> Dict[str, Any]:
 #   class: correctness
 #   call:  python.tests.contracts.transcripts_explainer.test_explainer_call_surfaces_in_learning_summary
 # === END CONTRACTS ===
-# 258:200
+# 258:200 0:0 2:5

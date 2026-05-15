@@ -1,4 +1,4 @@
-// 266:1
+// 266:1 0:1 0:8
 // DOC_UI sigma_tab
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -283,4 +283,4 @@ export default function SigmaTab() {
     </div>
   );
 }
-// 266:1
+// 266:1 0:1 0:8

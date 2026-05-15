@@ -1,4 +1,4 @@
-# 251:49
+# 251:49 0:0 1:6
 """xai_provider — xAI Grok via the official xai-sdk (gRPC).
 
 Migrated from raw httpx to the `xai-sdk` Python SDK (v1.12+). The contract
@@ -363,4 +363,4 @@ async def _stream_chat(
             pass
 
     return ("".join(text_parts) or "[no content]"), accumulated_usage
-# 251:49
+# 251:49 0:0 1:6

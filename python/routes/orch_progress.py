@@ -1,4 +1,4 @@
-# 39:10
+# 39:10 0:1 2:1
 """SSE endpoint for live multi-model orchestration progress.
 GET /api/v1/orchestration/{client_run_id}/stream — read-only."""
 import asyncio
@@ -58,4 +58,4 @@ async def stream_orch_progress(client_run_id: str, request: Request):
             unregister_subscriber(client_run_id, q)
 
     return StreamingResponse(gen(), media_type="text/event-stream")
-# 39:10
+# 39:10 0:1 2:1

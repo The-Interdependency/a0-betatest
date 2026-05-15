@@ -1,4 +1,4 @@
-# 127:31
+# 127:31 0:0 1:1
 import os
 import re
 from typing import Any
@@ -183,4 +183,4 @@ def make_approval_packet(task_text: str, gate_id: str) -> dict[str, Any]:
         "artifacts": [],
         "hmmm": {},
     }
-# 127:31
+# 127:31 0:0 1:1

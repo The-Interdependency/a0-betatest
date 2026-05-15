@@ -1,4 +1,4 @@
-// 119:62
+// 119:62 0:1 0:1
 import { useState, useCallback } from "react";
 import type { UppyFile } from "@uppy/core";
 
@@ -198,4 +198,4 @@ export function useUpload(options: UseUploadOptions = {}) {
   };
 }
 
-// 119:62
+// 119:62 0:1 0:1

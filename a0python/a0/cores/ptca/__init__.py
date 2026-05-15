@@ -1,4 +1,4 @@
-# 2:9
+# 2:9 0:0 0:1
 """PTCA — PCTA + seed tensor routing lattice.
 
 53 seeds organized as:
@@ -13,4 +13,4 @@ Sentinel routing: 7:2 schedule.
 from .seed_router import SeedRouter, SeedType
 
 __all__ = ["SeedRouter", "SeedType"]
-# 2:9
+# 2:9 0:0 0:1

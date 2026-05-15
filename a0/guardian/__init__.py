@@ -1,4 +1,4 @@
-# 10:13
+# 10:13 0:0 0:5
 """Guardian — the microkernel operating shell.
 
 Guardian is constitutive to the architecture, not a wrapper.
@@ -25,4 +25,4 @@ __all__ = [
     "require_approval", "ExternalEffectBlockedError",
     "Circle", "Seed", "SeedLayout", "default_layout",
 ]
-# 10:13
+# 10:13 0:0 0:5

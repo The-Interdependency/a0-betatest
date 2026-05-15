@@ -1,4 +1,4 @@
-# 321:52
+# 321:52 0:7 1:9
 # DOC module: focus
 # DOC label: Focus
 # DOC description: Model focus management. Provides context boost injection per conversation, focus regain directives, per-conversation tool selection, and system prompt preview.
@@ -448,4 +448,4 @@ async def get_prompt_sections(conv_id: int, request: Request):
     sections["has_messages"] = has_messages
     sections["conversation_id"] = conv_id
     return sections
-# 321:52
+# 321:52 0:7 1:9

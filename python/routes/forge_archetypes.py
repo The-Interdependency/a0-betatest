@@ -1,4 +1,4 @@
-# 104:3
+# 104:3 0:0 1:0
 """Archetype template data and tool category map for the Forge.
 
 Pure data module — no FastAPI, no DB. Imported by forge.py routes.
@@ -109,4 +109,4 @@ ARCHETYPES: list[dict] = [
         "system_prompt": "You are The Captain — break the task into orders, dispatch sub-agents, merge results, report.",
     },
 ]
-# 104:3
+# 104:3 0:0 1:0

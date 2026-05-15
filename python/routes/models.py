@@ -1,4 +1,4 @@
-# 9:12
+# 9:12 1:1 3:1
 # DOC module: models
 # DOC label: Models
 # DOC description: Unified model catalog — every model the caller can actually use, with provider + role-assignment + tier provenance.
@@ -29,4 +29,4 @@ async def list_models(request: Request) -> dict:
     user's disabled_models list.
     """
     return await list_models_for_user(_uid(request))
-# 9:12
+# 9:12 1:1 3:1

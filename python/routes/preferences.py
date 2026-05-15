@@ -1,4 +1,4 @@
-# 56:14
+# 56:14 2:2 1:1
 # N:M
 """User preferences — small key/value store backed by the settings table.
 
@@ -84,4 +84,4 @@ async def patch_preferences(body: PrefPatch, request: Request):
             ), {"u": uid, "k": k, "v": __import__("json").dumps({"v": v})})
     return {"ok": True, "updated": len(updates), "values": updates}
 # N:M
-# 56:14
+# 56:14 2:2 1:1

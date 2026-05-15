@@ -1,4 +1,4 @@
-// 110:15
+// 110:15 0:6 0:0
 /**
  * Universal msdmd parser — pure Node stdlib (fs, path).
  *
@@ -137,4 +137,4 @@ export function walkTree(
   visit(root);
   return { annotated, untested };
 }
-// 110:15
+// 110:15 0:6 0:0

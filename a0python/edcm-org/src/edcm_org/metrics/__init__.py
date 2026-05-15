@@ -1,4 +1,4 @@
-# 0:7
+# 0:7 0:0 0:0
 """
 EDCM-Org metrics package.
 
@@ -7,4 +7,4 @@ Window-history metrics (Fixation, Escalation, Integration): secondary.py
 Progress sub-components: progress.py
 Token/marker extraction utilities: extraction_helpers.py
 """
-# 0:7
+# 0:7 0:0 0:0

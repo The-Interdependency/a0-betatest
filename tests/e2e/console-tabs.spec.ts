@@ -1,4 +1,4 @@
-// 129:25
+// 129:25 0:0 0:1
 import { test, expect, request, type Page } from "@playwright/test";
 
 // Canonical contract: tab_ids that MUST render via a custom React component
@@ -165,4 +165,4 @@ test.describe("Console tabs render correctly", () => {
     ).toEqual([]);
   });
 });
-// 129:25
+// 129:25 0:0 0:1

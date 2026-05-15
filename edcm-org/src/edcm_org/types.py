@@ -1,4 +1,4 @@
-# 69:32
+# 69:32 0:0 10:0
 """
 Typed state and output envelope for EDCM-Org v0.1.
 
@@ -124,4 +124,4 @@ class OutputEnvelope:
             errors.append(f"Unknown spec_version: {self.spec_version!r}")
 
         return errors
-# 69:32
+# 69:32 0:0 10:0

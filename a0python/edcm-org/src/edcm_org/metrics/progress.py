@@ -1,4 +1,4 @@
-# 62:21
+# 62:21 0:0 2:2
 """
 Progress (P) metric computation.
 
@@ -100,4 +100,4 @@ def compute_progress(
     )
 
     return P, P_decisions, P_commitments, P_artifacts, P_followthrough
-# 62:21
+# 62:21 0:0 2:2

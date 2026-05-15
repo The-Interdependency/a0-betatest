@@ -1,4 +1,4 @@
-# 89:6
+# 89:6 0:0 2:0
 """
 EDCM-Org Glossary — canonical definitions for all terms.
 
@@ -98,4 +98,4 @@ GLOSSARY: dict[str, str] = {
 def lookup(term: str) -> str:
     """Return the glossary definition for a term, or a 'not found' message."""
     return GLOSSARY.get(term, f"Term not found in EDCM glossary: {term!r}")
-# 89:6
+# 89:6 0:0 2:0

@@ -1,4 +1,4 @@
-# 55:35
+# 55:35 0:0 4:1
 """Guardian external-effect approval gate.
 
 The following require explicit approval beyond ordinary functional capability:
@@ -112,4 +112,4 @@ def is_undoable_internal(
         and provenance_complete
         and safety_policy_unchanged
     )
-# 55:35
+# 55:35 0:0 4:1

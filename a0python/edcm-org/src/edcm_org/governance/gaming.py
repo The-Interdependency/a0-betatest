@@ -1,4 +1,4 @@
-# 39:27
+# 39:27 0:0 2:1
 """
 EDCM Metric Gaming Detection — always computed, non-optional.
 
@@ -81,4 +81,4 @@ def detect_gaming_alerts(
         )
 
     return alerts
-# 39:27
+# 39:27 0:0 2:1

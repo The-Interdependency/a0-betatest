@@ -1,4 +1,4 @@
-// 32:0
+// 32:0 0:2 0:0
 import { createContext, useContext, useState } from "react";
 
 interface PopoutState {
@@ -38,4 +38,4 @@ export function PopoutProvider({ children }: { children: React.ReactNode }) {
 export function usePopout() {
   return useContext(PopoutContext);
 }
-// 32:0
+// 32:0 0:2 0:0

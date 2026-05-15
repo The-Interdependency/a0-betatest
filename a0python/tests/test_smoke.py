@@ -1,4 +1,4 @@
-# 22:1
+# 22:1 0:0 0:0
 # tests/test_smoke.py
 import json, subprocess, sys, os
 
@@ -25,4 +25,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-# 22:1
+# 22:1 0:0 0:0

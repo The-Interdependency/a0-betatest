@@ -1,6 +1,6 @@
 ---
 name: a0p-module-doctrine
-description: Authoritative conventions for building Python route modules, TypeScript components, and hot-swap modules in the a0p codebase. Covers file annotation (N:M ratio), route naming (_api vs plain), # DOC block format, UI_META, DATA_SCHEMA, the four-place registration checklist, hot-swap module rules, and the 400-line code budget. Load this skill before creating or editing any Python route file, service, or TS component in the a0p project.
+description: Authoritative conventions for building Python route modules, TypeScript components, and hot-swap modules in the a0p codebase. Covers file annotation (N:M C:D I:O three-metric format), route naming (_api vs plain), # DOC block format, UI_META, DATA_SCHEMA, the four-place registration checklist, hot-swap module rules, and the 400-line code budget. Load this skill before creating or editing any Python route file, service, or TS component in the a0p project.
 ---
 
 # a0p Module Doctrine
@@ -9,26 +9,54 @@ Every file in the a0p codebase follows these conventions. This is the single aut
 
 ---
 
-## 1. File Annotation — `# N:M` / `// N:M`
+## 1. File Annotation — `# N:M C:D I:O` / `// N:M C:D I:O`
 
-**First AND last line** of every `.py`, `.ts`, `.tsx` file must be an annotation comment:
+**First AND last line** of every `.py`, `.ts`, `.tsx` file must be an annotation comment carrying three metric pairs:
 
 ```python
-# 47:12      ← Python files
+# 619:179 8:12 1:18      ← Python files
 ```
 ```typescript
-// 47:12     ← TypeScript / TSX files
+// 461:62 3:5 2:8        ← TypeScript / TSX files
 ```
 
-- **N** = non-blank, non-comment code lines
-- **M** = comment lines, docstring lines, `/* */` block-comment lines, and `# DOC` lines
+### The three metrics
 
-Run from the project root after any edit to re-stamp all files:
+| Pair | Name | Measures |
+|------|------|----------|
+| `N:M` | code : comment | Internal density — how well the file explains itself |
+| `C:D` | consumed : declared | Surface utility — how much of what it declares is actually used |
+| `I:O` | fan-in : fan-out | Graph position — how many files depend on it vs how many it depends on |
+
+**N** = non-blank, non-comment code lines (budget: ≤ 400)
+**M** = comment lines, docstring lines, `/* */` blocks, and `# DOC` lines
+**D** = declared `# DOC endpoint:` lines (`.py`); exported symbols (`.ts/.tsx`)
+**C** = declared items consumed in `client/src/` or `server/`
+**I** = other project files that import this file (fan-in)
+**O** = project-internal modules this file imports (fan-out)
+
+### Pathology table
+
+| Low N:M | Low C:D | Low I:O (high O) |
+|---------|---------|-----------------|
+| Dense, opaque growth | Dead surface area | Unstable, depends on everything |
+
+A file scoring poorly on all three is the true refactor target — not merely the longest file.
+
+### Running the annotator
+
 ```bash
+# Re-stamp all files and recompute all three metrics (full cross-reference scan)
 python scripts/annotate.py
+
+# Re-stamp specific files — recomputes N:M, preserves existing C:D and I:O
+python scripts/annotate.py python/routes/chat.py client/src/pages/chat.tsx
 ```
 
-This is idempotent — stale annotations are stripped and replaced. The ratio is parsed by `collect_doc_meta()` and displayed live in the DocsTab as a code:comment badge per module. Hot-swap modules deployed via WsModulesTab also have their annotation parsed immediately on swap.
+Full-scan output shows all three pairs: `[619:179 8:12 1:18]`
+Single-file output shows N:M only: `[619:179]` (C:D and I:O preserved from existing annotation)
+
+This is idempotent. The ratio is parsed by `collect_doc_meta()` and displayed in the DocsTab. Hot-swap modules have their annotation stamped on deploy.
 
 ---
 

@@ -1,4 +1,4 @@
-# 47:14
+# 47:14 0:0 4:0
 ZFAE_AGENT_DEF = {
     "name": "a0(zeta fun alpha echo)",
     "symbol": "ZFAE",
@@ -70,4 +70,4 @@ def is_deprecated(name: str) -> bool:
     if lower.startswith("a0(zeta fun alpha echo)"):
         return True
     return False
-# 47:14
+# 47:14 0:0 4:0

@@ -1,4 +1,4 @@
-# 90:4
+# 90:4 0:0 0:0
 """image_generate — Google Imagen image generation, archived through artifacts."""
 import os
 
@@ -102,4 +102,4 @@ async def handle(prompt: str = "", aspect_ratio: str = "1:1", style_hint: str | 
             "model": "imagen-3",
         },
     }
-# 90:4
+# 90:4 0:0 0:0

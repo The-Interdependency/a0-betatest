@@ -1,4 +1,4 @@
-// 164:0
+// 164:0 0:1 0:7
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -179,4 +179,4 @@ export default function NewModulePanel({ onClose, onCreated }: Props) {
     </div>
   );
 }
-// 164:0
+// 164:0 0:1 0:7

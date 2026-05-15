@@ -1,4 +1,4 @@
-# 70:13
+# 70:13 0:0 8:0
 # N:M
 """Run-scoped ContextVars for ZFAE recursion tracking.
 
@@ -105,4 +105,4 @@ def snapshot() -> dict:
         "max_tool_rounds": current_max_tool_rounds.get(),
     }
 # N:M
-# 70:13
+# 70:13 0:0 8:0

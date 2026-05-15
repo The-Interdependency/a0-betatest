@@ -1,4 +1,4 @@
-# 24:11
+# 24:11 0:0 4:1
 """Phi tensor field — structural analysis layer of PCNA.
 
 Phi's domain: constraint satisfaction, contradiction detection,
@@ -44,4 +44,4 @@ class PhiTensor:
                 "backend": slices.backend_name,
             }
         }
-# 24:11
+# 24:11 0:0 4:1

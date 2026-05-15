@@ -1,4 +1,4 @@
-# 94:4
+# 94:4 0:0 2:0
 """Guardian sentinel suite.
 
 Sentinel law is fixed. Functional layers may not rewrite sentinel law.
@@ -135,4 +135,4 @@ class SentinelSuite:
 
     def failures(self, results: List[SentinelResult]) -> List[SentinelResult]:
         return [r for r in results if r.verdict == SentinelVerdict.FAIL]
-# 94:4
+# 94:4 0:0 2:0

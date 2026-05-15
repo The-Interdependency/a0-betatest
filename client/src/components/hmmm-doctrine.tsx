@@ -1,4 +1,4 @@
-// 14:0
+// 14:0 0:1 0:0
 import { Shield } from "lucide-react";
 
 export default function HmmmDoctrine() {
@@ -14,4 +14,4 @@ export default function HmmmDoctrine() {
     </div>
   );
 }
-// 14:0
+// 14:0 0:1 0:0

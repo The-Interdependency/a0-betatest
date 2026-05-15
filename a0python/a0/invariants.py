@@ -1,4 +1,4 @@
-# 15:6
+# 15:6 0:0 13:0
 from __future__ import annotations
 
 from typing import Any
@@ -26,4 +26,4 @@ def require_hmmm(obj: Any) -> None:
         raise InvalidStateError(
             "hmmm is absent from object — invalid state blocks emission"
         )
-# 15:6
+# 15:6 0:0 13:0

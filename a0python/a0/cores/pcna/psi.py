@@ -1,4 +1,4 @@
-# 24:11
+# 24:11 0:0 4:1
 """Psi tensor field — semantic analysis layer of PCNA.
 
 Psi's domain: semantic processing, contextual reasoning,
@@ -44,4 +44,4 @@ class PsiTensor:
                 "backend": slices.backend_name,
             }
         }
-# 24:11
+# 24:11 0:0 4:1

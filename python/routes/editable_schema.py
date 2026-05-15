@@ -1,4 +1,4 @@
-# 38:8
+# 38:8 1:2 1:1
 import os
 from fastapi import APIRouter, HTTPException, Request
 
@@ -53,4 +53,4 @@ async def get_editable_schema_readme(request: Request):
         content = "# a0p\n\nNo README found."
     modules = collect_doc_meta()
     return {"content": content, "modules": modules}
-# 38:8
+# 38:8 1:2 1:1

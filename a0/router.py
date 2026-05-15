@@ -1,4 +1,4 @@
-# 57:5
+# 57:5 0:0 4:8
 from __future__ import annotations
 
 from pathlib import Path
@@ -76,4 +76,4 @@ def handle(req: A0Request) -> A0Response:
         "hmmm": hmmm,
     })
     return A0Response(task_id=req.task_id, result={"text": resp.get("text", ""), "artifacts": []}, hmmm=hmmm)
-# 57:5
+# 57:5 0:0 4:8

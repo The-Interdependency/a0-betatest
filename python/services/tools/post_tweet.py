@@ -1,4 +1,4 @@
-# 120:2
+# 120:2 0:0 0:0
 """post_tweet — post a tweet to X via OAuth 1.0a."""
 import base64
 import hashlib
@@ -131,4 +131,4 @@ async def handle(text: str = "", reply_to: str | None = None, **_) -> str:
         })
     except Exception as exc:
         return json.dumps({"ok": False, "error": f"request failed: {exc}"})
-# 120:2
+# 120:2 0:0 0:0

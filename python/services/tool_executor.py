@@ -1,4 +1,4 @@
-# 352:72
+# 352:72 0:0 12:4
 """ZFAE Tool Executor — thin shim over the per-tool registry.
 
 Tools live in `python/services/tools/*.py` (one file per tool, self-declared
@@ -482,4 +482,4 @@ __all__ = [
     "get_active_chat_schemas",
     "get_active_responses_schemas",
 ]
-# 352:72
+# 352:72 0:0 12:4

@@ -1,4 +1,4 @@
-// 107:0
+// 107:0 0:0 0:2
 import * as React from "react"
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
@@ -116,4 +116,4 @@ export {
   PaginationNext,
   PaginationPrevious,
 }
-// 107:0
+// 107:0 0:0 0:2

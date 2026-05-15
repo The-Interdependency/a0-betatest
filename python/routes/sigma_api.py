@@ -1,4 +1,4 @@
-# 88:10
+# 88:10 5:6 1:2
 # DOC module: sigma
 # DOC label: Σ Sigma Core
 # DOC description: Filesystem substrate companion tensor core. Maps the workspace as a prime-node ring. Resolution 1-5 controls scan depth. Content-watch pins specific files and emits events on hash change.
@@ -121,4 +121,4 @@ async def sigma_intervals(req: IntervalsRequest, request: Request):
         sig.content_interval = req.content_interval
     sig.save_checkpoint()
     return {"ok": True, "structural_interval": sig.structural_interval, "content_interval": sig.content_interval}
-# 88:10
+# 88:10 5:6 1:2

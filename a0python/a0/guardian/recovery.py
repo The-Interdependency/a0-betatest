@@ -1,4 +1,4 @@
-# 26:4
+# 26:4 0:0 0:0
 """Guardian recovery and quarantine shell.
 
 Containment is preferred to collapse (Law 6).
@@ -42,4 +42,4 @@ class RecoveryShell:
 
     def clear(self) -> None:
         self._quarantine.clear()
-# 26:4
+# 26:4 0:0 0:0

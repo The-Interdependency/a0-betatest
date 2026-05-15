@@ -1,4 +1,4 @@
-# 191:43
+# 191:43 0:0 1:2
 """Transcript ingestion — parser dispatch + persistence driver.
 
 Accepts raw bytes from an upload, auto-detects format, normalizes to a
@@ -264,4 +264,4 @@ async def ingest_upload(upload_id: int, filename: str, data: bytes) -> dict[str,
             finished_at=datetime.utcnow(),
         )
         raise
-# 191:43
+# 191:43 0:0 1:2

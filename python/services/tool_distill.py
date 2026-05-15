@@ -1,4 +1,4 @@
-# 126:19
+# 126:19 0:0 5:2
 """Tool-result distillation runner.
 
 Wraps oversized tool outputs in either a soft (paraphrase) or hard
@@ -165,4 +165,4 @@ async def maybe_summarize(
         )
     except Exception:
         return flat_truncate(name, raw)
-# 126:19
+# 126:19 0:0 5:2

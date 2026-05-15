@@ -1,4 +1,4 @@
-# 71:10
+# 71:10 0:0 0:0
 """
 Basin detection tests — verify all basins fire at their documented thresholds.
 """
@@ -95,4 +95,4 @@ class TestBasinDetection:
         )
         # COMPLIANCE_STASIS should win because it's evaluated first
         assert basin == "COMPLIANCE_STASIS"
-# 71:10
+# 71:10 0:0 0:0

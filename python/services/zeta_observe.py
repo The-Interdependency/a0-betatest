@@ -1,4 +1,4 @@
-# 55:0
+# 55:0 0:0 0:0
 import time
 from typing import Any
 
@@ -64,4 +64,4 @@ def _classify(coherence: float) -> str:
     if coherence >= 0.2:
         return "low"
     return "critical"
-# 55:0
+# 55:0 0:0 0:0

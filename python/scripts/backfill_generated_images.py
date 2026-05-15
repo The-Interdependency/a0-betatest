@@ -1,4 +1,4 @@
-# 71:8
+# 71:8 0:0 0:0
 """One-shot backfill: copy every generated_images row into the new artifacts
 table, preserving created_at. Idempotent (sha256 dedupe). Surfaces every
 failure explicitly — never a silent skip.
@@ -91,4 +91,4 @@ async def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(asyncio.run(main()))
-# 71:8
+# 71:8 0:0 0:0

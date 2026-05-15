@@ -1,4 +1,4 @@
-# 252:69
+# 252:69 0:0 2:6
 # N:M
 """run_inference_with_mode — orchestration entry point that fans aimmh-lib's
 multi-model primitives over the existing energy provider call path.
@@ -355,4 +355,4 @@ async def run_inference_with_mode(
     }
     return _summarize_results(results), usage
 # N:M
-# 252:69
+# 252:69 0:0 2:6

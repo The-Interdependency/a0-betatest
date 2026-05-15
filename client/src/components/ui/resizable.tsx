@@ -1,4 +1,4 @@
-// 39:0
+// 39:0 0:0 0:1
 "use client"
 
 import { GripVertical } from "lucide-react"
@@ -44,4 +44,4 @@ const ResizableHandle = ({
 )
 
 export { ResizablePanelGroup, ResizablePanel, ResizableHandle }
-// 39:0
+// 39:0 0:0 0:1

@@ -1,4 +1,4 @@
-# 73:1
+# 73:1 0:0 0:2
 """set_user_tier — admin-only DB tier override."""
 import json
 
@@ -82,4 +82,4 @@ async def handle(user_id: str = "", tier: str = "", **_) -> str:
         "email": updated["email"],
         "tier": updated["subscription_tier"],
     })
-# 73:1
+# 73:1 0:0 0:2

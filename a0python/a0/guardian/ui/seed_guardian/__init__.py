@@ -1,4 +1,4 @@
-# 7:1
+# 7:1 0:0 0:1
 """seed_guardian — circles for the Guardian microkernel shell."""
 from ..circles import Circle
 
@@ -9,4 +9,4 @@ AUDIT_CIRCLE     = Circle(name="audit",     label="Audit",     seed="seed_guardi
 EMIT_CIRCLE      = Circle(name="emit",      label="Emit",      seed="seed_guardian")
 
 CIRCLES = [SENTINELS_CIRCLE, RECOVERY_CIRCLE, APPROVAL_CIRCLE, AUDIT_CIRCLE, EMIT_CIRCLE]
-# 7:1
+# 7:1 0:0 0:1

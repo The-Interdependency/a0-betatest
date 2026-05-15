@@ -1,4 +1,4 @@
-// 68:5
+// 68:5 0:1 0:1
 // Per-conversation model picker for the chat composer (single mode only).
 // Reads /api/v1/models, groups enabled models by provider, lets the user
 // pick one model for the next send. "auto" means: don't include a `model`
@@ -80,4 +80,4 @@ export function ModelPicker({
     </select>
   );
 }
-// 68:5
+// 68:5 0:1 0:1

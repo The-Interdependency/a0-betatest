@@ -1,4 +1,4 @@
-# 294:27
+# 294:27 0:0 2:6
 """
 PCNA Inference Engine — six-ring pipeline, all rings real.
 
@@ -361,4 +361,4 @@ class PCNAEngine:
             "checkpoint_ring_means": self.checkpoint_ring_means,
             "echo_history": echo_history[-20:],
         }
-# 294:27
+# 294:27 0:0 2:6

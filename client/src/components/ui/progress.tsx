@@ -1,4 +1,4 @@
-// 24:0
+// 24:0 2:0 2:2
 "use client"
 
 import * as React from "react"
@@ -27,4 +27,4 @@ const Progress = React.forwardRef<
 Progress.displayName = ProgressPrimitive.Root.displayName
 
 export { Progress }
-// 24:0
+// 24:0 2:0 2:2

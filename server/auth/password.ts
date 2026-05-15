@@ -1,4 +1,4 @@
-// 18:0
+// 18:0 3:2 3:0
 import bcrypt from "bcryptjs";
 
 const ROUNDS = 12;
@@ -22,4 +22,4 @@ export async function hashPassphrase(passphrase: string): Promise<string> {
 export async function verifyPassphrase(passphrase: string, hash: string): Promise<boolean> {
   return bcrypt.compare(passphrase, hash);
 }
-// 18:0
+// 18:0 3:2 3:0

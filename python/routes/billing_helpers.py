@@ -1,4 +1,4 @@
-# 7:16
+# 7:16 0:0 1:0
 """
 Billing helpers — Supporter-tier shims kept alive only for legacy webhook traffic.
 
@@ -28,4 +28,4 @@ def is_supporter_subscription(metadata: dict) -> bool:
     legacy Supporter sub. Used to filter webhook events so we only
     touch rows that were actually Supporter subscribers."""
     return metadata.get("product_key") == "supporter"
-# 7:16
+# 7:16 0:0 1:0

@@ -1,4 +1,4 @@
-# 52:38
+# 52:38 0:0 0:0
 """Bandit — bounded advisory salience machinery.
 
 Bandits do not choose. Meta-13 chooses.
@@ -112,4 +112,4 @@ class BanditAdvisor:
         total_probes = sum(self._probe_counts.values()) or 1
         exploration = math.sqrt(2 * math.log(total_probes) / count)
         return mean_reward + self._exploration_rate * exploration
-# 52:38
+# 52:38 0:0 0:0

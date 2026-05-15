@@ -1,4 +1,4 @@
-# 87:21
+# 87:21 0:0 0:1
 """
 EDCM Non-Punitive Intervention Recommendations.
 
@@ -127,4 +127,4 @@ def recommend_interventions(basin: BasinName, m: Metrics) -> List[str]:
         )
 
     return recs
-# 87:21
+# 87:21 0:0 0:1

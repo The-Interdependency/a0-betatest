@@ -1,4 +1,4 @@
-# 10:13
+# 10:13 0:0 2:0
 """Per-slot in-flight turn counter.
 
 Tracks how many main-chat inference turns are currently routed through
@@ -31,4 +31,4 @@ def conduct_turn_exit() -> None:
 def conduct_is_active() -> bool:
     """Return True while at least one conduct-slot turn is in flight."""
     return _conduct_turns > 0
-# 10:13
+# 10:13 0:0 2:0

@@ -1,4 +1,4 @@
-# 202:28
+# 202:28 0:4 2:1
 # N:M
 """Fleet view API — agent_runs tree, per-run summary, paginated logs, SSE tail.
 
@@ -261,4 +261,4 @@ async def stream_logs(run_id: str, request: Request):
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 # N:M
-# 202:28
+# 202:28 0:4 2:1

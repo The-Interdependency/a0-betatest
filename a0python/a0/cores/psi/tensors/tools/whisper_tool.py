@@ -1,4 +1,4 @@
-# 21:4
+# 21:4 0:0 3:0
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -30,4 +30,4 @@ def run_whisper_segments(files: List[str]) -> Dict[str, Any]:
             results.append({"file": path, "error": str(exc)})
 
     return {"tool": "whisper", "status": "ok", "results": results}
-# 21:4
+# 21:4 0:0 3:0

@@ -1,4 +1,4 @@
-# 58:56
+# 58:56 0:0 2:0
 """
 EDCM-Org Data Loaders.
 
@@ -136,4 +136,4 @@ def window_meeting_text(text: str, window_size: int = 500, overlap: int = 50) ->
         start += step
 
     return windows
-# 58:56
+# 58:56 0:0 2:0

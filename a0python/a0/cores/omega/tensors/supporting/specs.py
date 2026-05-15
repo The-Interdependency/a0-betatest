@@ -1,4 +1,4 @@
-# 34:1
+# 34:1 0:0 2:0
 """Spec catalog — canonical reference specifications."""
 
 SPECS = {
@@ -35,4 +35,4 @@ SPECS = {
         "resides_in": "psi_tensors",
     },
 }
-# 34:1
+# 34:1 0:0 2:0

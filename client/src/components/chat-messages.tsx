@@ -1,4 +1,4 @@
-// 639:5
+// 639:5 1:19 1:4
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -677,4 +677,4 @@ export function MessageBubble({ message, onSend }: { message: Message; onSend: (
     </div>
   );
 }
-// 639:5
+// 639:5 1:19 1:4

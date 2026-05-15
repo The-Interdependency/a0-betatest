@@ -1,4 +1,4 @@
-# 100:20
+# 100:20 0:0 2:1
 """Contracts protecting python/routes/chat.py.
 
 Source-of-truth declarations live in the CONTRACTS block of chat.py;
@@ -135,4 +135,4 @@ async def test_unknown_body_model_400() -> None:
             )
         finally:
             await _delete_conv(c, conv["id"], uid)
-# 100:20
+# 100:20 0:0 2:1

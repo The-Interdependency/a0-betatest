@@ -1,4 +1,4 @@
-# 2:5
+# 2:5 0:0 0:1
 """PCTA — PCNA + circle tensor layer.
 
 Circle tensors transform PCNA state from Cartesian to circular / phase
@@ -8,4 +8,4 @@ recursive systems (eigenvalues λ = r·e^(iθ)).
 from .circle_tensors import to_phase_coords, CircleTensorState
 
 __all__ = ["to_phase_coords", "CircleTensorState"]
-# 2:5
+# 2:5 0:0 0:1

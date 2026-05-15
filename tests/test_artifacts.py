@@ -1,4 +1,4 @@
-# 165:10
+# 165:10 0:0 0:0
 """Unit tests for the artifacts archive: schema defaults, sha256 dedupe,
 dispatcher's "produces" wrapping, and the rewired image_generate tool.
 
@@ -203,4 +203,4 @@ def test_image_generate_now_returns_artifact_id(fake_bucket, monkeypatch):
     finally:
         tools_pkg._CACHE["modules"] = None
         tools_pkg._CACHE["fingerprint"] = ""
-# 165:10
+# 165:10 0:0 0:0

@@ -1,4 +1,4 @@
-# 43:6
+# 43:6 0:0 0:0
 # N:M
 # DOC module: tests.test_spawn_caps
 # DOC label: Recursion caps
@@ -69,4 +69,4 @@ def test_caps_description_mentions_env_keys():
     assert "A0P_MAX_SPAWN_DEPTH" in s
     assert "A0P_MAX_SPAWN_FANOUT" in s
 # N:M
-# 43:6
+# 43:6 0:0 0:0

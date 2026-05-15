@@ -1,4 +1,4 @@
-# 65:3
+# 65:3 0:0 0:0
 """
 Privacy guard tests — enforce spec v0.1 governance rules.
 """
@@ -84,4 +84,4 @@ class TestPrivacyGuard:
         result = guard.enforce(payload)
         for field in pii_fields:
             assert field not in result, f"PII field {field!r} was not stripped"
-# 65:3
+# 65:3 0:0 0:0

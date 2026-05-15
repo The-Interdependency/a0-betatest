@@ -1,4 +1,4 @@
-# 118:8
+# 118:8 0:0 1:3
 """
 Instance Merge Protocol — three modes for multi-instance PCNA mesh.
 
@@ -150,4 +150,4 @@ class InstanceMerge:
             "both_status": "diverging",
             "timestamp": time.time(),
         }
-# 118:8
+# 118:8 0:0 1:3

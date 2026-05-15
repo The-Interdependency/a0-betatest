@@ -1,4 +1,4 @@
-# 116:8
+# 116:8 0:0 4:0
 """PTCA subagent definitions for the claude-agent-sdk.
 
 Each AgentDefinition maps to a PTCA architectural role.
@@ -137,4 +137,4 @@ except ImportError:
     PHI = PSI = OMEGA = JURY = BANDIT = None  # type: ignore[assignment]
     ALL_SUBAGENTS = {}  # type: ignore[assignment]
     MODE_SUBAGENTS = {}  # type: ignore[assignment]
-# 116:8
+# 116:8 0:0 4:0

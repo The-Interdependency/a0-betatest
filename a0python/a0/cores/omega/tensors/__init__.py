@@ -1,4 +1,4 @@
-# 18:6
+# 18:6 0:0 0:3
 """Omega tensors — the interdependent way and supporting material.
 
     interdependent_way/   — architectural framework, design philosophy,
@@ -26,4 +26,4 @@ THE_INTERDEPENDENT_WAY = {
     "bandit_influence_law": BANDIT_INFLUENCE_LAW,
     "hmmm_invariant": HMMM_INVARIANT,
 }
-# 18:6
+# 18:6 0:0 0:3

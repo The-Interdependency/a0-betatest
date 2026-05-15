@@ -1,4 +1,4 @@
-# 223:90
+# 223:90 0:0 1:0
 """swarm — schema-validated parallel fan-out with confidence-gated escalation.
 
 Sidecar to aimmh-lib. Written against the aimmh CallFn contract
@@ -354,4 +354,4 @@ __all__ = [
     "call_with_schema",
     "swarm",
 ]
-# 223:90
+# 223:90 0:0 1:0

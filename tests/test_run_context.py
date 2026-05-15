@@ -1,4 +1,4 @@
-# 28:7
+# 28:7 0:0 0:0
 # N:M
 # DOC module: tests.test_run_context
 # DOC label: Run-context inheritance
@@ -44,4 +44,4 @@ def test_run_logger_emit_uses_context():
 
     asyncio.run(_go())
 # N:M
-# 28:7
+# 28:7 0:0 0:0

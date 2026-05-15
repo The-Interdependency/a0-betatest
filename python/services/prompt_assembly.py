@@ -1,4 +1,4 @@
-# 147:61
+# 147:61 0:0 4:5
 """prompt_assembly — canonical prompt construction for all chat turns.
 
 Extracted from inference.py (doctrine/prime-seed functions) and chat.py
@@ -247,4 +247,4 @@ async def build_prompt_sections(
             "total": len(full),
         },
     }
-# 147:61
+# 147:61 0:0 4:5

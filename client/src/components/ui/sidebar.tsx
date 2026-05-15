@@ -1,4 +1,4 @@
-// 661:12
+// 661:12 0:0 0:7
 "use client"
 
 import * as React from "react"
@@ -726,4 +726,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-// 661:12
+// 661:12 0:0 0:7

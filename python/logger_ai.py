@@ -1,4 +1,4 @@
-# 152:6
+# 152:6 0:0 1:1
 """AI-transcript and OpenAI-event logging helpers.
 
 Split from logger.py (Task: module-size doctrine).
@@ -175,4 +175,4 @@ async def list_ai_transcript_files() -> List[Dict[str, Any]]:
         return results
     except Exception:
         return []
-# 152:6
+# 152:6 0:0 1:1
