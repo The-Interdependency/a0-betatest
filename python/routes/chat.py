@@ -1,4 +1,4 @@
-# 606:173
+# 619:179
 import time
 import traceback
 from fastapi import APIRouter, HTTPException, Request
@@ -323,11 +323,11 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
             if agent_inst is not None:
                 agent_persona = agent_inst.system_prompt
                 agent_model_id = agent_inst.model_id
-                # Preserve today's behavior: chat single-mode always allows
-                # tools regardless of the per-agent enabled_tools list.
-                # Per-agent tool gating is a follow-up; honoring it here
-                # would silently regress existing forge agents.
-                agent_inst.use_tools = True
+                # Honor the forge agent's configured tool list. use_tools and
+                # meta["enabled_tools"] are already set correctly by
+                # from_agent_id: use_tools=False when the agent has no tools,
+                # True with a non-empty list otherwise. The list is merged
+                # into the effective allow-list at set_allowed_tools below.
 
         # Honest resolution chain (no silent fallback to a hardcoded provider):
         #   per-message body.model > agent's configured model > current
@@ -684,11 +684,26 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         eff_providers = body.providers or [provider_id]
 
         set_approval_scope_user_id(uid or None)
-        # Per-conversation tool allow-list — None means all tools enabled.
+        # Effective tool allow-list: intersect per-agent list with per-conv
+        # list. None from either source means "no restriction from that
+        # source". An empty agent list means the agent has no tools at all
+        # (use_tools=False is already set on agent_inst in that case).
         _conv_tools = conv.get("enabled_tools")
-        _t_at = set_allowed_tools(
-            list(_conv_tools) if isinstance(_conv_tools, list) else None
+        _agent_etl = (
+            agent_inst.meta.get("enabled_tools")
+            if agent_inst is not None
+            else None
         )
+        if _agent_etl is not None:
+            if isinstance(_conv_tools, list):
+                _eff_tools: Optional[list] = [t for t in _agent_etl if t in _conv_tools]
+            else:
+                _eff_tools = list(_agent_etl)
+            _t_at = set_allowed_tools(_eff_tools)
+        else:
+            _t_at = set_allowed_tools(
+                list(_conv_tools) if isinstance(_conv_tools, list) else None
+            )
         _t_om = current_orchestration_mode.set(eff_mode)
         _t_cm = current_cut_mode.set(eff_cut)
         _t_ut = current_user_tier.set(tier)
@@ -732,6 +747,10 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                     enforce_enabled=False,
                 )
                 if _inf_mode == "direct":
+                    inst.use_tools = False
+                elif agent_inst is not None and not agent_inst.use_tools:
+                    # Forge agent has no tools configured — propagate that
+                    # to the executor so the provider never sees tool schemas.
                     inst.use_tools = False
                 content, usage = await inst.run(
                     history,
@@ -857,4 +876,4 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
 #   class: correctness
 #   call:  python.tests.contracts.chat.test_unknown_body_model_400
 # === END CONTRACTS ===
-# 606:173
+# 619:179
