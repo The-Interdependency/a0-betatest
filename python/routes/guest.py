@@ -1,9 +1,9 @@
-# 34:1
+# 32:0
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..services.inference import call_provider
-from ..services.energy_registry import default_provider
+from ..services.energy_registry import active_provider
 
 router = APIRouter(prefix="/api/v1/guest", tags=["guest"])
 
@@ -23,13 +23,10 @@ async def guest_chat(body: GuestChatBody):
     if not body.message or not body.message.strip():
         raise HTTPException(status_code=400, detail="message is required")
 
-    # No silent fallback: guest chat can only run if a provider key is present.
-    provider_id = default_provider()
-    if not provider_id:
-        raise HTTPException(
-            status_code=503,
-            detail="Guest chat unavailable: no provider API key configured.",
-        )
+    try:
+        provider_id = await active_provider()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
     content, usage = await call_provider(
         provider_id=provider_id,
@@ -45,4 +42,4 @@ async def guest_chat(body: GuestChatBody):
         tokens_used = max(10, len(body.message.split()) + len(content.split()))
 
     return {"content": content, "tokens_used": tokens_used}
-# 34:1
+# 32:0

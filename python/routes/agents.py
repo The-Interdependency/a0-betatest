@@ -1,4 +1,4 @@
-# 251:31
+# 256:31
 import time
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ from ..agents.zfae import (
     ZFAE_AGENT_DEF, compose_name, sub_agent_name,
     is_deprecated, DEPRECATED_NAMES,
 )
-from ..services.energy_registry import default_provider, BUILTIN_PROVIDERS
+from ..services.energy_registry import default_provider, active_provider, BUILTIN_PROVIDERS
 from ..engine import PCNAEngine, InstanceMerge
 from ..services.agent_lifecycle import (
     # Task #122 — re-export the canonical registry from agent_lifecycle so
@@ -117,10 +117,10 @@ async def ensure_primary_agent(pcna: PCNAEngine):
 
 @router.get("/agents")
 async def list_agents():
-    active_provider = default_provider()
-    _ap_info = BUILTIN_PROVIDERS.get(active_provider) if active_provider else None
+    _display_provider = default_provider()
+    _ap_info = BUILTIN_PROVIDERS.get(_display_provider) if _display_provider else None
     _ap_model = _ap_info.get("spec_model") if _ap_info else None
-    primary_name = compose_name(active_provider, model_id=_ap_model)
+    primary_name = compose_name(_display_provider, model_id=_ap_model)
     agents = [
         {
             "name": primary_name,
@@ -149,7 +149,12 @@ async def spawn_sub_agent(request: Request, body: SpawnRequest):
     await require_admin(request)
     from ..main import get_pcna
     parent = get_pcna()
-    provider = body.provider or default_provider()
+    provider = body.provider
+    if not provider:
+        try:
+            provider = await active_provider()
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=str(e))
     return _lifecycle_spawn(parent, provider=provider)
 
 
@@ -309,4 +314,4 @@ async def learning_summary(limit: int = 200):
     }
 
 
-# 251:31
+# 256:31

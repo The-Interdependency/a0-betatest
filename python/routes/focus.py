@@ -1,4 +1,4 @@
-# 316:52
+# 321:52
 # DOC module: focus
 # DOC label: Focus
 # DOC description: Model focus management. Provides context boost injection per conversation, focus regain directives, per-conversation tool selection, and system prompt preview.
@@ -93,7 +93,7 @@ async def regain_focus(conv_id: int, request: Request):
     conv = await _assert_conv_owner(conv_id, uid)
 
     from ..services.inference import call_provider
-    from ..services.energy_registry import default_provider
+    from ..services.energy_registry import active_provider
     from ..services.prompt_assembly import build_system_prompt
 
     tier = "free"
@@ -121,7 +121,12 @@ async def regain_focus(conv_id: int, request: Request):
     # matches the provider call_model will actually dispatch to (catches
     # the case where conv.get("model") is a real model name like
     # "gpt-5-mini" rather than a provider id).
-    _candidate = default_provider() or conv.get("model", "grok")
+    _candidate = conv.get("model")
+    if not _candidate:
+        try:
+            _candidate = await active_provider()
+        except RuntimeError as _e:
+            raise HTTPException(status_code=503, detail=str(_e))
     from ..services.model_catalog import resolve_model_id as _rmi
     try:
         provider_id, _ = await _rmi(_candidate)
@@ -443,4 +448,4 @@ async def get_prompt_sections(conv_id: int, request: Request):
     sections["has_messages"] = has_messages
     sections["conversation_id"] = conv_id
     return sections
-# 316:52
+# 321:52

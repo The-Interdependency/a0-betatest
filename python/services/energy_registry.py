@@ -1,4 +1,4 @@
-# 260:58
+# 280:64
 import logging
 import contextvars
 import json
@@ -73,15 +73,44 @@ _PROVIDER_ENABLED_TOOLS: dict[str, list] = {}
 def default_provider() -> str | None:
     """Return the first provider in BUILTIN_PROVIDERS whose API key env var is set.
 
-    Environment-driven only — no DB, no admin setting. Callers that need a
-    specific provider should pass it explicitly; this is the fallback of last
-    resort when no model is pinned at the call site.
+    Environment-driven only — no DB, no admin setting. Sync-safe; use only
+    for boot-time display and internal ordering. For routing decisions use
+    the async active_provider() which reads the conduct slot from the DB.
     """
     for pid, info in BUILTIN_PROVIDERS.items():
         env_key = info.get("env_key", "")
         if env_key and os.environ.get(env_key):
             return pid
     return None
+
+
+async def active_provider() -> str:
+    """Return the provider_id for the model assigned to the conduct slot.
+
+    Queries model_instances WHERE role_slot='conduct' LIMIT 1, resolves
+    the stored model_id to a provider_id via BUILTIN_PROVIDERS.
+    Raises RuntimeError("No instantiation selected") if no conduct slot
+    is assigned or the model_id cannot be resolved to a known provider.
+    """
+    try:
+        from ..database import get_session
+        from sqlalchemy import text as _sa_text
+        async with get_session() as _sess:
+            _row = (await _sess.execute(_sa_text(
+                "SELECT model_id FROM model_instances"
+                " WHERE role_slot = 'conduct' LIMIT 1"
+            ))).mappings().first()
+    except Exception as _exc:
+        raise RuntimeError("No instantiation selected") from _exc
+    if not _row:
+        raise RuntimeError("No instantiation selected")
+    model_id = (_row["model_id"] or "").strip()
+    if model_id in BUILTIN_PROVIDERS:
+        return model_id
+    for pid, spec in BUILTIN_PROVIDERS.items():
+        if spec.get("model") == model_id or spec.get("spec_model") == model_id:
+            return pid
+    raise RuntimeError("No instantiation selected")
 
 
 # Cheapest-first preference for internal/automated callers (heartbeat, reviews).
@@ -369,4 +398,4 @@ def resolve_providers(providers: list[str] | None) -> list[str]:
         elif p in BUILTIN_PROVIDERS and p not in out:
             out.append(p)
     return out
-# 260:58
+# 280:64

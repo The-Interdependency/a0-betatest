@@ -1,4 +1,4 @@
-# 110:88
+# 124:88
 # DOC module: cli
 # DOC label: CLI Keys
 # DOC description: API key management for CLI and Termux access. Users generate bearer tokens (a0k_...) used to authenticate one-shot or interactive terminal sessions without a browser session.
@@ -153,7 +153,7 @@ class CliChatBody(BaseModel):
 @router.post("/chat")
 async def cli_chat(body: CliChatBody, request: Request):
     """Stateless CLI chat — authenticates via Authorization: Bearer a0k_... header."""
-    from ..services.energy_registry import default_provider
+    from ..services.energy_registry import active_provider as _active_provider
     from ..storage import storage
     from ..services.prompt_assembly import build_system_prompt as _build_system_prompt
 
@@ -180,7 +180,13 @@ async def cli_chat(body: CliChatBody, request: Request):
         conv_id = body.conversation_id
         prior_msgs = await storage.get_messages(conv_id)
     else:
-        conv = await storage.create_conversation({"title": "CLI", "model": body.model or "grok"}, owner_user_id=uid)
+        _cli_model = body.model
+        if not _cli_model:
+            try:
+                _cli_model = await _active_provider()
+            except RuntimeError as _e:
+                raise HTTPException(status_code=503, detail=str(_e))
+        conv = await storage.create_conversation({"title": "CLI", "model": _cli_model}, owner_user_id=uid)
         conv_id = conv["id"]
         prior_msgs = []
 
@@ -193,7 +199,12 @@ async def cli_chat(body: CliChatBody, request: Request):
 
     # Explicit body.model wins over the active provider — codifying the
     # contract that "I asked for X, give me X" beats the global default.
-    model_id = body.model or conv.get("model", "grok")
+    model_id = body.model or conv.get("model")
+    if not model_id:
+        try:
+            model_id = await _active_provider()
+        except RuntimeError as _e:
+            raise HTTPException(status_code=503, detail=str(_e))
     # Resolve to the actual provider id so persisted message.model is
     # provider-consistent regardless of whether the caller sent a model
     # name or a provider id.
@@ -201,7 +212,10 @@ async def cli_chat(body: CliChatBody, request: Request):
     try:
         provider_id, _ = await _rmi(model_id)
     except ValueError:
-        provider_id = default_provider() or model_id
+        try:
+            provider_id = await _active_provider()
+        except RuntimeError:
+            provider_id = model_id
     system_prompt = await _build_system_prompt(tier)
 
     await storage.create_message({
@@ -235,4 +249,4 @@ async def cli_chat(body: CliChatBody, request: Request):
         "tier": tier,
         "usage": usage,
     }
-# 110:88
+# 124:88

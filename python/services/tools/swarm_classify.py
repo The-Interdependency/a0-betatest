@@ -1,4 +1,4 @@
-# 212:29
+# 220:29
 # N:M
 """swarm_classify — schema-validated parallel fan-out tool.
 
@@ -34,8 +34,8 @@ SCHEMA = {
             "to a critic model. Returns rows aligned 1:1 with `items`. Use "
             "for sort, tag, extract, route, or score workloads over many "
             "items where one big call would be slow or context-thrashing. "
-            "Producer should be a T0/T1 model (default: gemini); critic a "
-            "T2 (e.g. claude). Confidence < threshold triggers escalation."
+            "Producer should be a T0/T1 model; critic a T2 (e.g. claude). "
+            "Confidence < threshold triggers escalation."
         ),
         "parameters": {
             "type": "object",
@@ -66,8 +66,10 @@ SCHEMA = {
                 },
                 "producer_provider": {
                     "type": "string",
-                    "description": "Provider id for the producer (cheap tier).",
-                    "default": "gemini",
+                    "description": (
+                        "Provider id for the producer (cheap tier). "
+                        "Defaults to the active conduct-slot provider."
+                    ),
                 },
                 "critic_provider": {
                     "type": "string",
@@ -186,7 +188,7 @@ async def handle(
     items: list[Any],
     instruction: str,
     row_keys: list[str],
-    producer_provider: str = "gemini",
+    producer_provider: str = "",
     critic_provider: str = "",
     batch_size: int = 10,
     concurrency: int = 6,
@@ -198,6 +200,13 @@ async def handle(
         return json.dumps({"ok": False, "error": "items must be a non-empty array"})
     if not isinstance(row_keys, list) or not row_keys:
         return json.dumps({"ok": False, "error": "row_keys must be a non-empty array"})
+
+    if not producer_provider:
+        try:
+            from ..energy_registry import active_provider as _ap
+            producer_provider = await _ap()
+        except RuntimeError as _e:
+            return json.dumps({"ok": False, "error": str(_e)})
 
     required = list(row_keys)
     if "confidence" not in required:
@@ -262,4 +271,4 @@ async def handle(
         ],
     })
 # N:M
-# 212:29
+# 220:29

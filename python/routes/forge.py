@@ -1,4 +1,4 @@
-# 211:39
+# 213:37
 """The Forge — character-sheet style agent instantiation.
 
 Self-updating tool/model docs DB:
@@ -14,7 +14,7 @@ from typing import Optional
 from sqlalchemy import text as sa_text
 
 from ..database import get_session
-from ..services.energy_registry import default_provider
+from ..services.energy_registry import active_provider
 from ..services.tool_executor import TOOL_SCHEMAS_CHAT
 from ._admin_gate import require_admin
 from .forge_archetypes import ARCHETYPES, TOOL_CATEGORIES
@@ -154,18 +154,12 @@ async def instantiate(request: Request, body: InstantiateRequest) -> dict:
     tools = _validate_tools(body.enabled_tools if body.enabled_tools is not None else arche["suggested_tools"])
     prompt = body.system_prompt_override or arche["system_prompt"]
     personality = body.personality_override or arche["personality"]
-    # No silent fallback to "gemini": forge requires either an explicit
-    # model_id in the body or a configured global active_provider.
-    model_id = body.model_id or default_provider()
+    model_id = body.model_id
     if not model_id:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Cannot instantiate forge agent: no model_id provided and no "
-                "active_provider configured. Set one via "
-                "POST /api/agents/active-provider."
-            ),
-        )
+        try:
+            model_id = await active_provider()
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=str(e))
     provider_info = _validate_model(model_id)
     provider = provider_info.get("vendor", model_id)
     stats = arche["stats"]
@@ -274,10 +268,16 @@ async def start_chat(agent_id: int, request: Request) -> dict:
         ), {"id": agent_id, "uid": uid})).mappings().first()
         if not arow:
             raise HTTPException(404, "Agent not found")
+    _forge_model = arow["model_id"]
+    if not _forge_model:
+        try:
+            _forge_model = await active_provider()
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=str(e))
     from ..storage import storage
     conv = await storage.create_conversation({
         "title": f"⚔ {arow['name']}",
-        "model": arow["model_id"] or "grok",
+        "model": _forge_model,
         "agent_id": agent_id,
     }, owner_user_id=uid)
     return {"conversation": conv}
@@ -293,4 +293,4 @@ async def duel_stub(request: Request) -> dict:
 def _jsonb(value) -> str:
     import json
     return json.dumps(value) if value is not None else "null"
-# 211:39
+# 213:37

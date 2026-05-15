@@ -96,8 +96,8 @@ async def maybe_summarize(
     provider = _caller_provider.get()
     if not provider:
         try:
-            from .energy_registry import default_provider
-            provider = default_provider()
+            from .energy_registry import active_provider as _ap
+            provider = await _ap()
         except Exception:
             provider = None
     if not provider:

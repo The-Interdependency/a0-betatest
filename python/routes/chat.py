@@ -1,4 +1,4 @@
-# 606:173
+# 597:173
 import time
 import traceback
 from fastapi import APIRouter, HTTPException, Request
@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from ..storage import storage
-from ..services.energy_registry import default_provider, BUILTIN_PROVIDERS, cache_breakdown, estimate_cost
+from ..services.energy_registry import active_provider, BUILTIN_PROVIDERS, cache_breakdown, estimate_cost
 from ..services.inference import call_provider
 from ..services.prompt_assembly import build_system_prompt
 from ..services.bg_tasks import spawn as _spawn_bg
@@ -199,15 +199,12 @@ async def create_conversation(body: CreateConversation, request: Request):
     # set the system has no way to route chat, so refuse instead of silently
     # binding to "gemini" (the old behavior). Admin can fix by calling
     # POST /api/agents/active-provider {provider_id}.
-    model = body.model or default_provider()
+    model = body.model
     if not model:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "No model resolvable: request had no `model` and no global "
-                "active_provider is set. Set one via POST /api/agents/active-provider."
-            ),
-        )
+        try:
+            model = await active_provider()
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=str(e))
     data: dict = {"title": body.title, "model": model}
     return await storage.create_conversation(data, owner_user_id=uid)
 
@@ -341,21 +338,12 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         # cannot route, so refuse — same principle as the inference
         # dispatcher's no-silent-fallback contract.
         model_from_body = bool(body.model)
-        model_id = (
-            body.model
-            or agent_model_id
-            or default_provider()
-            or conv.get("model")
-        )
+        model_id = body.model or agent_model_id or conv.get("model")
         if not model_id:
-            raise HTTPException(
-                status_code=503,
-                detail=(
-                    "No model resolvable for this turn: no body.model, no agent "
-                    "model, no default provider (check API key env vars), and "
-                    "conversation has no stored model."
-                ),
-            )
+            try:
+                model_id = await active_provider()
+            except RuntimeError as e:
+                raise HTTPException(status_code=503, detail=str(e))
         # Resolve model_id → provider_id via the catalog so forge agents
         # whose model_id is a real model name (e.g. "gpt-5-mini") route
         # correctly downstream. The fallback below is intentionally
@@ -378,7 +366,10 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                         f"catalog. Refresh the providers list or pick 'auto'."
                     ),
                 )
-            provider_id = default_provider() or model_id
+            try:
+                provider_id = await active_provider()
+            except RuntimeError:
+                provider_id = model_id
 
         # Tier-gate restricted models (e.g. gemini3 = ws/admin only).
         # Gate the *resolved* provider list — never raw body.providers — so
@@ -857,4 +848,4 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
 #   class: correctness
 #   call:  python.tests.contracts.chat.test_unknown_body_model_400
 # === END CONTRACTS ===
-# 606:173
+# 597:173

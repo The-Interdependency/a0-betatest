@@ -29,7 +29,7 @@ Honest single-concern:
     (fan_out, council, daisy_chain, etc.) get a NotImplementedError
     until their own modules land — no silent fallback to single-mode.
   * Provider resolution honors the row's `providers` list. "active"
-    resolves to default_provider(). Anything else is
+    resolves via active_provider() (conduct slot). Anything else is
     used as the model_id directly (resolve_model_id handles legacy
     provider-id matching). Failure to resolve raises and the row is
     marked failed — not silently rerouted.
@@ -142,7 +142,7 @@ from typing import Any, Optional
 from sqlalchemy import text as _sa_text
 
 from .agent_instance import AgentInstance
-from .energy_registry import default_provider
+from .energy_registry import active_provider as _energy_active_provider
 from .run_context import bind_run, reset_run
 from .run_logger import get_run_logger
 
@@ -396,14 +396,14 @@ async def _maybe_schedule_retry(
 _SENTINEL_ACTIVE = "active"
 
 
-def _resolve_provider(
+async def _resolve_provider(
     providers: Any,
     *,
     parent_pcna: Any = None,
 ) -> str:
     """Resolve providers field → provider_id string.
 
-    "active" resolves to default_provider().
+    "active" resolves to active_provider() (conduct slot in model_instances).
     Explicit provider ids are returned as-is. Malformed input raises.
     """
     if isinstance(providers, str):
@@ -418,10 +418,10 @@ def _resolve_provider(
         raise ValueError("first provider entry is empty")
 
     if pid == _SENTINEL_ACTIVE:
-        active = default_provider()
-        if not active:
-            raise ValueError("no active provider configured for 'active' binding")
-        return active
+        try:
+            return await _energy_active_provider()
+        except RuntimeError as e:
+            raise ValueError(str(e)) from e
 
     return pid
 
@@ -526,7 +526,7 @@ async def _execute_one(row: dict[str, Any]) -> None:
 
         # ---- (2) fork child PCNA from primary -------------------------
         parent_pcna, pcna_err = _try_get_primary_pcna()
-        provider_id = _resolve_provider(
+        provider_id = await _resolve_provider(
             row.get("providers"),
             parent_pcna=parent_pcna,
         )
