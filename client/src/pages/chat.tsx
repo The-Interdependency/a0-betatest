@@ -1,10 +1,9 @@
-// 328:10
+// 327:10
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useSEO } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -360,4 +359,4 @@ export default function ChatPage() {
     </div>
   );
 }
-// 328:10
+// 327:10

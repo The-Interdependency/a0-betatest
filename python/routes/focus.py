@@ -1,7 +1,7 @@
 # 316:52
 # DOC module: focus
-# DOC label: Focus & Sub-agents
-# DOC description: Model focus management and sub-agent delegation. Provides context boost injection per conversation, focus regain directives, sub-agent background task launch, and error log retrieval for model calls.
+# DOC label: Focus
+# DOC description: Model focus management. Provides context boost injection per conversation, focus regain directives, per-conversation tool selection, and system prompt preview.
 # DOC tier: free
 # DOC endpoint: GET /api/v1/conversations/{id}/boost | Get the context boost for a conversation
 # DOC endpoint: PUT /api/v1/conversations/{id}/boost | Set context boost text injected into the system prompt
