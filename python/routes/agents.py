@@ -9,7 +9,7 @@ from ..agents.zfae import (
     ZFAE_AGENT_DEF, compose_name, sub_agent_name,
     is_deprecated, DEPRECATED_NAMES,
 )
-from ..services.energy_registry import default_provider, active_provider, BUILTIN_PROVIDERS
+from ..services.energy_registry import active_provider, BUILTIN_PROVIDERS
 from ..engine import PCNAEngine, InstanceMerge
 from ..services.agent_lifecycle import (
     # Task #122 — re-export the canonical registry from agent_lifecycle so
@@ -76,7 +76,7 @@ async def ensure_primary_agent(pcna: PCNAEngine):
     try:
         _provider = await active_provider()
     except RuntimeError:
-        _provider = default_provider()
+        _provider = None
     _pinfo = BUILTIN_PROVIDERS.get(_provider) if _provider else None
     _model_id = _pinfo.get("spec_model") if _pinfo else None
     agent_name = compose_name(_provider, model_id=_model_id)
@@ -123,7 +123,7 @@ async def list_agents():
     try:
         _display_provider = await active_provider()
     except RuntimeError:
-        _display_provider = default_provider()
+        _display_provider = None
     _ap_info = BUILTIN_PROVIDERS.get(_display_provider) if _display_provider else None
     _ap_model = _ap_info.get("spec_model") if _ap_info else None
     primary_name = compose_name(_display_provider, model_id=_ap_model)
