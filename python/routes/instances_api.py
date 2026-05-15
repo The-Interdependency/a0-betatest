@@ -1,4 +1,4 @@
-# 295:36
+# 303:36
 # DOC module: instances_api
 # DOC label: Model Instances
 # DOC description: CRUD for model instances (D&D party), per-instance memory, task board, and chat/archive sub-routes.
@@ -238,6 +238,14 @@ async def assign_slot(iid: str, request: Request, body: SlotPatch):
     await require_admin(request)
     if body.role_slot is not None and body.role_slot not in VALID_SLOTS:
         raise HTTPException(400, f"role_slot must be one of {sorted(VALID_SLOTS)} or null")
+    if body.role_slot == "conduct" or body.role_slot is None:
+        from ..services.slot_locks import conduct_is_active
+        if conduct_is_active():
+            raise HTTPException(
+                409,
+                "conduct slot is busy — a chat turn is in progress; "
+                "retry after the current turn completes",
+            )
     async with get_session() as s:
         if body.role_slot:
             await s.execute(
@@ -399,4 +407,4 @@ async def get_archives(iid: str):
     return [{"id": str(r["id"]), "label": r["label"],
              "archived_at": str(r["archived_at"]), "merge_status": r["merge_status"]}
             for r in rows]
-# 295:36
+# 303:36

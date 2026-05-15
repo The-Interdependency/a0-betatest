@@ -1,4 +1,4 @@
-# 599:173
+# 606:173
 import time
 import traceback
 from fastapi import APIRouter, HTTPException, Request
@@ -338,10 +338,12 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         # cannot route, so refuse — same principle as the inference
         # dispatcher's no-silent-fallback contract.
         model_from_body = bool(body.model)
+        _from_conduct = False
         model_id = body.model or agent_model_id
         if not model_id:
             try:
                 model_id = await active_provider()
+                _from_conduct = True
             except RuntimeError:
                 model_id = conv.get("model") or ""
         if not model_id:
@@ -710,6 +712,9 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         # "swarm"             — reserved; currently treated as agentic.
         _inf_mode = (conv.get("inference_mode") or "agentic").strip()
 
+        from ..services.slot_locks import conduct_turn_enter, conduct_turn_exit
+        if _from_conduct:
+            conduct_turn_enter()
         try:
             if eff_mode == "single":
                 # ALWAYS build the executor from the gated model_id, never
@@ -754,6 +759,8 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                     system_prompt=None,
                 )
         finally:
+            if _from_conduct:
+                conduct_turn_exit()
             # Bookend so subscribed SSE streams close immediately, even on errors.
             if body.client_run_id:
                 try:
@@ -850,4 +857,4 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
 #   class: correctness
 #   call:  python.tests.contracts.chat.test_unknown_body_model_400
 # === END CONTRACTS ===
-# 599:173
+# 606:173
