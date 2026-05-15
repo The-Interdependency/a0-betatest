@@ -1,4 +1,4 @@
-# 545:268 0:0 2:7
+# 175:131
 # N:M
 """spawn_executor — execute the rows that sub_agent_spawn writes.
 
@@ -11,7 +11,7 @@ user message, and writes the result back via run_logger.emit so it
 flows into the existing agent_logs stream and the merge tool's
 JSONL artifact archival pipeline.
 
-State machine (only state field on agent_runs is touched here):
+State machine (only status field on agent_runs is touched here):
 
     running   — written by sub_agent_spawn, awaiting executor
     executing — claimed by executor, inference in progress
@@ -20,19 +20,13 @@ State machine (only state field on agent_runs is touched here):
     merged    — sub_agent_merge called by parent (terminal — owned by merge)
 
 Concurrency: rows are claimed via UPDATE … WHERE id IN (SELECT … FOR
-UPDATE SKIP LOCKED LIMIT 1) RETURNING. Same shape as the stripe webhook
-idempotency claim — a row can only be claimed once even across restarts
-or competing poller instances.
+UPDATE SKIP LOCKED LIMIT 1) RETURNING. A row can only be claimed once
+even across restarts or competing poller instances.
 
-Honest single-concern:
-  * This module ONLY executes pending spawn rows. Orchestration modes
-    (fan_out, council, daisy_chain, etc.) get a NotImplementedError
-    until their own modules land — no silent fallback to single-mode.
-  * Provider resolution honors the row's `providers` list. "active"
-    resolves via active_provider() (conduct slot). Anything else is
-    used as the model_id directly (resolve_model_id handles legacy
-    provider-id matching). Failure to resolve raises and the row is
-    marked failed — not silently rerouted.
+Sub-module layout (add behaviour there, not here):
+  spawn_db.py    — DB ops: claim, heartbeat, mark_terminal, retry
+  spawn_pcna.py  — provider resolution, PCNA snapshot/fork/retire
+  spawn_sweep.py — stale-claim reaper, no-orphan invariant
 
 # === CONTRACTS ===
 # id: spawn_executor_claim_atomic
@@ -72,59 +66,48 @@ Honest single-concern:
 # id: spawn_executor_merge_helpers_tolerate_no_pcna
 #   given: a missing primary PCNA (cold-start or test bootstrap)
 #   then:  _try_get_primary_pcna returns None and _retire_fork_quietly
-#          returns without raising — degraded mode never crashes the
-#          executor, satisfying the no-silent-fallback rule by routing
-#          the absence into a 'pcna_fork_skipped' log event instead of
-#          masking it as success
+#          returns without raising
 #   class: correctness
 #   call:  python.tests.contracts.spawn_executor.test_merge_helpers_tolerate_no_pcna
 #
 # id: spawn_executor_heartbeat_advances
 #   given: an 'executing' agent_runs row and the _heartbeat_loop running
-#   then:  last_heartbeat_at strictly advances after a few interval ticks;
-#          this is what lets the stale-sweep distinguish slow from dead
+#   then:  last_heartbeat_at strictly advances after a few interval ticks
 #   class: correctness
 #   call:  python.tests.contracts.spawn_executor.test_heartbeat_advances
 #
 # id: spawn_executor_stale_sweep_marks_worker_lost
 #   given: an 'executing' row with last_heartbeat_at older than 2× the
 #          heartbeat interval, plus a fresh row with a current heartbeat
-#   then:  _reap_stale_claims marks ONLY the stale row failed/worker_lost;
-#          the fresh row is untouched (no false positives)
+#   then:  _reap_stale_claims marks ONLY the stale row; fresh row untouched
 #   class: correctness
 #   call:  python.tests.contracts.spawn_executor.test_stale_sweep_marks_worker_lost
 #
 # id: spawn_executor_retry_once_on_transient
 #   given: a row with retry_policy='once_on_transient', retry_count=0,
 #          failing with a TimeoutError (transient)
-#   then:  _maybe_schedule_retry returns True, the row goes back to
-#          'running' with retry_count=1; a second failure on the same
-#          row does NOT retry again (one-shot cap, never loops)
+#   then:  _maybe_schedule_retry returns True, row goes back to 'running'
+#          with retry_count=1; a second failure does NOT retry (one-shot cap)
 #   class: correctness
 #   call:  python.tests.contracts.spawn_executor.test_retry_once_on_transient
 #
 # id: spawn_executor_retry_default_none
 #   given: retry_policy='none' OR a non-transient exception under
 #          retry_policy='once_on_transient'
-#   then:  _maybe_schedule_retry returns False — the failure remains
-#          terminal and is mark_terminal'd as 'failed' by the caller
+#   then:  _maybe_schedule_retry returns False
 #   class: correctness
 #   call:  python.tests.contracts.spawn_executor.test_retry_default_none
 #
 # id: spawn_executor_concurrent_live_cap
-#   given: 20 live registry entries under a single parent_run_id (admin
-#          tier max_concurrent_live=20)
+#   given: 20 live registry entries under a single parent_run_id
 #   then:  check_can_spawn raises SpawnCapExceeded with cap='concurrent_live'
-#          (not depth or fanout) — the third dimension catches
-#          spawn-merge-spawn loops that depth/fanout would not see
 #   class: security
 #   call:  python.tests.contracts.spawn_executor.test_concurrent_live_cap
 #
 # id: spawn_executor_no_orphan_invariant
 #   given: a registry entry whose run_id has no DB row, AND a DB
 #          'executing' row owned by THIS WORKER_ID with no registry entry
-#   then:  check_no_orphan_invariant flags both as orphans and reports
-#          ok=False; the worker_id field is set to this process's id
+#   then:  check_no_orphan_invariant flags both as orphans and reports ok=False
 #   class: correctness
 #   call:  python.tests.contracts.spawn_executor.test_no_orphan_invariant
 # === END CONTRACTS ===
@@ -132,346 +115,38 @@ Honest single-concern:
 from __future__ import annotations
 
 import asyncio
-import datetime as _dt
-import json
 import logging
-import os
-import uuid
 from typing import Any, Optional
 
-from sqlalchemy import text as _sa_text
+# ── re-exports (callers import from here) ─────────────────────────────────────
+# spawn_db
+from .spawn_db import (  # noqa: F401
+    HEARTBEAT_INTERVAL_S, STALE_SWEEP_INTERVAL_S, WORKER_ID,
+    _claim_one_pending, _heartbeat_loop, _persist_resolved_provider,
+    _mark_terminal, _maybe_schedule_retry, _is_transient_exception,
+)
+# spawn_pcna
+from .spawn_pcna import (  # noqa: F401
+    _resolve_provider, _snapshot_pcna, _try_get_primary_pcna, _retire_fork_quietly,
+)
+# spawn_sweep
+from .spawn_sweep import (  # noqa: F401
+    _reap_stale_claims, _emit_worker_lost_event, _stale_sweep_loop,
+    check_no_orphan_invariant,
+)
 
 from .agent_instance import AgentInstance
-from .energy_registry import active_provider as _energy_active_provider
 from .run_context import bind_run, reset_run
 from .run_logger import get_run_logger
 
 _log = logging.getLogger("a0p.spawn_executor")
 
-# Poll interval when no pending rows. Latency vs DB load tradeoff —
-# 1s is fine for current spawn rates; lower via LISTEN/NOTIFY later if
-# needed.
 POLL_INTERVAL_S = 1.0
-
-# Cap on how many sub-agent executions we'll have in-flight at once.
-# A safety belt above and beyond spawn_caps (which bounds depth+fanout
-# per parent). This bounds total concurrent model calls from ALL roots.
 MAX_INFLIGHT = 16
 _inflight: set[asyncio.Task] = set()
 
-# Task #122 — supervision constants. Heartbeat advances every
-# HEARTBEAT_INTERVAL_S seconds while a row is executing. The stale-
-# claim sweep marks rows whose heartbeat is older than 2 ×
-# HEARTBEAT_INTERVAL_S as failed/worker_lost. WORKER_ID is per-process
-# so multi-process deployments (a future task) can attribute claims
-# unambiguously; today only one process touches the queue.
-HEARTBEAT_INTERVAL_S = float(os.environ.get("A0P_HEARTBEAT_INTERVAL_S", "15"))
-STALE_SWEEP_INTERVAL_S = float(os.environ.get("A0P_STALE_SWEEP_INTERVAL_S", "60"))
-WORKER_ID = f"{os.getpid()}-{uuid.uuid4().hex[:8]}"
-
-# Transient classifier for retry_policy='once_on_transient'. Kept small
-# and explicit — anything that isn't obviously a network/provider blip
-# stays a hard failure (no silent infinite-retry loops).
-_TRANSIENT_EXC_NAMES = frozenset({
-    "timeouterror",
-    "asynciotimeouterror",
-    "connectionerror",
-    "connectionreseterror",
-    "connectionrefusederror",
-    "remotedisconnected",
-    "incompleteread",
-})
-_TRANSIENT_KEYWORDS = (
-    "timeout", "timed out",
-    "rate limit", "rate_limit", "ratelimit",
-    "too many requests", "429",
-    "500", "502", "503", "504",
-    "internal server error", "bad gateway",
-    "connection reset", "temporarily unavailable",
-    "service unavailable",
-)
-
-
-def _is_transient_exception(exc: BaseException) -> bool:
-    """True if `exc` looks like a network/provider blip we can retry once."""
-    name = type(exc).__name__.lower()
-    if name in _TRANSIENT_EXC_NAMES:
-        return True
-    msg = str(exc).lower()
-    for kw in _TRANSIENT_KEYWORDS:
-        if kw in msg:
-            return True
-    return False
-
-
-# Modes the executor is willing to drive end-to-end. Anything else
-# raises NotImplementedError per the no-silent-fallback doctrine.
+# Modes this executor drives end-to-end. Anything else raises NotImplementedError.
 _SUPPORTED_MODES = frozenset({"single"})
-
-
-async def _claim_one_pending() -> Optional[dict[str, Any]]:
-    """Atomically claim one running spawn row. Returns row dict or None.
-
-    SKIP LOCKED so multiple poller instances coexist; the WHERE clause
-    is constrained to spawned_by_tool='sub_agent_spawn' so root-agent
-    runs (which are written by other code paths) are not picked up.
-
-    Task #122: the claim also stamps `worker_id` and seeds
-    `last_heartbeat_at` so the stale-sweep loop has a baseline timer
-    even if the heartbeat task hasn't yet ticked. retry_policy /
-    retry_count are returned so the failure path can decide whether to
-    re-mark the row 'running' instead of 'failed'.
-    """
-    from ..database import get_session
-    sql = _sa_text(
-        "UPDATE agent_runs "
-        "SET status = 'executing', "
-        "    worker_id = :wid, "
-        "    last_heartbeat_at = CURRENT_TIMESTAMP "
-        "WHERE id = ("
-        "  SELECT id FROM agent_runs "
-        "  WHERE status = 'running' "
-        "    AND spawned_by_tool = 'sub_agent_spawn' "
-        "  ORDER BY started_at ASC "
-        "  FOR UPDATE SKIP LOCKED LIMIT 1"
-        ") "
-        "RETURNING id, parent_run_id, root_run_id, depth, "
-        "          orchestration_mode, providers, task_summary, "
-        "          retry_policy, retry_count"
-    )
-    async with get_session() as s:
-        row = (await s.execute(sql, {"wid": WORKER_ID})).mappings().first()
-        if row is None:
-            return None
-        return dict(row)
-
-
-async def _heartbeat_loop(run_id: str, interval_s: float = HEARTBEAT_INTERVAL_S) -> None:
-    """Update agent_runs.last_heartbeat_at for `run_id` every interval_s.
-
-    Cancelled by `_execute_one`'s finally block on completion / failure.
-    Single-row UPDATE is logged-and-swallowed if it raises so a flaky
-    DB never propagates into the worker. The first tick happens AFTER
-    interval_s elapses — the claim already seeds last_heartbeat_at, so
-    a too-short-lived run still has an accurate timestamp.
-    """
-    from ..database import get_session
-    try:
-        while True:
-            await asyncio.sleep(interval_s)
-            try:
-                async with get_session() as s:
-                    await s.execute(
-                        _sa_text(
-                            "UPDATE agent_runs "
-                            "SET last_heartbeat_at = CURRENT_TIMESTAMP "
-                            "WHERE id = :id AND status = 'executing'"
-                        ),
-                        {"id": run_id},
-                    )
-            except Exception as exc:
-                _log.warning(
-                    "[spawn_executor] heartbeat update failed for %s: %s",
-                    run_id, exc,
-                )
-    except asyncio.CancelledError:
-        return
-
-
-async def _persist_resolved_provider(run_id: str, provider_id: str) -> None:
-    """Persist the resolved provider onto the agent_runs row."""
-    try:
-        from ..database import get_session
-        async with get_session() as s:
-            await s.execute(
-                _sa_text(
-                    "UPDATE agent_runs SET providers = CAST(:p AS jsonb) WHERE id = :id"
-                ),
-                {"p": json.dumps([provider_id]), "id": run_id},
-            )
-    except Exception as exc:
-        _log.warning(
-            "[spawn_executor] could not persist resolved provider on %s: %s",
-            run_id, exc,
-        )
-
-
-async def _mark_terminal(
-    run_id: str,
-    status: str,
-    usage: dict | None = None,
-    *,
-    failure_reason: str | None = None,
-) -> None:
-    """Set the final state on a row. failure_reason is only written when
-    provided so success paths leave it NULL — operators reading the DB
-    can grep for non-null failure_reason to find every reaped row."""
-    from ..database import get_session
-    tokens = int((usage or {}).get("total_tokens", 0) or 0)
-    cost = float((usage or {}).get("total_cost_usd", 0.0) or 0.0)
-    async with get_session() as s:
-        if failure_reason is not None:
-            await s.execute(
-                _sa_text(
-                    "UPDATE agent_runs "
-                    "SET status = :st, ended_at = CURRENT_TIMESTAMP, "
-                    "    total_tokens = :tok, total_cost_usd = :cost, "
-                    "    failure_reason = :reason "
-                    "WHERE id = :id"
-                ),
-                {"st": status, "tok": tokens, "cost": cost,
-                 "reason": failure_reason[:120], "id": run_id},
-            )
-        else:
-            await s.execute(
-                _sa_text(
-                    "UPDATE agent_runs "
-                    "SET status = :st, ended_at = CURRENT_TIMESTAMP, "
-                    "    total_tokens = :tok, total_cost_usd = :cost "
-                    "WHERE id = :id"
-                ),
-                {"st": status, "tok": tokens, "cost": cost, "id": run_id},
-            )
-
-
-async def _maybe_schedule_retry(
-    run_id: str,
-    retry_policy: str,
-    retry_count: int,
-    exc: BaseException,
-) -> bool:
-    """If retry_policy permits and `exc` looks transient, re-mark the row
-    'running' and bump retry_count; the poll loop will pick it up again.
-    Returns True iff the retry was scheduled (caller skips _mark_terminal).
-    Capped at one retry — never loops.
-    """
-    if retry_policy != "once_on_transient":
-        return False
-    if int(retry_count or 0) != 0:
-        return False
-    if not _is_transient_exception(exc):
-        return False
-    try:
-        from ..database import get_session
-        async with get_session() as s:
-            r = await s.execute(
-                _sa_text(
-                    "UPDATE agent_runs "
-                    "SET status = 'running', "
-                    "    retry_count = retry_count + 1, "
-                    "    worker_id = NULL, "
-                    "    last_heartbeat_at = CURRENT_TIMESTAMP "
-                    "WHERE id = :id "
-                    "  AND retry_count = 0 "
-                    "  AND status IN ('executing', 'running') "
-                    "RETURNING id"
-                ),
-                {"id": run_id},
-            )
-            scheduled = r.first() is not None
-    except Exception as inner:
-        _log.error(
-            "[spawn_executor] retry-schedule UPDATE failed for %s: %s",
-            run_id, inner,
-        )
-        return False
-    if not scheduled:
-        return False
-    try:
-        get_run_logger().emit(
-            "retry_scheduled",
-            {
-                "run_id": run_id,
-                "policy": retry_policy,
-                "error_type": type(exc).__name__,
-                "error": str(exc)[:200],
-            },
-            level="WARN",
-        )
-    except Exception:
-        pass
-    return True
-
-
-_SENTINEL_ACTIVE = "active"
-
-
-async def _resolve_provider(
-    providers: Any,
-    *,
-    parent_pcna: Any = None,
-) -> str:
-    """Resolve providers field → provider_id string.
-
-    "active" resolves to active_provider() (conduct slot in model_instances).
-    Explicit provider ids are returned as-is. Malformed input raises.
-    """
-    if isinstance(providers, str):
-        try:
-            providers = json.loads(providers)
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"providers field not valid JSON: {exc}") from exc
-    if not isinstance(providers, list) or not providers:
-        raise ValueError("providers list is empty or wrong shape")
-    pid = str(providers[0]).strip()
-    if not pid:
-        raise ValueError("first provider entry is empty")
-
-    if pid == _SENTINEL_ACTIVE:
-        try:
-            return await _energy_active_provider()
-        except RuntimeError as e:
-            raise ValueError(str(e)) from e
-
-    return pid
-
-
-def _snapshot_pcna(p) -> dict:
-    """Capture the four observable PCNA quantities used as merge deltas.
-
-    Cheap — reads four floats off in-memory ring state. Safe to call on
-    the same PCNA before and after absorb to compute the learning gain.
-    """
-    return {
-        "phi": round(float(p.phi.ring_coherence), 6),
-        "psi": round(float(p.psi.ring_coherence), 6),
-        "omega": round(float(p.omega.ring_coherence), 6),
-        "theta_circles": int(p.theta.circle_count.mean()),
-    }
-
-
-def _try_get_primary_pcna() -> tuple[Any, Optional[str]]:
-    """Return (primary_pcna_or_None, error_or_None).
-
-    Lazy import from ``python.main`` (where the singleton lives) so this
-    module stays importable during early bootstrap and so the lazy import
-    cleanly breaks the main↔services cycle. The two-value return surfaces
-    *why* the PCNA was unreachable rather than collapsing into a silent
-    None — callers log the reason so a real bug never masquerades as a
-    benign 'primary unavailable' skip.
-    """
-    try:
-        from ..main import get_pcna
-    except Exception as exc:
-        return None, f"import_failed: {type(exc).__name__}: {exc}"[:200]
-    try:
-        p = get_pcna()
-    except Exception as exc:
-        return None, f"call_failed: {type(exc).__name__}: {exc}"[:200]
-    if p is None:
-        return None, "get_pcna_returned_none"
-    return p, None
-
-
-def _retire_fork_quietly(parent_pcna, sub_name: str) -> None:
-    """Best-effort fork cleanup for failure paths. Never raises."""
-    if not sub_name or parent_pcna is None:
-        return
-    try:
-        from .agent_lifecycle import merge_sub_agent
-        merge_sub_agent(parent_pcna, sub_name)
-    except Exception:
-        pass
 
 
 async def _execute_one(row: dict[str, Any]) -> None:
@@ -479,22 +154,12 @@ async def _execute_one(row: dict[str, Any]) -> None:
 
     Lifecycle (single mode):
       1. Bind run-scoped ContextVars from the row.
-      2. Fork a child PCNA from the primary (if reachable). The fork
-         carries the parent's full ring topology — the sub-agent's work
-         updates THIS state, not the primary's.
-      3. Construct an AgentInstance against the row's declared provider
-         and run one inference turn with the row's task_summary.
-      4. Feed the task and the model response into child.infer() so the
-         child PCNA accumulates observations from the work just done.
-      5. Snapshot parent state, absorb the child back into the parent,
-         snapshot again — log the merge event with full before/after/delta
-         payload so the user can SEE alpha echo's learning gain.
-      6. Mark the row terminal (completed | failed). On any failure the
-         fork is best-effort retired so it doesn't leak in _sub_agents.
-
-    Exceptions during execution are converted to status='failed' plus
-    an 'error' event on the run's log stream. The poller never sees
-    them (so a single bad row cannot wedge the loop).
+      2. Fork a child PCNA from the primary (if reachable).
+      3. Construct an AgentInstance and run one inference turn.
+      4. Feed task + response into child.infer() so child PCNA accumulates.
+      5. Snapshot parent, absorb child, log the merge delta.
+      6. Mark the row terminal (completed | failed).
+    Exceptions are converted to status='failed' — the poller never sees them.
     """
     run_id = row["id"]
     mode = row.get("orchestration_mode") or "single"
@@ -509,10 +174,6 @@ async def _execute_one(row: dict[str, Any]) -> None:
     sub_name: Optional[str] = None
     parent_pcna = None
     merge_payload: Optional[dict] = None
-    # Task #122 — heartbeat task. Started before any work begins so even
-    # a hung early step (e.g. provider resolution stuck on DNS) keeps
-    # advancing last_heartbeat_at long enough to distinguish "slow" from
-    # "dead". Cancelled in finally so it never outlives execution.
     heartbeat_task = asyncio.create_task(
         _heartbeat_loop(run_id),
         name=f"spawn_hb_{run_id[:8]}",
@@ -520,59 +181,41 @@ async def _execute_one(row: dict[str, Any]) -> None:
     try:
         if mode not in _SUPPORTED_MODES:
             raise NotImplementedError(
-                f"orchestration_mode={mode!r} not implemented by spawn_executor; "
+                f"orchestration_mode={mode!r} not implemented; "
                 f"supported: {sorted(_SUPPORTED_MODES)}"
             )
 
-        # ---- (2) fork child PCNA from primary -------------------------
+        # ── (2) fork child PCNA ────────────────────────────────────────────
         parent_pcna, pcna_err = _try_get_primary_pcna()
-        provider_id = await _resolve_provider(
-            row.get("providers"),
-            parent_pcna=parent_pcna,
-        )
+        provider_id = await _resolve_provider(row.get("providers"), parent_pcna=parent_pcna)
         await _persist_resolved_provider(run_id, provider_id)
         if parent_pcna is not None:
             try:
                 from .agent_lifecycle import spawn_sub_agent
-                # Task #122 — pass parent_run_id and run_id so the
-                # registry entry can be reconciled against agent_runs
-                # rows (no-orphan contract) and counted by the
-                # concurrent-live cap (spawn_caps.max_concurrent_live).
                 fork_info = spawn_sub_agent(
-                    parent_pcna,
-                    provider=provider_id,
-                    parent_run_id=parent_run_id,
-                    run_id=run_id,
+                    parent_pcna, provider=provider_id,
+                    parent_run_id=parent_run_id, run_id=run_id,
                 )
                 sub_name = fork_info.get("sub_agent_name")
                 logger.emit("custom", {"phase": "pcna_fork", **fork_info})
             except Exception as exc:
-                logger.emit("error", {
-                    "stage": "pcna_fork",
-                    "error": str(exc)[:300],
-                })
+                logger.emit("error", {"stage": "pcna_fork", "error": str(exc)[:300]})
                 sub_name = None
         else:
-            # explicit, not silent — the reason is logged so a genuine
-            # bug here surfaces in the run stream instead of presenting
-            # as a benign skip
             logger.emit("error", {
                 "stage": "pcna_fork_skipped",
                 "reason": pcna_err or "primary_pcna_unreachable",
             })
 
-        # ---- (3) inference --------------------------------------------
+        # ── (3) inference ──────────────────────────────────────────────────
         instance = AgentInstance.from_model(
-            model_id=provider_id,
-            user_id=None,
-            use_tools=True,
-            enforce_tier=False,
-            enforce_enabled=True,
+            model_id=provider_id, user_id=None,
+            use_tools=True, enforce_tier=False, enforce_enabled=True,
         )
         messages = [{"role": "user", "content": row.get("task_summary") or ""}]
         content, usage = await instance.run(messages)
 
-        # ---- (4) feed observations to child PCNA ----------------------
+        # ── (4) feed observations to child PCNA ────────────────────────────
         if sub_name:
             try:
                 from .agent_lifecycle import get_sub_agent_engine
@@ -583,12 +226,9 @@ async def _execute_one(row: dict[str, Any]) -> None:
                     if content:
                         child.infer(content[:2000])
             except Exception as exc:
-                logger.emit("error", {
-                    "stage": "child_infer",
-                    "error": str(exc)[:300],
-                })
+                logger.emit("error", {"stage": "child_infer", "error": str(exc)[:300]})
 
-        # ---- (5) absorb child back into parent ------------------------
+        # ── (5) absorb child back into parent ─────────────────────────────
         if sub_name and parent_pcna is not None:
             try:
                 from .agent_lifecycle import merge_sub_agent as _merge_now
@@ -599,44 +239,31 @@ async def _execute_one(row: dict[str, Any]) -> None:
                     "phi_delta": round(after["phi"] - before["phi"], 6),
                     "psi_delta": round(after["psi"] - before["psi"], 6),
                     "omega_delta": round(after["omega"] - before["omega"], 6),
-                    "theta_circles_delta": (
-                        after["theta_circles"] - before["theta_circles"]
-                    ),
+                    "theta_circles_delta": after["theta_circles"] - before["theta_circles"],
                 }
                 merge_payload = {
-                    "sub_agent_name": sub_name,
-                    "provider": provider_id,
-                    "before": before,
-                    "after": after,
-                    "delta": delta,
+                    "sub_agent_name": sub_name, "provider": provider_id,
+                    "before": before, "after": after, "delta": delta,
                     **absorb_result,
                 }
                 sub_name = None  # ownership transferred — fork retired by absorb
                 logger.emit("merge", merge_payload)
             except Exception as exc:
-                logger.emit("error", {
-                    "stage": "pcna_merge",
-                    "error": str(exc)[:300],
-                })
+                logger.emit("error", {"stage": "pcna_merge", "error": str(exc)[:300]})
 
         logger.emit("spawn_complete", {
             "provider": provider_id,
             "content_preview": (content or "")[:500],
-            "usage": usage,
-            "mode": mode,
-            "merge": merge_payload,
+            "usage": usage, "mode": mode, "merge": merge_payload,
         })
         await _mark_terminal(run_id, "completed", usage)
+
     except Exception as exc:
         logger.emit("error", {
             "stage": "spawn_executor.execute",
             "error_type": type(exc).__name__,
             "error": str(exc)[:500],
         }, level="ERROR")
-        # Task #122 — retry policy. If row was spawned with
-        # retry_policy='once_on_transient', retry_count=0, and the
-        # exception classifies as transient, re-mark 'running' instead
-        # of 'failed'. Capped at one retry — never loops.
         retried = False
         try:
             retried = await _maybe_schedule_retry(
@@ -646,11 +273,7 @@ async def _execute_one(row: dict[str, Any]) -> None:
                 exc,
             )
         except Exception as inner:
-            _log.error(
-                "[spawn_executor] retry scheduler raised for %s: %s",
-                run_id, inner,
-            )
-            retried = False
+            _log.error("[spawn_executor] retry scheduler raised for %s: %s", run_id, inner)
         if not retried:
             try:
                 await _mark_terminal(
@@ -658,14 +281,8 @@ async def _execute_one(row: dict[str, Any]) -> None:
                     failure_reason=f"executor:{type(exc).__name__}",
                 )
             except Exception as inner:
-                _log.error(
-                    "[spawn_executor] failed to mark run %s as failed: %s",
-                    run_id, inner,
-                )
+                _log.error("[spawn_executor] failed to mark %s as failed: %s", run_id, inner)
     finally:
-        # Task #122 — stop the heartbeat task before we release the row.
-        # cancel() then await with shield so a slow shutdown doesn't
-        # leave the loop running past the final terminal UPDATE.
         if not heartbeat_task.done():
             heartbeat_task.cancel()
             try:
@@ -686,12 +303,10 @@ def _on_inflight_done(task: asyncio.Task) -> None:
 
 
 async def _poll_loop() -> None:
-    """Forever-loop. Claims and dispatches; sleeps when idle.
+    """Forever-loop. Claims and dispatches spawn rows; sleeps when idle.
 
-    Backpressure: when MAX_INFLIGHT is reached we stop claiming new
-    rows and wait for any in-flight to finish before claiming again.
-    The poller itself never raises; per-iteration exceptions log and
-    sleep one cycle.
+    Backpressure: stops claiming when MAX_INFLIGHT is reached.
+    Never raises — per-iteration exceptions log and sleep one cycle.
     """
     while True:
         try:
@@ -716,181 +331,6 @@ async def _poll_loop() -> None:
 
 
 def inflight_count() -> int:
-    """Test / introspection helper."""
+    """Introspection helper — returns the number of in-flight execution tasks."""
     return len(_inflight)
-
-
-# ---- Task #122: stale-claim sweep ---------------------------------------
-#
-# A worker that crashes mid-execution leaves an `agent_runs` row stuck
-# in 'executing'. The sweep finds rows whose last_heartbeat_at is older
-# than 2 × HEARTBEAT_INTERVAL_S and marks them failed/worker_lost. The
-# loop is owned by main.py's lifespan (via bg_tasks.spawn).
-
-
-async def _reap_stale_claims(
-    heartbeat_interval_s: float = HEARTBEAT_INTERVAL_S,
-) -> list[dict]:
-    """Single sweep pass. Returns the list of reaped rows (may be empty).
-
-    Public-ish so the contract test can drive it deterministically. The
-    forever-loop wrapper (`_stale_sweep_loop`) just calls this on a
-    timer and emits a log entry per reaped row.
-    """
-    stale_secs = max(2.0 * float(heartbeat_interval_s), 30.0)
-    cutoff = _dt.datetime.utcnow() - _dt.timedelta(seconds=stale_secs)
-    from ..database import get_session
-    async with get_session() as s:
-        r = await s.execute(
-            _sa_text(
-                "UPDATE agent_runs "
-                "SET status = 'failed', "
-                "    failure_reason = 'worker_lost', "
-                "    ended_at = CURRENT_TIMESTAMP "
-                "WHERE status = 'executing' "
-                "  AND last_heartbeat_at IS NOT NULL "
-                "  AND last_heartbeat_at < :cutoff "
-                "RETURNING id, worker_id, last_heartbeat_at, "
-                "          parent_run_id, root_run_id, depth"
-            ),
-            {"cutoff": cutoff},
-        )
-        return [dict(m) for m in r.mappings().all()]
-
-
-async def _emit_worker_lost_event(row: dict) -> None:
-    """Emit a structured 'worker_lost_reaped' event on the reaped run's
-    own log stream so the SSE tail and `/api/v1/runs/{id}` reflect why
-    the row went terminal. Best-effort — never raises."""
-    try:
-        rid = row["id"]
-        tokens = bind_run(
-            run_id=rid,
-            depth=int(row.get("depth") or 0),
-            root_run_id=row.get("root_run_id") or rid,
-            parent_run_id=row.get("parent_run_id"),
-        )
-        try:
-            get_run_logger().emit(
-                "worker_lost_reaped",
-                {
-                    "worker_id": row.get("worker_id"),
-                    "last_heartbeat_at": str(row.get("last_heartbeat_at")),
-                    "stale_threshold_s": 2 * HEARTBEAT_INTERVAL_S,
-                },
-                level="WARN",
-            )
-            from .run_logger import flush as _flush
-            await _flush()
-        finally:
-            reset_run(tokens)
-    except Exception as exc:
-        _log.warning(
-            "[spawn_executor] worker_lost_reaped emit failed for %s: %s",
-            row.get("id"), exc,
-        )
-
-
-async def _stale_sweep_loop(
-    sweep_interval_s: float = STALE_SWEEP_INTERVAL_S,
-    heartbeat_interval_s: float = HEARTBEAT_INTERVAL_S,
-) -> None:
-    """Forever-loop. Reaps stale 'executing' rows on a timer.
-
-    Like _poll_loop, this never raises; per-iteration exceptions log
-    and sleep one cycle. Owned by main.py lifespan.
-    """
-    while True:
-        try:
-            await asyncio.sleep(sweep_interval_s)
-            reaped = await _reap_stale_claims(heartbeat_interval_s)
-            for row in reaped:
-                _log.warning(
-                    "[spawn_executor] worker_lost_reaped run=%s worker=%s "
-                    "last_heartbeat_at=%s",
-                    row["id"], row.get("worker_id"),
-                    row.get("last_heartbeat_at"),
-                )
-                await _emit_worker_lost_event(row)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            _log.exception(
-                "[spawn_executor] stale-sweep iteration failed: %s", exc,
-            )
-
-
-# ---- Task #122: no-orphan invariant -------------------------------------
-
-
-async def check_no_orphan_invariant() -> dict:
-    """Reconcile in-memory _sub_agents registry with agent_runs DB rows.
-
-    Returns a dict with:
-      * registry_orphans — registry entries whose run_id has no row in
-        ('running', 'executing'). These are the *true* leaks.
-      * worker_orphans   — agent_runs rows owned by THIS WORKER_ID in
-        ('running', 'executing') with no matching registry entry.
-      * registry_count, db_executing_count — for sanity / dashboards.
-
-    Does NOT mutate either side; this is a read-only invariant probe
-    used by the contract test and by future ops tooling.
-    """
-    from ..database import get_session
-    from .agent_lifecycle import registry_snapshot
-    snap = registry_snapshot()
-    snap_run_ids = {entry["run_id"] for entry in snap if entry.get("run_id")}
-    async with get_session() as s:
-        r = await s.execute(
-            _sa_text(
-                "SELECT id, status, worker_id FROM agent_runs "
-                "WHERE status IN ('running', 'executing')"
-            )
-        )
-        live_rows = [dict(m) for m in r.mappings().all()]
-    live_by_id = {row["id"]: row for row in live_rows}
-
-    # (a) registry → DB: every registry entry with a run_id must have a
-    #     matching row in a compatible status.
-    registry_orphans = []
-    for entry in snap:
-        rid = entry.get("run_id")
-        if not rid:
-            # Admin-spawned children have no run row; not an orphan.
-            continue
-        row = live_by_id.get(rid)
-        if row is None:
-            registry_orphans.append({
-                "name": entry["name"],
-                "run_id": rid,
-                "parent_run_id": entry.get("parent_run_id"),
-                "reason": "no_matching_agent_runs_row",
-            })
-
-    # (b) DB → registry: every executing row owned by THIS worker must
-    #     have a registry entry.
-    worker_orphans = []
-    for row in live_rows:
-        if row.get("status") != "executing":
-            continue
-        if row.get("worker_id") != WORKER_ID:
-            continue
-        if row["id"] not in snap_run_ids:
-            worker_orphans.append({
-                "id": row["id"],
-                "worker_id": row.get("worker_id"),
-                "reason": "no_registry_entry_on_this_worker",
-            })
-
-    return {
-        "registry_count": len(snap),
-        "db_executing_count": sum(
-            1 for r in live_rows if r.get("status") == "executing"
-        ),
-        "registry_orphans": registry_orphans,
-        "worker_orphans": worker_orphans,
-        "ok": not registry_orphans and not worker_orphans,
-        "worker_id": WORKER_ID,
-    }
-# N:M
-# 545:268 0:0 2:7
+# 175:131
