@@ -1,4 +1,4 @@
-# 239:47
+# 251:49
 """xai_provider — xAI Grok via the official xai-sdk (gRPC).
 
 Migrated from raw httpx to the `xai-sdk` Python SDK (v1.12+). The contract
@@ -50,7 +50,14 @@ def _effort_enum(effort: Optional[str]):
 
 from ._resolver import resolve_model_for_role
 
-_MAX_TOOL_ROUNDS = 5
+def _get_max_tool_rounds_xai() -> int:
+    """Return per-request tool round limit from ContextVar or default."""
+    try:
+        from ..run_context import current_max_tool_rounds as _cmtr
+        v = _cmtr.get(None)
+        return v if v is not None else 5
+    except Exception:
+        return 5
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +265,8 @@ async def _call_with_tools(
     try:
         chat = client.chat.create(**create_kwargs)
 
-        for _round in range(_MAX_TOOL_ROUNDS + 1):
+        _max_rounds = _get_max_tool_rounds_xai()
+        for _round in range(_max_rounds + 1):
             response = await chat.sample()
 
             for k, v in _usage_from_response(response).items():
@@ -276,7 +284,14 @@ async def _call_with_tools(
                     )
                 prev_fingerprint = fp
 
-            if not tool_calls or not use_tools or _round >= _MAX_TOOL_ROUNDS:
+            # Capture reasoning content if present.
+            reasoning = getattr(response, "thinking_content", None) or getattr(response, "reasoning_content", None)
+            if reasoning:
+                accumulated_usage.setdefault("thinking_blocks", []).append(
+                    {"round": _round, "provider": "grok", "content": str(reasoning)}
+                )
+
+            if not tool_calls or not use_tools or _round >= _max_rounds:
                 content = response.content or "[no content]"
                 return content, accumulated_usage
 
@@ -348,4 +363,4 @@ async def _stream_chat(
             pass
 
     return ("".join(text_parts) or "[no content]"), accumulated_usage
-# 239:47
+# 251:49

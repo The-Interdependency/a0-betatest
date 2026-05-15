@@ -75,7 +75,7 @@ async def _call_responses(
     from ..tool_distill import set_caller_provider
     from ..tool_executor import get_active_responses_schemas, execute_tool
     from ..inference import (
-        _MAX_TOOL_ROUNDS,
+        _get_max_tool_rounds,
         _canonical_tool_calls,
         _sanitize_provider_error,
     )
@@ -106,7 +106,7 @@ async def _call_responses(
     accumulated_usage: dict = {}
     prev_call_fingerprint: Optional[str] = None
 
-    for _round in range(_MAX_TOOL_ROUNDS + 1):
+    for _round in range(_get_max_tool_rounds() + 1):
         kwargs: dict = {
             "model": model,
             "input": openai_input,
@@ -139,7 +139,7 @@ async def _call_responses(
                 return "[noticed repeat tool call — answering directly]", accumulated_usage
             prev_call_fingerprint = fp
 
-        if not tool_calls or not use_tools or _round >= _MAX_TOOL_ROUNDS:
+        if not tool_calls or not use_tools or _round >= _get_max_tool_rounds():
             content = ""
             for item in output_items:
                 if item.get("type") == "message":

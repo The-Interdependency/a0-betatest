@@ -1,4 +1,4 @@
-# 336:50
+# 426:59
 # DOC module: focus
 # DOC label: Focus & Sub-agents
 # DOC description: Model focus management and sub-agent delegation. Provides context boost injection per conversation, focus regain directives, sub-agent background task launch, and error log retrieval for model calls.
@@ -97,7 +97,7 @@ async def regain_focus(conv_id: int, request: Request):
 
     from ..services.inference import call_provider
     from ..services.energy_registry import default_provider
-    from .chat import _build_system_prompt
+    from ..services.prompt_assembly import build_system_prompt
 
     tier = "free"
     if uid:
@@ -117,7 +117,7 @@ async def regain_focus(conv_id: int, request: Request):
     ]
     history.append({"role": "user", "content": "[SYSTEM: Focus regain requested by user]"})
 
-    system_prompt = await _build_system_prompt(tier)
+    system_prompt = await build_system_prompt(tier)
     focus_system = (system_prompt or "") + "\n\n" + _FOCUS_DIRECTIVE
 
     # Resolve via the catalog so persisted message.model provenance always
@@ -215,7 +215,7 @@ async def launch_subagent(body: SubagentBody, request: Request):
 async def _run_subagent(conv_id: int, task: str, model: Optional[str], uid: Optional[str]):
     from ..services.inference import call_provider
     from ..services.energy_registry import default_provider
-    from .chat import _build_system_prompt
+    from ..services.prompt_assembly import build_system_prompt
 
     try:
         tier = "free"
@@ -229,7 +229,7 @@ async def _run_subagent(conv_id: int, task: str, model: Optional[str], uid: Opti
                     tier = rec["subscription_tier"]
 
         provider_id = default_provider() or model or "grok"
-        system_prompt = await _build_system_prompt(tier)
+        system_prompt = await build_system_prompt(tier)
         subagent_directive = (
             "\n\n## Sub-agent Mode\n"
             "You are running as a background sub-agent. "
@@ -321,10 +321,9 @@ async def get_context_preview(conv_id: int, request: Request):
         except Exception:
             pass
 
-    from .chat import _build_system_prompt
-    from ..services.inference import _prepend_doctrine
+    from ..services.prompt_assembly import build_system_prompt, _prepend_doctrine
 
-    base_prompt = await _build_system_prompt(tier, agent_persona=agent_persona)
+    base_prompt = await build_system_prompt(tier, agent_persona=agent_persona)
 
     # Inject context_boost exactly as the send path does (chat.py), so the
     # preview matches what the model actually receives.
@@ -466,4 +465,124 @@ async def subagent_status(conv_id: int, request: Request):
         result["error"] = conv.get("subagent_error")
 
     return result
-# 336:50
+
+
+# ─── Inference settings ───────────────────────────────────────────────────────
+
+_VALID_INF_MODES = {"agentic", "direct", "swarm"}
+
+
+class InferenceSettingsBody(BaseModel):
+    max_tool_rounds: Optional[int] = None
+    inference_mode: Optional[str] = None
+
+
+@router.get("/conversations/{conv_id}/inference-settings")
+async def get_inference_settings(conv_id: int, request: Request):
+    """Return per-conversation inference settings (max_tool_rounds, inference_mode)."""
+    uid = _uid(request)
+    if not uid:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    conv = await _assert_conv_owner(conv_id, uid)
+    return {
+        "conversation_id": conv_id,
+        "max_tool_rounds": conv.get("max_tool_rounds"),
+        "inference_mode": conv.get("inference_mode") or "agentic",
+    }
+
+
+@router.patch("/conversations/{conv_id}/inference-settings")
+async def patch_inference_settings(
+    conv_id: int, body: InferenceSettingsBody, request: Request
+):
+    """Update max_tool_rounds and/or inference_mode for a conversation."""
+    uid = _uid(request)
+    if not uid:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    await _assert_conv_owner(conv_id, uid)
+
+    _ALLOWED = {"max_tool_rounds", "inference_mode"}
+    updates: dict = {}
+    if body.max_tool_rounds is not None:
+        if not (1 <= body.max_tool_rounds <= 20):
+            raise HTTPException(
+                status_code=400, detail="max_tool_rounds must be between 1 and 20"
+            )
+        updates["max_tool_rounds"] = body.max_tool_rounds
+    if body.inference_mode is not None:
+        if body.inference_mode not in _VALID_INF_MODES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"inference_mode must be one of: {', '.join(sorted(_VALID_INF_MODES))}",
+            )
+        updates["inference_mode"] = body.inference_mode
+    if not updates:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    set_clauses = ", ".join(f"{k} = :{k}" for k in updates if k in _ALLOWED)
+    params = {k: v for k, v in updates.items() if k in _ALLOWED}
+    params["id"] = conv_id
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(f"UPDATE conversations SET {set_clauses} WHERE id = :id"),
+            params,
+        )
+    return {"ok": True, "conversation_id": conv_id, **updates}
+
+
+# ─── Prompt sections ──────────────────────────────────────────────────────────
+
+@router.get("/conversations/{conv_id}/prompt-sections")
+async def get_prompt_sections(conv_id: int, request: Request):
+    """Return the assembled system prompt split into stable and volatile sections.
+
+    The split mirrors the two Anthropic cache_control breakpoints so the UI
+    can explain what's safe to edit mid-conversation without busting the cache.
+    has_messages is True once the conversation has at least one real message.
+    """
+    uid = _uid(request)
+    if not uid:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    conv = await _assert_conv_owner(conv_id, uid)
+
+    from ..services.prompt_assembly import build_prompt_sections
+
+    tier = "free"
+    async with engine.connect() as conn:
+        row = (await conn.execute(
+            text("SELECT subscription_tier FROM users WHERE id = :id"), {"id": uid}
+        )).mappings().first()
+        if row:
+            tier = row["subscription_tier"]
+
+    msg_count = None
+    async with engine.connect() as conn:
+        msg_count = (await conn.execute(
+            text("SELECT COUNT(*) FROM messages WHERE conversation_id = :id"),
+            {"id": conv_id},
+        )).scalar()
+    has_messages = bool(msg_count and msg_count > 0)
+
+    agent_persona: Optional[str] = None
+    agent_id = conv.get("agent_id")
+    if agent_id:
+        try:
+            async with engine.connect() as conn:
+                rec = (await conn.execute(
+                    text("SELECT system_prompt FROM agent_instances WHERE id = :id"),
+                    {"id": agent_id},
+                )).mappings().first()
+                if rec:
+                    agent_persona = rec["system_prompt"]
+        except Exception:
+            pass
+
+    sections = await build_prompt_sections(
+        tier,
+        agent_persona=agent_persona,
+        context_boost=conv.get("context_boost"),
+    )
+    sections["has_messages"] = has_messages
+    sections["conversation_id"] = conv_id
+    return sections
+# 426:59

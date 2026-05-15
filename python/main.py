@@ -1,4 +1,4 @@
-# 326:309
+# 326:312
 import os
 import time
 from contextlib import asynccontextmanager
@@ -341,7 +341,13 @@ async def lifespan(app: FastAPI):
         await _sess.execute(_sa_text(
             "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS enabled_tools JSONB"
         ))
-    print("[conversations] enabled_tools column ensured")
+    async with get_session() as _sess:
+        for _ddl in (
+            "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS max_tool_rounds INTEGER",
+            "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS inference_mode VARCHAR(20)",
+        ):
+            await _sess.execute(_sa_text(_ddl))
+    print("[conversations] enabled_tools/max_tool_rounds/inference_mode columns ensured")
     async with get_session() as _sess:
         await _sess.execute(_sa_text("""
             CREATE TABLE IF NOT EXISTS transcript_uploads (
@@ -664,4 +670,4 @@ if IS_PROD and os.path.isdir(STATIC_DIR):
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))
-# 326:309
+# 326:312

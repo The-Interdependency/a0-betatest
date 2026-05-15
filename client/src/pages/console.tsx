@@ -1,4 +1,4 @@
-// 172:7
+// 170:7
 import { useState, useEffect, type ComponentType } from "react";
 import { AlertTriangle, Loader2, Pencil, PencilOff } from "lucide-react";
 import { useUiStructure } from "@/hooks/use-ui-structure";
@@ -192,4 +192,4 @@ export default function ConsolePage() {
       </div>
   );
 }
-// 172:7
+// 170:7

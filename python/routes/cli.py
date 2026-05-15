@@ -155,7 +155,7 @@ async def cli_chat(body: CliChatBody, request: Request):
     """Stateless CLI chat — authenticates via Authorization: Bearer a0k_... header."""
     from ..services.energy_registry import default_provider
     from ..storage import storage
-    from .chat import _build_system_prompt
+    from ..services.prompt_assembly import build_system_prompt as _build_system_prompt
 
     api_key = ""
     auth_header = request.headers.get("authorization", "")

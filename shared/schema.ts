@@ -1,4 +1,4 @@
-// 695:26
+// 697:26
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, serial, integer, timestamp, jsonb, real, boolean, uniqueIndex, index, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -18,6 +18,8 @@ export const conversations = pgTable("conversations", {
   archived: boolean("archived").notNull().default(false),
   agentId: integer("agent_id"),
   enabledTools: jsonb("enabled_tools").$type<string[] | null>(),
+  maxToolRounds: integer("max_tool_rounds"),
+  inferenceMode: varchar("inference_mode", { length: 20 }).default("agentic"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (t) => [
@@ -820,4 +822,4 @@ export const settings = pgTable("settings", {
 }, (t) => [uniqueIndex("uq_settings_user_key").on(t.userId, t.key)]);
 
 export type Setting = typeof settings.$inferSelect;
-// 695:26
+// 697:26

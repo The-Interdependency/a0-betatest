@@ -1,4 +1,4 @@
-# 687:169
+# 393:87
 import os
 import json
 import copy
@@ -13,48 +13,14 @@ from .tool_executor import (
     TOOL_SCHEMAS_RESPONSES,
     execute_tool,
     set_caller_provider,
-    get_a0_skill_manifest,
 )
+from .prompt_assembly import _prepend_doctrine
+from .attachments import build_provider_messages as _build_provider_messages
 # Single source of truth for provider specs — loaded from python/config/providers.json.
 # Replaces the old hardcoded PROVIDER_ENDPOINTS dict per the no-string-literals doctrine.
 from .energy_registry import BUILTIN_PROVIDERS
 
 _log = logging.getLogger("a0p.inference")
-
-
-# Doctrine prefix — the canonical text of The Interdependent Way (sourced from
-# https://interdependentway.org/canon/the_interdependent_way.md) is prepended to
-# every system prompt as the first stable block so prompt caches across all four
-# providers (Anthropic ephemeral, OpenAI auto, Gemini implicit, Grok auto) latch
-# onto the same byte-identical prefix on first call and bill subsequent calls at
-# cache-read rates (≈90% off for OpenAI/Anthropic/Grok, ≈75% off for Gemini).
-# NOTE: no fallback to spec.md — spec.md is the a0p platform spec, NOT doctrine.
-# If interdependent_way.md is missing the right behavior is to skip the prefix
-# entirely rather than silently substitute the wrong document.
-_DOCTRINE_CACHE: dict[str, str | float] = {"text": "", "mtime": 0.0}
-_DOCTRINE_PATHS = ("interdependent_way.md",)
-
-
-def _load_doctrine() -> str:
-    """Read the canonical doctrine file (memoized; reloads on mtime change)."""
-    base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    for rel in _DOCTRINE_PATHS:
-        path = os.path.join(base, rel)
-        try:
-            mtime = os.path.getmtime(path)
-        except OSError:
-            continue
-        if _DOCTRINE_CACHE["mtime"] == mtime and _DOCTRINE_CACHE["text"]:
-            return _DOCTRINE_CACHE["text"]  # type: ignore[return-value]
-        try:
-            with open(path, "r", encoding="utf-8") as fh:
-                text = fh.read()
-        except OSError:
-            continue
-        _DOCTRINE_CACHE["text"] = text
-        _DOCTRINE_CACHE["mtime"] = mtime
-        return text
-    return ""
 
 
 async def _instance_memory_block(provider_id: str) -> str:
@@ -154,314 +120,10 @@ async def _slot_routing_info(slot: str) -> tuple[str, "str | None"]:
         return "", None
 
 
-def _prime_seed_context_lines() -> tuple[str, str]:
-    """Return (lt_line, st_line) compact one-line memory tags from prime seeds.
-
-    LT (N=19) → goes into the stable cache prefix (only changes on promotion).
-    ST (N=17) → goes into the volatile section after the ## Memory marker.
-    Returns ("", "") if prime seeds are not ready or raise.
-    """
-    try:
-        from ..engine.prime_seeds import get_prime_seeds
-        ctx = get_prime_seeds().memory_context()
-        lt = ctx.get("lt") or {}
-        st = ctx.get("st") or {}
-        lt_line = (
-            f"[memory:LT N={lt.get('n', '?')} "
-            f"coherence={lt.get('ring_coherence', '?')} "
-            f"hub={lt.get('hub_mean', '?')} "
-            f"mean={lt.get('tensor_mean', '?')}]"
-        ) if lt else ""
-        st_line = (
-            f"[memory:ST N={st.get('n', '?')} "
-            f"coherence={st.get('ring_coherence', '?')} "
-            f"hub={st.get('hub_mean', '?')} "
-            f"mean={st.get('tensor_mean', '?')}]"
-        ) if st else ""
-        return lt_line, st_line
-    except Exception:
-        return "", ""
-
-
-def _prepend_doctrine(
-    system_prompt: Optional[str],
-    skip_manifest: bool = False,
-) -> Optional[str]:
-    """Prepend the doctrine + a0 skill manifest as the first cacheable blocks
-    of any system prompt. Both blocks are byte-stable across calls (manifest
-    is alphabetically sorted) so prompt caches latch onto the same prefix
-    until either a doctrine edit or a SKILL.md edit invalidates it.
-
-    skip_manifest=True omits the skill manifest from the prefix. Use for
-    internal/automated callers (heartbeat, review tasks) that never invoke
-    skill_load — saves ~500 tokens per call with no semantic loss.
-
-    Prime-seed injection:
-      LT (N=19) tag → inserted into the stable prefix block, after the skill
-        manifest and before the caller's system_prompt. Lives inside the
-        Anthropic cache_control prefix and the auto-cache prefix on all other
-        providers. Only changes when the LT seed is promoted.
-      ST (N=17) tag → spliced into the caller's system_prompt immediately after
-        the literal "## Memory\\n" marker so it lands in the volatile cache block
-        (second Anthropic breakpoint) and is refreshed every 60s heartbeat tick.
-    """
-    doctrine = _load_doctrine()
-    manifest = ""
-    if not skip_manifest:
-        try:
-            manifest = get_a0_skill_manifest()
-        except Exception:
-            manifest = ""
-    lt_line, st_line = _prime_seed_context_lines()
-    # ST: inject into system_prompt after the ## Memory marker (volatile block).
-    # The split marker is "\n\n## Memory\n" — same literal the Claude path uses
-    # for its second cache_control breakpoint so the two stay in sync.
-    _MEMORY_MARKER = "\n\n## Memory\n"
-    if st_line and system_prompt and _MEMORY_MARKER in system_prompt:
-        system_prompt = system_prompt.replace(
-            _MEMORY_MARKER,
-            f"{_MEMORY_MARKER}{st_line}\n",
-            1,
-        )
-    parts = [p for p in (doctrine, manifest, lt_line, system_prompt) if p]
-    if not parts:
-        return system_prompt
-    if len(parts) == 1:
-        return parts[0]
-    return "\n\n---\n\n".join(parts)
-
-
 # Anthropic prompt caching minimum is 1024 tokens. We use a rough char-based
 # estimate (~4 chars/token) to skip cache_control when the prefix is too small.
 _ANTHROPIC_CACHE_MIN_CHARS = 4096
 
-
-def _resolve_attachment_path(storage_url: str) -> Optional[str]:
-    """Map a storage_url like '/uploads/foo.png' to an absolute local path.
-
-    Rejects any storage_url that resolves outside the project's uploads/
-    directory. lstrip('/') alone does NOT stop '..' segments — os.path.join
-    with an absolute base happily walks up via '..', and the realpath that
-    follows would then succeed against /etc/passwd or similar. The realpath
-    + commonpath check below is what actually contains the lookup.
-    """
-    if not storage_url:
-        return None
-    base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    uploads_root = os.path.realpath(os.path.join(base, "uploads"))
-    rel = storage_url.lstrip("/")
-    abs_path = os.path.realpath(os.path.join(base, rel))
-    try:
-        if os.path.commonpath([uploads_root, abs_path]) != uploads_root:
-            _log.warning("attachment path traversal blocked: %s", storage_url)
-            return None
-    except ValueError:
-        # commonpath raises on different drives (Windows) or empty paths.
-        return None
-    return abs_path if os.path.isfile(abs_path) else None
-
-
-def _read_attachment_b64(storage_url: str) -> Optional[tuple[str, str]]:
-    """Return (mime_type, base64_data) for a local file referenced by storage_url, or None."""
-    import base64, mimetypes
-    p = _resolve_attachment_path(storage_url)
-    if not p:
-        return None
-    mime, _ = mimetypes.guess_type(p)
-    if not mime:
-        mime = "image/png"
-    try:
-        with open(p, "rb") as fh:
-            data = base64.b64encode(fh.read()).decode("ascii")
-    except OSError:
-        return None
-    return (mime, data)
-
-
-# Per-document character cap. ~100K chars ≈ ~25K tokens, well under any
-# provider's input window. Exceeding it returns the head of the doc with an
-# explicit truncation marker so the model sees that the tail was elided
-# (NO silent fallback policy — never lie to the model about its inputs).
-_DOC_TEXT_CAP = 100_000
-
-
-def _extract_pdf_text(abs_path: str) -> str:
-    """Extract text from a PDF using pypdf. Per-page errors are swallowed
-    to one page, never to the whole doc; the rest still comes through."""
-    try:
-        from pypdf import PdfReader
-    except ImportError:
-        return "[pdf extraction unavailable: pypdf not installed]"
-    try:
-        reader = PdfReader(abs_path)
-    except Exception as e:
-        return f"[pdf open failed: {type(e).__name__}: {e}]"
-    pages: list[str] = []
-    total = len(reader.pages)
-    for i, page in enumerate(reader.pages):
-        try:
-            txt = page.extract_text() or ""
-        except Exception as e:
-            txt = f"[page {i + 1} extract failed: {type(e).__name__}]"
-        pages.append(f"--- page {i + 1}/{total} ---\n{txt}")
-        # Early stop once we're well past the cap — no point parsing 500 more pages.
-        if sum(len(p) for p in pages) > _DOC_TEXT_CAP * 1.2:
-            pages.append(f"[truncated: stopped at page {i + 1} of {total}]")
-            break
-    return "\n\n".join(pages)
-
-
-def _extract_text_file(abs_path: str) -> str:
-    """Read a UTF-8 (or latin-1 fallback) text/code file."""
-    try:
-        with open(abs_path, "rb") as fh:
-            raw = fh.read()
-    except OSError as e:
-        return f"[read failed: {type(e).__name__}: {e}]"
-    try:
-        return raw.decode("utf-8")
-    except UnicodeDecodeError:
-        # latin-1 always succeeds; better to show garbled bytes than fail silently.
-        return raw.decode("latin-1", errors="replace")
-
-
-def _extract_document_text(storage_url: str, mime_type: str, name: str = "") -> str:
-    """Return the textual contents of a document attachment, capped and labeled.
-
-    Caller is `_build_provider_messages` — we always return SOMETHING the
-    model can read, including an explicit error string when extraction
-    fails, so prompts never silently omit attachments the user uploaded.
-    """
-    p = _resolve_attachment_path(storage_url)
-    if not p:
-        return f"[attachment not found on disk: {storage_url}]"
-    label = name or os.path.basename(p)
-    mt = (mime_type or "").lower()
-    if mt == "application/pdf" or p.lower().endswith(".pdf"):
-        body = _extract_pdf_text(p)
-    else:
-        # Everything else in our DOC_MIME / DOC_EXT whitelist (server/attachments.ts)
-        # is plain-text-ish: code files, markdown, csv, json, yaml, xml, html, logs.
-        body = _extract_text_file(p)
-    if len(body) > _DOC_TEXT_CAP:
-        body = body[:_DOC_TEXT_CAP] + f"\n\n[truncated: showing first {_DOC_TEXT_CAP} chars of {len(body)}]"
-    header = f"[attachment: {label} ({mt or 'unknown mime'})]"
-    return f"{header}\n{body}"
-
-
-def _att_kind(att: dict) -> str:
-    """Best-effort kind classification. Trusts `kind` if the upload route
-    set it (server/attachments.ts does); otherwise falls back to mime sniff
-    so older rows or callers without kind still get routed correctly."""
-    k = (att.get("kind") or "").lower()
-    if k in ("image", "document"):
-        return k
-    mt = (att.get("mime_type") or "").lower()
-    if mt.startswith("image/"):
-        return "image"
-    return "document"
-
-
-def _build_provider_messages(messages: list[dict], provider_id: str) -> list[dict]:
-    """Convert a list of {role, content, attachments?} messages into the
-    multimodal shape required by the target provider.
-
-    `attachments` items are dicts with at least `storage_url` and `mime_type`.
-    Only user-role messages carry attachments today; assistant/tool turns are
-    passed through unchanged. Vision content is appended to the user turn so
-    the doctrine system-prompt prefix remains byte-identical and cacheable.
-    """
-    out: list[dict] = []
-    for m in messages:
-        atts = m.get("attachments") or []
-        # Strip attachments key from passthrough copy regardless.
-        base = {k: v for k, v in m.items() if k != "attachments"}
-        if not atts or m.get("role") != "user":
-            out.append(base)
-            continue
-        text = base.get("content") if isinstance(base.get("content"), str) else ""
-
-        # Split images vs documents. Documents get extracted server-side and
-        # spliced into the user turn as text — works on every provider, no
-        # vision capability required. Images stay on the multimodal path.
-        images = [a for a in atts if _att_kind(a) == "image"]
-        docs = [a for a in atts if _att_kind(a) == "document"]
-        doc_blocks = [
-            _extract_document_text(
-                a.get("storage_url", ""),
-                a.get("mime_type", ""),
-                a.get("name") or a.get("filename") or "",
-            )
-            for a in docs
-        ]
-        # Compose the text with doc bodies appended. Docs are bracketed by
-        # their own [attachment: ...] header inside _extract_document_text.
-        composed_text = text
-        if doc_blocks:
-            composed_text = (text + "\n\n" if text else "") + "\n\n".join(doc_blocks)
-
-        # Vision branch: providers using OpenAI Chat-Completions style image_url
-        # parts. Driven by providers.json supports_vision flag — claude has its
-        # own native parts branch below, gemini uses the google-genai parts API.
-        if (BUILTIN_PROVIDERS.get(provider_id) or {}).get("supports_vision"):
-            parts: list[dict] = []
-            if composed_text:
-                parts.append({"type": "text", "text": composed_text})
-            for a in images:
-                pair = _read_attachment_b64(a.get("storage_url", ""))
-                if not pair:
-                    continue
-                mime, data = pair
-                parts.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{mime};base64,{data}"},
-                })
-            out.append({**base, "content": parts if parts else composed_text})
-            continue
-
-        if provider_id == "claude":
-            parts = []
-            if composed_text:
-                parts.append({"type": "text", "text": composed_text})
-            for a in images:
-                pair = _read_attachment_b64(a.get("storage_url", ""))
-                if not pair:
-                    continue
-                mime, data = pair
-                parts.append({
-                    "type": "image",
-                    "source": {"type": "base64", "media_type": mime, "data": data},
-                })
-            out.append({**base, "content": parts if parts else composed_text})
-            continue
-
-        if provider_id in ("gemini", "gemini3"):
-            # Native Gemini path expects Part.from_bytes; preserve image
-            # attachments so gemini_native._messages_to_contents can build
-            # inline_data parts. Doc text is folded into content above.
-            inline = []
-            for a in images:
-                pair = _read_attachment_b64(a.get("storage_url", ""))
-                if not pair:
-                    continue
-                mime, data = pair
-                inline.append({"mime_type": mime, "data_b64": data})
-            out.append({**base, "content": composed_text, "attachments": inline})
-            continue
-
-        # Unknown provider: pass the composed text so docs aren't lost, and
-        # surface the dropped images explicitly rather than silently eliding
-        # them. Better that the model sees "[3 images dropped: ...]" than
-        # nothing at all.
-        if images:
-            _log.warning(
-                "provider %r has no multimodal adapter; %d image attachment(s) dropped",
-                provider_id, len(images),
-            )
-            marker = f"\n\n[{len(images)} image attachment(s) dropped: provider {provider_id!r} has no vision adapter]"
-            composed_text = (composed_text or "") + marker
-        out.append({**base, "content": composed_text})
-    return out
 
 # Retry policy: 2 retries (3 attempts total) with jittered exponential backoff
 # on 429 and 5xx. 4xx other than 429 fail fast.
@@ -542,42 +204,6 @@ def _sanitize_provider_error(provider: str, exc: BaseException) -> str:
     return f"[{provider} error: {type(exc).__name__}]"
 
 
-async def _post_with_retry(
-    client: httpx.AsyncClient,
-    url: str,
-    *,
-    json_payload: dict,
-    headers: dict,
-) -> httpx.Response:
-    """POST with jittered exponential backoff on 429 and 5xx. 4xx other than 429 fail fast."""
-    last_exc: Optional[BaseException] = None
-    for attempt in range(_RETRY_MAX_ATTEMPTS):
-        try:
-            resp = await client.post(url, json=json_payload, headers=headers)
-            status = resp.status_code
-            if status == 429 or 500 <= status < 600:
-                last_exc = httpx.HTTPStatusError(
-                    f"retryable status {status}", request=resp.request, response=resp
-                )
-                if attempt < _RETRY_MAX_ATTEMPTS - 1:
-                    sleep_s = _RETRY_BASE_SLEEP * (2 ** attempt) + random.uniform(0, 0.5)
-                    await asyncio.sleep(sleep_s)
-                    continue
-                resp.raise_for_status()
-            resp.raise_for_status()
-            return resp
-        except (httpx.TimeoutException, httpx.TransportError) as exc:
-            last_exc = exc
-            if attempt < _RETRY_MAX_ATTEMPTS - 1:
-                sleep_s = _RETRY_BASE_SLEEP * (2 ** attempt) + random.uniform(0, 0.5)
-                await asyncio.sleep(sleep_s)
-                continue
-            raise
-    if last_exc:
-        raise last_exc
-    raise RuntimeError("retry loop exited without response")
-
-
 def _canonical_tool_calls(tool_calls: list[dict]) -> str:
     """Produce a stable string fingerprint of a list of tool calls for repeat detection."""
     norm = []
@@ -620,9 +246,14 @@ def _effort_to_thinking_budget(effort: Optional[str], max_tokens: int) -> int:
     # budget must be strictly less than max_tokens, and at least 1024
     return max(1024, min(budget, max(1024, max_tokens - 512)))
 
-_OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
-
 _MAX_TOOL_ROUNDS = 5
+
+
+def _get_max_tool_rounds() -> int:
+    """Return the per-request tool round limit, honoring any per-conversation override."""
+    from .run_context import current_max_tool_rounds as _cmtr
+    v = _cmtr.get(None)
+    return v if v is not None else _MAX_TOOL_ROUNDS
 
 
 async def call_provider(
@@ -910,4 +541,4 @@ async def _call_anthropic(
     )
 
 
-# 687:169
+# 393:87

@@ -1,4 +1,4 @@
-// 588:5
+// 639:5
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -31,6 +31,12 @@ export interface OrchestrationResponse {
   [key: string]: unknown;
 }
 
+export interface ThinkingBlockEntry {
+  round: number;
+  provider: string;
+  content: string;
+}
+
 export interface UsageData {
   input_tokens?: number;
   output_tokens?: number;
@@ -39,6 +45,7 @@ export interface UsageData {
   completion_tokens?: number;
   orchestration_mode?: string;
   responses?: OrchestrationResponse[];
+  thinking_blocks?: ThinkingBlockEntry[];
   [key: string]: unknown;
 }
 
@@ -533,6 +540,45 @@ export function agentLabel(model: string | null | undefined, slot: string): stri
   return `a0(${model ?? "?"})${slot}`;
 }
 
+function ThinkingBlocks({ blocks }: { blocks: ThinkingBlockEntry[] }) {
+  const [open, setOpen] = useState(false);
+  if (!blocks || blocks.length === 0) return null;
+  const totalChars = blocks.reduce((s, b) => s + (b.content?.length ?? 0), 0);
+  return (
+    <div className="mb-2 rounded-md border border-border/40 bg-muted/20 overflow-hidden" data-testid="thinking-blocks">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 w-full px-3 py-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+        data-testid="btn-toggle-thinking"
+      >
+        <span className="font-medium tracking-wide uppercase opacity-70">thinking</span>
+        <span className="opacity-40">·</span>
+        <span>{blocks.length} block{blocks.length !== 1 ? "s" : ""}</span>
+        <span className="opacity-40">·</span>
+        <span>{totalChars.toLocaleString()} chars</span>
+        <span className="ml-auto opacity-70">{open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</span>
+      </button>
+      {open && (
+        <div className="border-t border-border/40 px-3 py-2 flex flex-col gap-2">
+          {blocks.map((b, i) => (
+            <div key={i} className="text-[10px]" data-testid={`thinking-block-${i}`}>
+              {blocks.length > 1 && (
+                <div className="text-[9px] text-muted-foreground mb-0.5 font-mono">
+                  round {b.round} · {b.provider}
+                </div>
+              )}
+              <pre className="whitespace-pre-wrap font-mono text-foreground/70 leading-relaxed overflow-x-auto">
+                {b.content}
+              </pre>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MessageBubble({ message, onSend }: { message: Message; onSend: (cmd: string) => void }) {
   const isUser = message.role === "user";
   const isError = !isUser && message.metadata?.error === true;
@@ -593,6 +639,13 @@ export function MessageBubble({ message, onSend }: { message: Message; onSend: (
             ))}
           </div>
         )}
+        {!isUser && (() => {
+          const blocks = message.metadata?.usage?.thinking_blocks;
+          if (Array.isArray(blocks) && blocks.length > 0) {
+            return <ThinkingBlocks blocks={blocks as ThinkingBlockEntry[]} />;
+          }
+          return null;
+        })()}
         {(() => {
           const responses = !isUser ? message.metadata?.usage?.responses : undefined;
           const hasCards = Array.isArray(responses) && responses.length > 0;
@@ -624,4 +677,4 @@ export function MessageBubble({ message, onSend }: { message: Message; onSend: (
     </div>
   );
 }
-// 588:5
+// 639:5

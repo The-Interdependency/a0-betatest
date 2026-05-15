@@ -1,4 +1,4 @@
-# 125:33
+# 131:34
 """claude_provider — Anthropic Messages API via the official SDK.
 
 One of four sibling modules under python/services/providers/. Exposes a
@@ -55,7 +55,7 @@ async def call(
     from ..tool_executor import get_active_chat_schemas, execute_tool
     from ..inference import (
         _ANTHROPIC_CACHE_MIN_CHARS,
-        _MAX_TOOL_ROUNDS,
+        _get_max_tool_rounds,
         _canonical_tool_calls,
         _effort_to_thinking_budget,
         _sanitize_provider_error,
@@ -127,7 +127,7 @@ async def call(
     accumulated_usage: dict = {}
     prev_call_fingerprint: Optional[str] = None
 
-    for _round in range(_MAX_TOOL_ROUNDS + 1):
+    for _round in range(_get_max_tool_rounds() + 1):
         kwargs: dict = {
             "model": model,
             "max_tokens": max_tokens,
@@ -153,13 +153,21 @@ async def call(
         content_blocks = [b.model_dump() for b in (msg.content or [])]
         tool_use_blocks = [b for b in content_blocks if b.get("type") == "tool_use"]
 
+        # Capture thinking blocks from this round into usage.
+        thinking_this_round = [
+            {"round": _round, "provider": "claude", "content": b.get("thinking", "")}
+            for b in content_blocks if b.get("type") == "thinking" and b.get("thinking")
+        ]
+        if thinking_this_round:
+            accumulated_usage.setdefault("thinking_blocks", []).extend(thinking_this_round)
+
         if tool_use_blocks:
             fp = _canonical_tool_calls(tool_use_blocks)
             if prev_call_fingerprint is not None and fp == prev_call_fingerprint:
                 return "[noticed repeat tool call — answering directly]", accumulated_usage
             prev_call_fingerprint = fp
 
-        if not tool_use_blocks or not use_tools or _round >= _MAX_TOOL_ROUNDS:
+        if not tool_use_blocks or not use_tools or _round >= _get_max_tool_rounds():
             for block in content_blocks:
                 if block.get("type") == "text":
                     return block["text"], accumulated_usage
@@ -182,4 +190,4 @@ async def call(
         current_messages.append({"role": "user", "content": tool_results})
 
     return "[claude: tool loop exhausted]", accumulated_usage
-# 125:33
+# 131:34

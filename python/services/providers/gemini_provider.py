@@ -1,4 +1,4 @@
-# 31:21
+# 29:21
 """gemini_provider — Google Gemini via the google-genai SDK.
 
 Thin contract-conforming wrapper around services/gemini_native.call_gemini_native.
@@ -58,4 +58,4 @@ async def call(
         reasoning_effort=reasoning_effort,
         supports_thinking=supports_thinking,
     )
-# 31:21
+# 29:21

@@ -1,4 +1,4 @@
-// 507:11
+// 629:11
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Plus, Trash2, Loader2, ChevronDown, ChevronUp, ChevronRight, Zap, X,
   Archive, ArchiveRestore, CornerDownRight, AlertTriangle, CheckCircle2,
-  Eye, Wrench,
+  Eye, Wrench, Settings,
 } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { apiRequest } from "@/lib/queryClient";
 import { fmtTokens } from "@/components/chat-messages";
 import { cn } from "@/lib/utils";
@@ -259,6 +262,128 @@ interface ContextPreviewRes {
   active_seed_titles: string[];
 }
 
+interface InferenceSettingsRes {
+  conversation_id: number;
+  max_tool_rounds: number | null;
+  inference_mode: string;
+}
+
+function InferenceTab({ convId }: { convId: number }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [localRounds, setLocalRounds] = useState<string>("");
+
+  const { data, isLoading, error } = useQuery<InferenceSettingsRes>({
+    queryKey: ["/api/v1/conversations", convId, "inference-settings"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/v1/conversations/${convId}/inference-settings`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    if (data) setLocalRounds(data.max_tool_rounds !== null ? String(data.max_tool_rounds) : "");
+  }, [data]);
+
+  const patch = useMutation({
+    mutationFn: async (body: { max_tool_rounds?: number; inference_mode?: string }) => {
+      const res = await apiRequest("PATCH", `/api/v1/conversations/${convId}/inference-settings`, body);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/v1/conversations", convId, "inference-settings"] });
+      toast({ title: "Saved" });
+    },
+    onError: (e: Error) => toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+  });
+
+  if (isLoading) return (
+    <div className="flex items-center justify-center py-8 text-muted-foreground text-xs" data-testid="inference-loading">
+      <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Loading…
+    </div>
+  );
+  if (error || !data) return (
+    <div className="text-xs text-destructive py-4 px-2" data-testid="inference-error">
+      {error instanceof Error ? error.message : "Failed to load inference settings"}
+    </div>
+  );
+
+  const roundsNum = localRounds.trim() === "" ? null : parseInt(localRounds, 10);
+  const roundsValid = localRounds.trim() === "" || (!isNaN(roundsNum!) && roundsNum! >= 1 && roundsNum! <= 20);
+  const roundsChanged = localRounds.trim() !== String(data.max_tool_rounds ?? "");
+
+  const MODE_DESC: Record<string, string> = {
+    agentic: "Full tool loop — up to max-rounds of tool calls before answering.",
+    direct: "No tools. Model answers in a single pass.",
+    swarm: "Multi-provider swarm — reserved, not yet active.",
+  };
+
+  return (
+    <div className="flex flex-col gap-3" data-testid="inference-tab-content">
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[11px] text-muted-foreground font-medium">Mode</label>
+        <Select
+          value={data.inference_mode}
+          onValueChange={(v) => patch.mutate({ inference_mode: v })}
+          disabled={patch.isPending}
+        >
+          <SelectTrigger className="h-8 text-xs" data-testid="select-inference-mode">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="agentic" data-testid="option-mode-agentic">agentic</SelectItem>
+            <SelectItem value="direct" data-testid="option-mode-direct">direct</SelectItem>
+            <SelectItem value="swarm" data-testid="option-mode-swarm">swarm</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          {MODE_DESC[data.inference_mode] ?? MODE_DESC.agentic}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[11px] text-muted-foreground font-medium">Max tool rounds</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={localRounds}
+            onChange={(e) => setLocalRounds(e.target.value)}
+            placeholder="default (5)"
+            className={cn(
+              "h-8 w-28 rounded-md border px-2.5 text-xs bg-background text-foreground",
+              "focus:outline-none focus:ring-1 focus:ring-ring",
+              !roundsValid && "border-destructive",
+            )}
+            data-testid="input-max-tool-rounds"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs px-3"
+            disabled={patch.isPending || !roundsValid || !roundsChanged || localRounds.trim() === ""}
+            onClick={() => {
+              if (!roundsValid || !roundsNum) return;
+              patch.mutate({ max_tool_rounds: roundsNum });
+            }}
+            data-testid="btn-save-max-rounds"
+          >
+            {patch.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          {data.max_tool_rounds !== null
+            ? `Currently ${data.max_tool_rounds} rounds. Range: 1–20.`
+            : "Using global default (5 rounds). Range: 1–20."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ContextTab({ convId }: { convId: number }) {
   const { data, isLoading, error } = useQuery<ContextPreviewRes>({
     queryKey: ["/api/v1/conversations", convId, "context-preview"],
@@ -481,12 +606,18 @@ export function PreChatInspectorPanel({ convId }: { convId: number }) {
             <TabsTrigger value="tools" className="h-6 px-3 text-[11px]" data-testid="tab-tools">
               <Wrench className="h-3 w-3 mr-1" />Tools
             </TabsTrigger>
+            <TabsTrigger value="inference" className="h-6 px-3 text-[11px]" data-testid="tab-inference">
+              <Settings className="h-3 w-3 mr-1" />Inference
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="context" className="mt-0">
             <ContextTab convId={convId} />
           </TabsContent>
           <TabsContent value="tools" className="mt-0">
             <ToolsTab convId={convId} />
+          </TabsContent>
+          <TabsContent value="inference" className="mt-0">
+            <InferenceTab convId={convId} />
           </TabsContent>
         </Tabs>
       </div>
@@ -552,4 +683,4 @@ export function ConvToolsPopover({ convId }: { convId: number }) {
 }
 
 export { ChatInput } from "./chat-input";
-// 507:11
+// 629:11

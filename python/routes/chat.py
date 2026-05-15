@@ -1,4 +1,4 @@
-# 657:177
+# 606:173
 import time
 import traceback
 from fastapi import APIRouter, HTTPException, Request
@@ -6,11 +6,10 @@ from pydantic import BaseModel
 from typing import Optional
 
 from ..storage import storage
-from ..services.stripe_service import get_tier_context_name
 from ..services.energy_registry import default_provider, BUILTIN_PROVIDERS, cache_breakdown, estimate_cost
 from ..services.inference import call_provider
+from ..services.prompt_assembly import build_system_prompt
 from ..services.bg_tasks import spawn as _spawn_bg
-from .contexts import get_context_value
 
 # In-memory pending gate store: conv_id → {gate_id, history, system_prompt, provider_id, uid, ts}
 # Used to replay a blocked action when the user grants a scope.
@@ -259,56 +258,6 @@ async def list_messages(conv_id: int, request: Request):
         for m in msgs:
             m["attachments"] = att_map.get(m["id"], [])
     return msgs
-
-
-async def _build_system_prompt(tier: str, agent_persona: str | None = None) -> str:
-    """Compose system prompt with stable→volatile ordering for max cache reuse.
-
-    Order (most stable first; cache prefix grows as we go down):
-      1. a0_identity        — global, immutable across all users
-      2. system_base        — global, edited rarely
-      3. anti_hallucination — global grounding rules, edited rarely
-      4. tier_context       — stable per tier (free / supporter / ws / admin)
-      5. agent_persona      — stable per Forge agent across many turns (optional)
-      6. memory seeds       — volatile (user edits weights/text frequently)
-
-    The break between (5) and (6) is where Anthropic places its 2nd cache_control
-    breakpoint, so seed edits only invalidate the seed segment, not the whole
-    prefix. See _call_anthropic.
-    """
-    context_name = get_tier_context_name(tier)
-    a0_identity = await get_context_value("a0_identity")
-    system_base = await get_context_value("system_base")
-    anti_hallucination = await get_context_value("anti_hallucination")
-    tier_context = await get_context_value(context_name)
-
-    parts: list[str] = []
-    if a0_identity:
-        parts.append(a0_identity)
-    if system_base:
-        parts.append(system_base)
-    if anti_hallucination:
-        parts.append(anti_hallucination)
-    if tier_context:
-        parts.append(tier_context)
-    if agent_persona:
-        parts.append(f"## Persona\n{agent_persona}")
-
-    seeds = await storage.get_memory_seeds()
-    active_seeds = [
-        s for s in seeds
-        if s.get("enabled") and (s.get("summary") or "").strip()
-    ]
-    active_seeds.sort(key=lambda s: float(s.get("weight", 1.0)), reverse=True)
-    if active_seeds:
-        seed_lines = []
-        for s in active_seeds:
-            label = s.get("label", f"Seed {s.get('seed_index', '?')}")
-            summary = s.get("summary", "").strip()
-            seed_lines.append(f"- [{label}]: {summary}")
-        parts.append("## Memory\n" + "\n".join(seed_lines))
-
-    return "\n\n".join(parts)
 
 
 def _parse_approve_scope(content: str) -> str | None:
@@ -662,7 +611,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                 "conversation_id": conv_id,
             }
 
-        system_prompt = await _build_system_prompt(tier, agent_persona=agent_persona)
+        system_prompt = await build_system_prompt(tier, agent_persona=agent_persona)
 
         # Inject per-conversation context boost if set.
         _boost = (conv.get("context_boost") or "").strip()
@@ -711,6 +660,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         )
         from ..services.run_context import (
             current_orchestration_mode, current_cut_mode, current_user_tier,
+            current_max_tool_rounds,
         )
         from ..services.orch_progress import (
             current_client_run_id,
@@ -747,6 +697,8 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         _t_om = current_orchestration_mode.set(eff_mode)
         _t_cm = current_cut_mode.set(eff_cut)
         _t_ut = current_user_tier.set(tier)
+        # Per-conversation tool-round cap: None → use global default (5).
+        _t_mr = current_max_tool_rounds.set(conv.get("max_tool_rounds"))
         # Bind the run id to the orch_progress ContextVar for downstream emitters.
         _t_cri = current_client_run_id.set(body.client_run_id or None)
         # Register ownership before any publish so the SSE endpoint can
@@ -759,6 +711,12 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                 body.client_run_id = None
                 current_client_run_id.reset(_t_cri)
                 _t_cri = current_client_run_id.set(None)
+        # Inference mode: per-conversation override of tool-use behavior.
+        # "agentic" (default) — full tool loop enabled.
+        # "direct"            — tools disabled; single-pass answer only.
+        # "swarm"             — reserved; currently treated as agentic.
+        _inf_mode = (conv.get("inference_mode") or "agentic").strip()
+
         try:
             if eff_mode == "single":
                 # ALWAYS build the executor from the gated model_id, never
@@ -768,13 +726,15 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                 # permitted one — gates would check body.model but
                 # execution would use agent_inst.model_id. agent_inst's
                 # role is purely persona/metadata loading (already folded
-                # into system_prompt via _build_system_prompt above).
+                # into system_prompt via build_system_prompt above).
                 inst = AgentInstance.from_model(
                     model_id=model_id,
                     user_id=uid or None,
                     enforce_tier=False,
                     enforce_enabled=False,
                 )
+                if _inf_mode == "direct":
+                    inst.use_tools = False
                 content, usage = await inst.run(
                     history,
                     system_prompt_override=system_prompt or None,
@@ -818,6 +778,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
             current_orchestration_mode.reset(_t_om)
             current_cut_mode.reset(_t_cm)
             current_user_tier.reset(_t_ut)
+            current_max_tool_rounds.reset(_t_mr)
             current_client_run_id.reset(_t_cri)
 
         if usage.get("approval_state") == "pending":
@@ -847,6 +808,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                 "cache": cache_breakdown(usage),
                 "orchestration_mode": eff_mode,
                 "cut_mode": eff_cut,
+                "inference_mode": _inf_mode,
             },
         })
 
@@ -895,4 +857,4 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
 #   class: correctness
 #   call:  python.tests.contracts.chat.test_unknown_body_model_400
 # === END CONTRACTS ===
-# 657:177
+# 606:173
