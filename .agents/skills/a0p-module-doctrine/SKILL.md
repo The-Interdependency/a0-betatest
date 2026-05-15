@@ -1,6 +1,6 @@
 ---
 name: a0p-module-doctrine
-description: Authoritative conventions for building Python route modules, TypeScript components, and hot-swap modules in the a0p codebase. Covers file annotation (N:M C:D I:O three-metric format), route naming (_api vs plain), # DOC block format, UI_META, DATA_SCHEMA, the four-place registration checklist, hot-swap module rules, and the 400-line code budget. Load this skill before creating or editing any Python route file, service, or TS component in the a0p project.
+description: Authoritative conventions for building Python route modules, TypeScript components, and hot-swap modules in the a0p codebase. Covers file annotation (N:M C:D I:O three-metric format), module role metadata, route naming (_api vs plain), # DOC block format, UI_META, DATA_SCHEMA, the four-place registration checklist, hot-swap module rules, and the 400-line code budget. Load this skill before creating or editing any Python route file, service, or TS component in the a0p project.
 ---
 
 # a0p Module Doctrine
@@ -35,11 +35,15 @@ Every file in the a0p codebase follows these conventions. This is the single aut
 **I** = other project files that import this file (fan-in)
 **O** = project-internal modules this file imports (fan-out)
 
-### Pathology table
+### Triage, not verdict
 
-| Low N:M | Low C:D | Low I:O (high O) |
-|---------|---------|-----------------|
-| Dense, opaque growth | Dead surface area | Unstable, depends on everything |
+These ratios are attention-routing signals, not automatic diagnoses. Interpret them by module role.
+
+| Signal | What to inspect |
+|--------|-----------------|
+| Dense N:M imbalance | Opaque growth; missing explanatory surface |
+| Low C:D | Dead or unintegrated declared surface |
+| Low I:O under high fan-out | Fragile glue/orchestrator pressure |
 
 A file scoring poorly on all three is the true refactor target — not merely the longest file.
 
@@ -60,7 +64,47 @@ This is idempotent. The ratio is parsed by `collect_doc_meta()` and displayed in
 
 ---
 
-## 2. Route File Naming Convention
+## 2. Module Role Metadata
+
+Every Python route file must declare a role in its `# DOC` block:
+
+```python
+# DOC role: route
+```
+
+TypeScript / TSX files should declare role in a top-of-file comment immediately after the first annotation when practical:
+
+```typescript
+// DOC role: component
+```
+
+Role metadata is not another ratio. It tells humans and agents how to interpret `N:M C:D I:O`.
+
+### Allowed roles
+
+| Role | Use for | Metric interpretation |
+|------|---------|----------------------|
+| `route` | FastAPI route file whose main job is endpoint exposure | C:D should be high; O should stay moderate unless thinly delegating |
+| `api` | Thin API delegate to a service/engine | High endpoint declaration is fine; business logic should remain low |
+| `service` | Business logic or reusable backend capability | Higher I is expected; comments/contracts should guard stable behavior |
+| `engine` | Core cognitive/runtime engine | High I is load-bearing; high O requires explicit contracts |
+| `orchestrator` | Coordinates multiple services/routes/providers | High O is expected but must be heavily documented |
+| `schema` | Pydantic/type/schema definitions | High I and low runtime logic are normal |
+| `component` | React/TSX UI component | C:D maps to exported/consumed surface; comment density may be lower if JSX is clear |
+| `page` | Route-level UI page | Higher O is normal; should remain readable and bounded |
+| `test` | Unit, contract, or e2e test | Low I is normal; D may be low; clarity matters more than reuse |
+| `contract` | Executable invariant / gating contract | Comment-rich files are healthy; N:M may invert without pathology |
+| `doctrine` | Human/agent operational rule file | Comment-rich by design; not judged by code density |
+| `config` | Configuration / constants / registry tables | High C:D expected; hidden coupling should be documented |
+| `script` | CLI/dev/maintenance script | Low I can be normal; require clear usage comments |
+| `adapter` | Boundary layer to external provider/API/storage | O may be high; must document external dependency and failure mode |
+| `hot_swap` | User-deployed runtime module | Must remain small, documented, gated, and annotation-stamped on deploy |
+
+If none fits, use `role: module` temporarily and add a `# DOC notes:` line explaining why. Do not invent new roles casually; update this doctrine first.
+
+---
+
+## 3. Route File Naming Convention
 
 Two patterns exist; choose based on whether a separate service/engine handles the logic:
 
@@ -85,7 +129,7 @@ The file exists solely to expose HTTP endpoints for a core engine or service tha
 
 ---
 
-## 3. `# DOC` Block (Required in every Python route file)
+## 4. `# DOC` Block (Required in every Python route file)
 
 Place immediately after imports, before `UI_META`. All `# DOC` lines are comment lines (they count toward M, never N).
 
@@ -94,20 +138,22 @@ Place immediately after imports, before `UI_META`. All `# DOC` lines are comment
 # DOC label: My Module           ← human label shown in DocsTab sidebar
 # DOC description: One or two sentences. What this module does and why.
 # DOC tier: free                 ← free | ws | pro | admin
+# DOC role: route                ← route | api | service | engine | orchestrator | schema | component | page | test | contract | doctrine | config | script | adapter | hot_swap | module
 # DOC endpoint: GET /api/v1/my/path | What this endpoint does
 # DOC endpoint: POST /api/v1/my/path | What this endpoint does
 # DOC notes: Optional constraint, rate limit, or caveat (repeatable)
 ```
 
 Rules:
-- `module`, `label`, `description`, `tier` appear **exactly once**
+- `module`, `label`, `description`, `tier`, `role` appear **exactly once**
 - `endpoint` lines repeat — one per endpoint — format is `METHOD path | description` (pipe is required)
 - `notes` is optional and may repeat
 - `module` slug must be unique across all route files
+- `role` must come from the allowed role list unless this doctrine is updated first
 
 ---
 
-## 4. `UI_META` (route files that contribute a console tab)
+## 5. `UI_META` (route files that contribute a console tab)
 
 ```python
 UI_META = {
@@ -139,7 +185,7 @@ UI_META = {
 
 ---
 
-## 5. `DATA_SCHEMA` (optional, documents endpoint shapes)
+## 6. `DATA_SCHEMA` (optional, documents endpoint shapes)
 
 ```python
 DATA_SCHEMA = {
@@ -154,7 +200,7 @@ Not required, but include it when the module has non-tab endpoints that should b
 
 ---
 
-## 6. Registration Checklist for New Route Modules
+## 7. Registration Checklist for New Route Modules
 
 Every new `python/routes/{name}.py` must be added to **four places** in `python/routes/__init__.py`:
 
@@ -200,18 +246,19 @@ editable_registry.register(EditableField(
 
 ---
 
-## 7. Hot-Swap Modules (WsModulesTab)
+## 8. Hot-Swap Modules (WsModulesTab)
 
 Handler code for a user-deployed hot-swap module must:
 - Define `router: APIRouter` at module level — the registry mounts this
-- Include a `# DOC` block with all required fields (`module`, `label`, `description`, `tier`)
+- Include a `# DOC` block with all required fields (`module`, `label`, `description`, `tier`, `role`)
+- Use `# DOC role: hot_swap` unless a stricter role is justified in notes
 - Optionally define `UI_META` to add a console tab
 - Respect the **400-line code budget** (N ≤ 400)
 - **Do not hand-write** `# N:M` annotation in handler code — the engine stamps it on deploy
 
 ---
 
-## 8. 400-Line Code Budget
+## 9. 400-Line Code Budget
 
 **Hard rule project-wide:** no file may exceed 400 code lines (N in the annotation).
 
@@ -221,7 +268,7 @@ Handler code for a user-deployed hot-swap module must:
 
 ---
 
-## 9. File Naming — PCEA Doctrine (new files only)
+## 10. File Naming — PCEA Doctrine (new files only)
 
 All **new** files created in the a0p codebase must follow the PCEA four-letter-set naming convention. See `.agents/skills/a0p-pcea-naming/SKILL.md` for the full specification.
 
@@ -258,7 +305,7 @@ Rules:
 
 ---
 
-## 10. Annotation Script Reference
+## 12. Annotation Script Reference
 
 ```bash
 # Re-stamp all Python + TypeScript/TSX files in the project
