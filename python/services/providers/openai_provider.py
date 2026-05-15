@@ -117,6 +117,7 @@ async def _call_responses(
         if use_tools:
             kwargs["tools"] = get_active_responses_schemas()
 
+        print(f"[oai-dbg] round={_round} input_len={len(openai_input)} roles={[m.get('role','?') for m in openai_input if isinstance(m, dict) and 'role' in m]}")
         try:
             response = await oai_client.responses.create(**kwargs)
             data = response.model_dump()
@@ -128,6 +129,7 @@ async def _call_responses(
                 accumulated_usage[k] = accumulated_usage.get(k, 0) + v
 
         output_items = data.get("output") or []
+        print(f"[oai-dbg] output item types={[it.get('type') for it in output_items]}")
         tool_calls = [it for it in output_items if it.get("type") == "function_call"]
 
         if tool_calls:

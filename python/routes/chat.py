@@ -756,6 +756,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
                     history,
                     system_prompt_override=system_prompt or None,
                 )
+                print(f"[chat-dbg] provider={inst.provider_id!r} hist_len={len(history)} content_len={len(content or '')} content_preview={repr((content or '')[:80])}")
                 # Use the resolved provider_id from the instance — for forge
                 # agents whose model_id is "gpt-5-mini" this is "openai".
                 provider_id = inst.provider_id or provider_id
