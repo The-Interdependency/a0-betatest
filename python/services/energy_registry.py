@@ -1,4 +1,4 @@
-# 280:64
+# 286:68
 import logging
 import contextvars
 import json
@@ -384,18 +384,29 @@ def build_model_instances() -> dict:
     return out
 
 
-def resolve_providers(providers: list[str] | None) -> list[str]:
-    """Resolve ['active'] / [] / None into a concrete list of provider ids."""
+async def resolve_providers(providers: list[str] | None) -> list[str]:
+    """Resolve ['active'] / [] / None into a concrete list of provider ids.
+
+    "active" resolves via the conduct slot (active_provider()). On RuntimeError
+    the "active" entry is silently dropped so callers see an empty list and can
+    raise a meaningful error rather than silently routing to an env-order default.
+    """
     if not providers or providers == ["active"]:
-        active = default_provider()
-        return [active] if active else []
+        try:
+            a = await active_provider()
+            return [a]
+        except RuntimeError:
+            return []
     out: list[str] = []
     for p in providers:
         if p == "active":
-            a = default_provider()
-            if a and a not in out:
-                out.append(a)
+            try:
+                a = await active_provider()
+                if a not in out:
+                    out.append(a)
+            except RuntimeError:
+                pass
         elif p in BUILTIN_PROVIDERS and p not in out:
             out.append(p)
     return out
-# 280:64
+# 286:68

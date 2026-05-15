@@ -253,11 +253,11 @@ async def run_inference_with_mode(
             f"got {orchestration_mode!r}"
         )
 
-    resolved = resolve_providers(providers)
+    resolved = await resolve_providers(providers)
     if not resolved:
         raise RuntimeError(
             f"run_inference_with_mode: no providers resolved from {providers!r}. "
-            "Pass an explicit providers list or ensure a provider API key is configured."
+            "Assign a model to the conduct slot via the Instances panel."
         )
 
     # Tool filtering: the chat path that takes the single branch already

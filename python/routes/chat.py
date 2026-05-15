@@ -380,7 +380,7 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         _ranks = {"free": 0, "supporter": 1, "ws": 2, "admin": 3}
         _mode_for_gate = (body.orchestration_mode or "single").strip() or "single"
         if _mode_for_gate != "single" and body.providers:
-            providers_to_gate = _resolve(body.providers) or [provider_id]
+            providers_to_gate = await _resolve(body.providers) or [provider_id]
         else:
             providers_to_gate = [provider_id]
         for _pid in providers_to_gate:
