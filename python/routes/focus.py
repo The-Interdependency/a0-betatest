@@ -1,4 +1,4 @@
-# 426:59
+# 316:52
 # DOC module: focus
 # DOC label: Focus & Sub-agents
 # DOC description: Model focus management and sub-agent delegation. Provides context boost injection per conversation, focus regain directives, sub-agent background task launch, and error log retrieval for model calls.
@@ -7,13 +7,10 @@
 # DOC endpoint: PUT /api/v1/conversations/{id}/boost | Set context boost text injected into the system prompt
 # DOC endpoint: DELETE /api/v1/conversations/{id}/boost | Clear the context boost
 # DOC endpoint: POST /api/v1/conversations/{id}/focus | Inject a focus-regain directive into the conversation
-# DOC endpoint: POST /api/v1/subagent | Launch a background sub-agent task; primary energy stays unblocked
-# DOC endpoint: GET /api/v1/subagent/{conv_id}/status | Poll sub-agent completion status + result
 # DOC endpoint: GET /api/v1/conversations/{id}/context-preview | Return the assembled system prompt for this conversation (read-only inspector)
 # DOC endpoint: GET /api/v1/conversations/{id}/tools | List all tools with enabled/disabled status for this conversation
 # DOC endpoint: PATCH /api/v1/conversations/{id}/tools | Update the per-conversation enabled tool set
 
-import asyncio
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -165,118 +162,6 @@ async def regain_focus(conv_id: int, request: Request):
         "assistant_message": assistant_msg,
         "conversation_id": conv_id,
     }
-
-
-# ─── Sub-agent ────────────────────────────────────────────────────────────────
-
-class SubagentBody(BaseModel):
-    task: str
-    model: Optional[str] = None
-    parent_conv_id: Optional[int] = None
-
-
-@router.post("/subagent")
-async def launch_subagent(body: SubagentBody, request: Request):
-    """
-    Launch a background sub-agent that runs inference without blocking the primary a0.
-    Returns immediately with the sub-agent conversation ID.
-    """
-    uid = _uid(request)
-    if not uid:
-        raise HTTPException(status_code=401, detail="Authentication required")
-
-    conv = await storage.create_conversation({
-        "title": f"[sub-agent] {body.task[:60]}",
-        "model": body.model or "grok",
-        "parent_conv_id": body.parent_conv_id,
-        "subagent_status": "running",
-    }, owner_user_id=uid)
-    conv_id = conv["id"]
-
-    await storage.create_message({
-        "conversation_id": conv_id,
-        "role": "user",
-        "content": body.task,
-        "model": body.model or "grok",
-        "metadata": {"subagent": True},
-    })
-
-    from ..services.bg_tasks import spawn as _spawn_bg
-    _spawn_bg(_run_subagent(conv_id, body.task, body.model, uid), name=f"subagent-conv{conv_id}")
-
-    return {
-        "ok": True,
-        "subagent_conv_id": conv_id,
-        "status": "running",
-        "message": "Sub-agent started. Primary a0 remains unblocked.",
-    }
-
-
-async def _run_subagent(conv_id: int, task: str, model: Optional[str], uid: Optional[str]):
-    from ..services.inference import call_provider
-    from ..services.energy_registry import default_provider
-    from ..services.prompt_assembly import build_system_prompt
-
-    try:
-        tier = "free"
-        if uid:
-            async with engine.connect() as conn:
-                row = await conn.execute(
-                    text("SELECT subscription_tier FROM users WHERE id = :id"), {"id": uid}
-                )
-                rec = row.mappings().first()
-                if rec:
-                    tier = rec["subscription_tier"]
-
-        provider_id = default_provider() or model or "grok"
-        system_prompt = await build_system_prompt(tier)
-        subagent_directive = (
-            "\n\n## Sub-agent Mode\n"
-            "You are running as a background sub-agent. "
-            "Complete the assigned task fully and independently. "
-            "Return a clear, structured result with findings, conclusions, and any recommended next steps."
-        )
-
-        content, usage = await call_provider(
-            provider_id=provider_id,
-            messages=[{"role": "user", "content": task}],
-            system_prompt=(system_prompt or "") + subagent_directive,
-            user_id=uid,
-        )
-
-        await storage.create_message({
-            "conversation_id": conv_id,
-            "role": "assistant",
-            "content": content,
-            "model": provider_id,
-            "metadata": {"subagent": True, "tier": tier, "usage": usage},
-        })
-
-        async with engine.begin() as conn:
-            await conn.execute(
-                text("UPDATE conversations SET subagent_status = 'done', updated_at = NOW() WHERE id = :id"),
-                {"id": conv_id},
-            )
-
-    except Exception as exc:
-        err = str(exc)
-        try:
-            await storage.create_message({
-                "conversation_id": conv_id,
-                "role": "assistant",
-                "content": f"[sub-agent error: {err}]",
-                "model": "system",
-                "metadata": {"subagent": True, "error": True, "error_detail": err},
-            })
-            async with engine.begin() as conn:
-                await conn.execute(
-                    text("UPDATE conversations SET subagent_status = 'error', subagent_error = :err, updated_at = NOW() WHERE id = :id"),
-                    {"err": err[:500], "id": conv_id},
-                )
-        except Exception:
-            pass
-
-
 
 
 # ─── Context Preview ────────────────────────────────────────────────────────
@@ -440,33 +325,6 @@ async def patch_conv_tools(conv_id: int, body: ToolsBody, request: Request):
     }
 
 
-@router.get("/subagent/{conv_id}/status")
-async def subagent_status(conv_id: int, request: Request):
-    uid = _uid(request)
-    conv = await _assert_conv_owner(conv_id, uid)
-
-    status = conv.get("subagent_status")
-    if not status:
-        raise HTTPException(status_code=400, detail="Not a sub-agent conversation")
-
-    result: dict = {
-        "conversation_id": conv_id,
-        "status": status,
-        "title": conv.get("title"),
-        "parent_conv_id": conv.get("parent_conv_id"),
-    }
-
-    if status in ("done", "error"):
-        msgs = await storage.get_messages(conv_id)
-        assistant_msgs = [m for m in msgs if m["role"] == "assistant"]
-        if assistant_msgs:
-            result["reply"] = assistant_msgs[-1]["content"]
-    if status == "error":
-        result["error"] = conv.get("subagent_error")
-
-    return result
-
-
 # ─── Inference settings ───────────────────────────────────────────────────────
 
 _VALID_INF_MODES = {"agentic", "direct", "swarm"}
@@ -585,4 +443,4 @@ async def get_prompt_sections(conv_id: int, request: Request):
     sections["has_messages"] = has_messages
     sections["conversation_id"] = conv_id
     return sections
-# 426:59
+# 316:52

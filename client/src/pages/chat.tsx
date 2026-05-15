@@ -1,4 +1,4 @@
-// 396:10
+// 328:10
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Plus, Loader2, Bot, Zap, Target, AlertTriangle, ChevronDown, ChevronUp, X, Archive, Menu,
+  Plus, Loader2, Bot, Target, Archive, Menu,
 } from "lucide-react";
 import {
   type Message,
@@ -226,35 +226,6 @@ export default function ChatPage() {
   });
 
   const [showSidebar, setShowSidebar] = useState(false);
-  const [subagentTask, setSubagentTask] = useState("");
-  const [showSubagent, setShowSubagent] = useState(false);
-  const [subagentConvId, setSubagentConvId] = useState<number | null>(null);
-
-  const { data: subagentStatus } = useQuery<{ status: string; reply?: string; error?: string }>({
-    queryKey: ["/api/v1/subagent", subagentConvId, "status"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/v1/subagent/${subagentConvId}/status`);
-      return res.json();
-    },
-    enabled: !!subagentConvId,
-    refetchInterval: (query) => {
-      const data = query.state.data as { status?: string } | undefined;
-      return data?.status === "running" ? 3000 : false;
-    },
-  });
-
-  const launchSubagent = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/v1/subagent", { task: subagentTask, parent_conv_id: activeConvId });
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setSubagentConvId(data.subagent_conv_id);
-      setSubagentTask("");
-      toast({ title: "Sub-agent launched", description: "Primary a0 remains available." });
-    },
-    onError: (e: Error) => toast({ title: "Sub-agent failed", description: e.message, variant: "destructive" }),
-  });
 
   const activeTitle = conversations.find((c) => c.id === activeConvId)?.title ?? "a0p";
   const runningCost = conversationCostUSD(messages);
@@ -338,48 +309,6 @@ export default function ChatPage() {
           <>
             <ContextBoostPanel convId={activeConvId} />
 
-            <div className="border-b border-border" data-testid="subagent-panel">
-              <button className="w-full flex items-center gap-2 px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors" onClick={() => setShowSubagent(!showSubagent)} data-testid="btn-toggle-subagent">
-                <Zap className="h-3 w-3" />
-                <span>Sub-agent {subagentConvId ? `(${subagentStatus?.status ?? "…"})` : ""}</span>
-                {showSubagent ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
-              </button>
-              {showSubagent && (
-                <div className="px-4 pb-3 space-y-2" data-testid="subagent-editor">
-                  {subagentConvId && subagentStatus ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs">
-                        {subagentStatus.status === "running" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                        {subagentStatus.status === "done" && <Target className="h-3 w-3 text-green-500" />}
-                        {subagentStatus.status === "error" && <AlertTriangle className="h-3 w-3 text-destructive" />}
-                        <span className="font-medium capitalize">{subagentStatus.status}</span>
-                        {subagentStatus.status !== "running" && (
-                          <button
-                            className="text-primary hover:underline text-[10px]"
-                            onClick={() => { selectConv(subagentConvId); setShowSubagent(false); setSubagentConvId(null); }}
-                            data-testid="btn-view-subagent-conv"
-                          >
-                            View conversation
-                          </button>
-                        )}
-                        <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => setSubagentConvId(null)} data-testid="btn-close-subagent"><X className="h-3 w-3" /></button>
-                      </div>
-                      {subagentStatus.reply && <pre className="text-[10px] bg-muted rounded p-2 whitespace-pre-wrap max-h-32 overflow-auto" data-testid="subagent-reply">{subagentStatus.reply}</pre>}
-                      {subagentStatus.error && <p className="text-[10px] text-destructive" data-testid="subagent-error">{subagentStatus.error}</p>}
-                    </div>
-                  ) : (
-                    <>
-                      <Textarea value={subagentTask} onChange={(e) => setSubagentTask(e.target.value)} placeholder="Task for background sub-agent… (primary a0 stays available)" className="text-xs min-h-[60px] max-h-[120px] resize-none" data-testid="subagent-task-input" />
-                      <Button size="sm" className="text-xs h-7" onClick={() => launchSubagent.mutate()} disabled={!subagentTask.trim() || launchSubagent.isPending} data-testid="btn-launch-subagent">
-                        {launchSubagent.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Zap className="h-3 w-3 mr-1" />}
-                        Launch
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
             <div ref={scrollRef} className="flex-1 overflow-auto p-4">
               {msgsLoading ? (
                 <div className="flex flex-col gap-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-3/4" />)}</div>
@@ -431,4 +360,4 @@ export default function ChatPage() {
     </div>
   );
 }
-// 396:10
+// 328:10
