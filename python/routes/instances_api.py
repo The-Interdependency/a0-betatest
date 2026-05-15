@@ -1,4 +1,4 @@
-# 303:36 3:17 1:3
+# 335:41 3:17 1:3
 # DOC module: instances_api
 # DOC label: Model Instances
 # DOC description: CRUD for model instances (D&D party), per-instance memory, task board, and chat/archive sub-routes.
@@ -34,6 +34,7 @@ from sqlalchemy import text as _sql
 
 from ..database import get_session
 from ._admin_gate import require_admin
+from ..services.agent_instance import AgentInstance
 
 router = APIRouter(prefix="/api/v1", tags=["instances"])
 
@@ -369,13 +370,55 @@ async def get_chat(iid: str):
 @router.post("/agents/instances/{iid}/chat")
 async def post_chat(iid: str, request: Request, body: ChatMsg):
     await require_admin(request)
+
+    # Fetch instance row for model_id and swarm_context.
+    async with get_session() as s:
+        inst_row = (await s.execute(
+            _sql("SELECT model_id, swarm_context FROM model_instances WHERE id = :id"),
+            {"id": iid},
+        )).mappings().first()
+    if not inst_row:
+        raise HTTPException(status_code=404, detail="Instance not found")
+
+    # Persist the user message first so history is complete before inference.
     cid = str(uuid.uuid4())
     async with get_session() as s:
         await s.execute(_sql(
             "INSERT INTO instance_chats (id,instance_id,role,content,created_at) "
             "VALUES (:id,:iid,:role,:content,NOW())"
         ), {"id": cid, "iid": iid, "role": body.role, "content": body.content})
-    return {"id": cid}
+
+    # Load conversation history (last 40 turns) for context.
+    async with get_session() as s:
+        history_rows = (await s.execute(_sql(
+            "SELECT role, content FROM instance_chats "
+            "WHERE instance_id = :id AND archive_id IS NULL "
+            "ORDER BY created_at ASC LIMIT 40"
+        ), {"id": iid})).mappings().all()
+    messages = [{"role": r["role"], "content": r["content"]} for r in history_rows]
+
+    # Run inference against the instance's model using swarm_context as system prompt.
+    instance = AgentInstance.from_model(
+        model_id=inst_row["model_id"],
+        system_prompt=inst_row["swarm_context"] or None,
+        use_tools=False,
+        enforce_tier=False,
+        enforce_enabled=True,
+    )
+    try:
+        content, _usage = await instance.run(messages)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Model error: {exc}") from exc
+
+    # Persist assistant reply.
+    aid = str(uuid.uuid4())
+    async with get_session() as s:
+        await s.execute(_sql(
+            "INSERT INTO instance_chats (id,instance_id,role,content,created_at) "
+            "VALUES (:id,:iid,'assistant',:content,NOW())"
+        ), {"id": aid, "iid": iid, "content": content})
+
+    return {"id": cid, "reply_id": aid, "reply": content}
 
 
 @router.post("/agents/instances/{iid}/chat/archive")
@@ -407,4 +450,4 @@ async def get_archives(iid: str):
     return [{"id": str(r["id"]), "label": r["label"],
              "archived_at": str(r["archived_at"]), "merge_status": r["merge_status"]}
             for r in rows]
-# 303:36 3:17 1:3
+# 335:41 3:17 1:3
