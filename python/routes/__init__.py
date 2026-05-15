@@ -30,6 +30,7 @@ from .fleet import router as fleet_router
 from .transcripts import router as transcripts_router
 from .models import router as models_router
 from .instances_api import router as instances_router
+from .generate import router as generate_router
 
 ALL_ROUTERS = [
     chat_router,
@@ -64,6 +65,7 @@ ALL_ROUTERS = [
     transcripts_router,
     models_router,
     instances_router,
+    generate_router,
 ]
 
 
@@ -88,6 +90,7 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.cli",
         "python.routes.liminals",
         "python.routes.artifacts",
+        "python.routes.generate",
     ]
     tabs = []
     for mod_name in modules:
@@ -161,7 +164,7 @@ def collect_doc_meta() -> list[dict]:
         "billing.py", "contexts.py", "openai_api.py",
         "zfae_api.py", "approval_scopes.py", "docs.py",
         "sigma_api.py", "editable_schema.py", "cli.py", "forge.py",
-        "artifacts.py", "instances_api.py",
+        "artifacts.py", "instances_api.py", "generate.py",
     ]
     results: list[dict] = []
     for fname in route_files:
