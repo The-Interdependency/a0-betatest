@@ -1,4 +1,4 @@
-# 129:19 0:0 1:4
+# 126:19 0:0 1:4
 """openai_provider — OpenAI GPT-5 family via the Responses API.
 
 Migrated from raw httpx to the `openai` Python SDK (v2). The contract is
@@ -90,10 +90,7 @@ async def _call_responses(
             if r == "system":
                 out.append({"role": "system", "content": content})
             elif r == "assistant":
-                out.append({
-                    "role": "assistant",
-                    "content": [{"type": "output_text", "text": content}],
-                })
+                out.append({"role": "assistant", "content": content})
             else:
                 out.append({
                     "role": "user",
@@ -171,4 +168,4 @@ async def _call_responses(
             })
 
     return "[openai: tool loop exhausted]", accumulated_usage
-# 129:19 0:0 1:4
+# 126:19 0:0 1:4
