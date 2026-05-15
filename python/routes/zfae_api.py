@@ -132,6 +132,17 @@ async def get_resolution():
     return _get_zeta().resolution_config
 
 
+@router.get("/prime-seeds")
+async def get_prime_seeds():
+    """Live state of all 7 PTCA prime-seed cores plus LT/ST memory tags."""
+    from ..engine.prime_seeds import get_prime_seeds as _gps
+    ps = _gps()
+    return {
+        "state": ps.state(),
+        "memory_context": ps.memory_context(),
+    }
+
+
 # ------------------------------------------------------------------
 # Write endpoints (ws tier required)
 # ------------------------------------------------------------------
