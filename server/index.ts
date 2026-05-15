@@ -217,16 +217,20 @@ async function waitForPython(maxWaitMs = 120_000): Promise<void> {
         maxAge: "1y",
         immutable: true,
       }));
-      // Everything else (index.html, robots.txt, etc.): never cache
+      // Everything else (index.html, robots.txt, etc.): never cache.
+      // X-Robots-Tag: index, follow explicitly overrides any platform-injected
+      // noindex header so deployed pages remain crawlable.
       app.use(express.static(STATIC_DIR, {
         setHeaders(res, filePath) {
           if (filePath.endsWith(".html")) {
             res.setHeader("Cache-Control", "no-store");
+            res.setHeader("X-Robots-Tag", "index, follow");
           }
         },
       }));
       app.get("/{*path}", (_req, res) => {
         res.setHeader("Cache-Control", "no-store");
+        res.setHeader("X-Robots-Tag", "index, follow");
         res.sendFile(path.join(STATIC_DIR, "index.html"));
       });
     } else {
