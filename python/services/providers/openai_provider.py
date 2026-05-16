@@ -1,4 +1,4 @@
-# 126:19 0:0 1:4
+# 160:22 0:0 1:4
 """openai_provider — OpenAI GPT-5 family via the Responses API.
 
 Migrated from raw httpx to the `openai` Python SDK (v2). The contract is
@@ -148,6 +148,41 @@ async def _call_responses(
                             break
                 if content:
                     break
+            if content:
+                return content, accumulated_usage
+            # GPT-5 produced no message item — either the tool loop exhausted
+            # without a final answer or reasoning ran without emitting one.
+            # One explicit nudge to surface the response.
+            openai_input.append({
+                "role": "user",
+                "content": [{"type": "input_text", "text": "Please provide your response."}],
+            })
+            try:
+                _nudge_kw: dict = {
+                    "model": model,
+                    "input": openai_input,
+                    "store": store,
+                    "temperature": temperature,
+                    "max_output_tokens": max_output_tokens,
+                    "text": {"format": {"type": "text"}},
+                }
+                if reasoning_effort and reasoning_effort != "none":
+                    _nudge_kw["reasoning"] = {"effort": reasoning_effort}
+                _nr = await oai_client.responses.create(**_nudge_kw)
+                _nd = _nr.model_dump()
+                for k, v in (_nd.get("usage") or {}).items():
+                    if isinstance(v, (int, float)):
+                        accumulated_usage[k] = accumulated_usage.get(k, 0) + v
+                for item in (_nd.get("output") or []):
+                    if item.get("type") == "message":
+                        for part in item.get("content") or []:
+                            if part.get("type") == "output_text":
+                                content = part.get("text", "")
+                                break
+                    if content:
+                        break
+            except Exception:
+                pass
             return content or "[openai: empty response]", accumulated_usage
 
         # Multi-turn rule: only function_call items in next round's input
@@ -170,4 +205,4 @@ async def _call_responses(
             })
 
     return "[openai: tool loop exhausted]", accumulated_usage
-# 126:19 0:0 1:4
+# 160:22 0:0 1:4

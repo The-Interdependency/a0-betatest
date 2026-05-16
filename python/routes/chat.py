@@ -1,4 +1,4 @@
-# 619:179 2:7 2:16
+# 637:186 2:7 2:16
 import time
 import traceback
 from fastapi import APIRouter, HTTPException, Request
@@ -147,6 +147,28 @@ class SendMessage(BaseModel):
 
 def _caller_uid(request: Request) -> Optional[str]:
     return request.headers.get("x-user-id") or None
+
+
+async def _load_conduct_slot() -> tuple[str, str]:
+    """Load (model_id, swarm_context) directly from the conduct slot instance.
+
+    Mirrors how instances_api loads forge agent rows — the conduct slot is the
+    character sheet; its swarm_context is the presence that wraps the provider.
+    Raises RuntimeError("No instantiation selected") when no row exists.
+    """
+    from sqlalchemy import text as _sa_text
+    from ..database import get_session
+    async with get_session() as _s:
+        _row = (await _s.execute(_sa_text(
+            "SELECT model_id, swarm_context FROM model_instances"
+            " WHERE role_slot = 'conduct' LIMIT 1"
+        ))).mappings().first()
+    if not _row:
+        raise RuntimeError("No instantiation selected")
+    _mid = (_row["model_id"] or "").strip()
+    if not _mid:
+        raise RuntimeError("No instantiation selected")
+    return _mid, (_row["swarm_context"] or "").strip()
 
 
 async def _require_owned_conv(conv_id: int, uid: Optional[str]) -> dict:
@@ -339,10 +361,11 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
         # dispatcher's no-silent-fallback contract.
         model_from_body = bool(body.model)
         _from_conduct = False
+        _conduct_sc: str = ""
         model_id = body.model or agent_model_id
         if not model_id:
             try:
-                model_id = await active_provider()
+                model_id, _conduct_sc = await _load_conduct_slot()
                 _from_conduct = True
             except RuntimeError:
                 model_id = conv.get("model") or ""
@@ -607,6 +630,11 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
             }
 
         system_prompt = await build_system_prompt(tier, agent_persona=agent_persona)
+
+        # Inject conduct slot character (swarm_context) directly from the
+        # instance row — the presence that wraps the energy provider.
+        if _from_conduct and _conduct_sc:
+            system_prompt = (system_prompt or "") + f"\n\n## Character\n{_conduct_sc}"
 
         # Inject per-conversation context boost if set.
         _boost = (conv.get("context_boost") or "").strip()
@@ -877,4 +905,4 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
 #   class: correctness
 #   call:  python.tests.contracts.chat.test_unknown_body_model_400
 # === END CONTRACTS ===
-# 619:179 2:7 2:16
+# 637:186 2:7 2:16
