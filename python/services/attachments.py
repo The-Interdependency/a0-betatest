@@ -39,6 +39,10 @@ def _resolve_attachment_path(storage_url: str) -> Optional[str]:
     # Only allow URLs that explicitly point into uploads.
     # This avoids resolving arbitrary project-relative paths.
     s = storage_url.strip()
+    if not s or ("\x00" in s) or any(ord(ch) < 32 for ch in s):
+        _log.warning("attachment path rejected (invalid characters): %s", storage_url)
+        return None
+
     if s.startswith("/uploads/"):
         rel_under_uploads = s[len("/uploads/"):]
     elif s.startswith("uploads/"):
@@ -47,7 +51,12 @@ def _resolve_attachment_path(storage_url: str) -> Optional[str]:
         _log.warning("attachment path rejected (not uploads scoped): %s", storage_url)
         return None
 
-    abs_path = os.path.realpath(os.path.join(uploads_root, rel_under_uploads))
+    rel_norm = os.path.normpath(rel_under_uploads)
+    if rel_norm in ("", ".") or os.path.isabs(rel_norm) or rel_norm == ".." or rel_norm.startswith(".."+os.sep):
+        _log.warning("attachment path traversal blocked: %s", storage_url)
+        return None
+
+    abs_path = os.path.realpath(os.path.join(uploads_root, rel_norm))
     try:
         if os.path.commonpath([uploads_root, abs_path]) != uploads_root:
             _log.warning("attachment path traversal blocked: %s", storage_url)
