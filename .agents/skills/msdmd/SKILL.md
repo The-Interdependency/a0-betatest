@@ -133,8 +133,11 @@ Implementation rules every runner MUST follow:
    conventional non-source paths (`__pycache__`, `node_modules`,
    `.git`, build outputs, the runner's own test directory).
 2. **Detect comment marker by extension**, not by content sniffing.
-   `.py / .rb / .ex / .sh → #`. `.ts / .js / .tsx / .jsx / .rs / .go /
-   .java / .c / .cpp / .swift → //`. `.sql / .lua / .hs → --`.
+   The mapping is not exhaustive here: use the marker maps in
+   `parsers/universal.py` and `parsers/universal.ts` as the source of
+   truth. For example, `.py / .rb / .ex / .exs / .sh → #`. `.ts / .js /
+   .mjs / .tsx / .jsx / .rs / .go / .java / .c / .cc / .cpp / .h /
+   .hpp / .kt / .swift → //`. `.sql / .lua / .hs → --`.
 3. **Parse all matching blocks** in each file. Multiple blocks of the
    same type concatenate; entries from different blocks are
    distinguishable only by id, not by source block.
