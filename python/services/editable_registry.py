@@ -1,4 +1,4 @@
-# 33:19
+# 33:19 0:0 5:1
 from dataclasses import dataclass, field
 
 
@@ -63,4 +63,4 @@ class _EditableRegistry:
 
 
 editable_registry = _EditableRegistry()
-# 33:19
+# 33:19 0:0 5:1

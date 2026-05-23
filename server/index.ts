@@ -1,4 +1,4 @@
-// 112:0
+// 213:32 0:1 0:3
 import "./types.d.ts";
 import path from "path";
 import fs from "fs";
@@ -12,6 +12,10 @@ import {
   registerGuestChatRoute,
   seedAdminUser,
 } from "./auth";
+import { registerAttachmentRoutes } from "./attachments";
+import { db } from "./db";
+import { messageAttachments } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const app = express();
 const PORT = parseInt(process.env.PORT ?? "5000", 10);
@@ -58,8 +62,19 @@ if (IS_PROD) {
   spawnPython();
 }
 
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: false, limit: "1mb" }));
+// Stripe webhook signature verification (construct_event) is computed over the
+// exact raw bytes Stripe sent. If express.json() parses the body first it
+// re-serialises it before the proxy forwards it, corrupting the HMAC. Skip ALL
+// body parsing for this one path so the raw stream flows through to FastAPI
+// unchanged and construct_event sees the original bytes.
+app.use((req, res, next) => {
+  if (req.path === "/api/v1/billing/webhook") return next();
+  express.json({ limit: "1mb" })(req, res, next);
+});
+app.use((req, res, next) => {
+  if (req.path === "/api/v1/billing/webhook") return next();
+  express.urlencoded({ extended: false, limit: "1mb" })(req, res, next);
+});
 
 async function waitForPython(maxWaitMs = 120_000): Promise<void> {
   if (!IS_PROD) return;
@@ -83,7 +98,74 @@ async function waitForPython(maxWaitMs = 120_000): Promise<void> {
   await setupAuth(app);
   registerAuthRoutes(app);
   registerGuestChatRoute(app);
+  registerAttachmentRoutes(app);
   await seedAdminUser();
+
+  // Serve uploaded files with per-file ownership checks.
+  // Files are forced to download (Content-Disposition: attachment) so no
+  // uploaded content — including code or markup — can execute in the browser
+  // as same-origin active content.
+  const UPLOADS_DIR = path.resolve(process.cwd(), "uploads");
+  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  app.get("/uploads/:filename", async (req, res) => {
+    const userId = req.session?.userId;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { filename } = req.params;
+    // Reject any path traversal attempts before touching the DB or filesystem.
+    if (!filename || filename.includes("/") || filename.includes("..")) {
+      return res.status(400).json({ error: "Invalid filename" });
+    }
+
+    const storageUrl = `/uploads/${filename}`;
+    let row: { ownerUserId: string | null } | undefined;
+    try {
+      [row] = await db
+        .select({ ownerUserId: messageAttachments.ownerUserId })
+        .from(messageAttachments)
+        .where(eq(messageAttachments.storageUrl, storageUrl))
+        .limit(1);
+    } catch (e) {
+      console.error("[uploads] db lookup failed:", e);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+
+    if (!row) return res.status(404).json({ error: "Not found" });
+    // Return 404 rather than 403 so the existence of another user's filename
+    // is not leaked to an authenticated attacker.
+    if (row.ownerUserId !== userId) return res.status(404).json({ error: "Not found" });
+
+    const filePath = path.join(UPLOADS_DIR, filename);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "Not found" });
+
+    // Harden response headers so uploaded content can never execute as
+    // same-origin active content even if an active file type slips through:
+    //
+    // • CSP sandbox — strips all browsing-context privileges from the document:
+    //   no script, no same-origin access, no plugins, no form submission.
+    //   This is the primary active-content neutralisation layer.
+    // • Content-Disposition: attachment — browser must prompt a download rather
+    //   than rendering the file inline, providing a second layer.
+    // • X-Content-Type-Options: nosniff — prevents MIME-type sniffing that
+    //   could cause a text file to be interpreted as HTML.
+    res.setHeader("Content-Security-Policy", "sandbox");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.sendFile(filePath);
+  });
+
+  // Serve the a0 CLI script as plain text so users can `curl -fsSL <host>/a0 -o ~/.local/bin/a0`.
+  app.get("/a0", (_req, res) => {
+    const cliPath = path.resolve(process.cwd(), "scripts", "a0-cli.sh");
+    if (!fs.existsSync(cliPath)) {
+      res.status(404).type("text/plain").send("# a0 CLI script missing");
+      return;
+    }
+    res.setHeader("Content-Type", "text/x-shellscript; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.sendFile(cliPath);
+  });
 
   app.use("/api/v1/guest", (_req, res) => {
     res.status(404).json({ error: "Not found" });
@@ -135,16 +217,20 @@ async function waitForPython(maxWaitMs = 120_000): Promise<void> {
         maxAge: "1y",
         immutable: true,
       }));
-      // Everything else (index.html, robots.txt, etc.): never cache
+      // Everything else (index.html, robots.txt, etc.): never cache.
+      // X-Robots-Tag: index, follow explicitly overrides any platform-injected
+      // noindex header so deployed pages remain crawlable.
       app.use(express.static(STATIC_DIR, {
         setHeaders(res, filePath) {
           if (filePath.endsWith(".html")) {
             res.setHeader("Cache-Control", "no-store");
+            res.setHeader("X-Robots-Tag", "index, follow");
           }
         },
       }));
       app.get("/{*path}", (_req, res) => {
         res.setHeader("Cache-Control", "no-store");
+        res.setHeader("X-Robots-Tag", "index, follow");
         res.sendFile(path.join(STATIC_DIR, "index.html"));
       });
     } else {
@@ -176,4 +262,4 @@ async function waitForPython(maxWaitMs = 120_000): Promise<void> {
 })();
 
 export default app;
-// 112:0
+// 213:32 0:1 0:3

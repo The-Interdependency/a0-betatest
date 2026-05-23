@@ -1,9 +1,10 @@
-# 176:10
-from fastapi import APIRouter, HTTPException
+# 226:12 0:6 1:4
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, Any
 
 from ..storage import storage
+from ._admin_gate import require_admin
 
 # DOC module: system
 # DOC label: System
@@ -62,7 +63,6 @@ UI_META = {
                 {"key": "heartbeatRuns", "type": "text", "label": "Heartbeat Runs"},
                 {"key": "conversations", "type": "text", "label": "Conversations"},
                 {"key": "events", "type": "text", "label": "Events"},
-                {"key": "drafts", "type": "text", "label": "Drafts"},
             ],
         },
         {
@@ -73,17 +73,6 @@ UI_META = {
                 {"key": "title", "type": "text", "label": "Title"},
                 {"key": "status", "type": "badge", "label": "Status"},
                 {"key": "ceiling", "type": "text", "label": "Ceiling"},
-                {"key": "created_at", "type": "text", "label": "Created"},
-            ],
-        },
-        {
-            "id": "discovery",
-            "label": "Discovery Drafts",
-            "endpoint": "/api/v1/system/discovery",
-            "fields": [
-                {"key": "title", "type": "text", "label": "Title"},
-                {"key": "relevance_score", "type": "gauge", "label": "Relevance"},
-                {"key": "promoted_to_conversation", "type": "badge", "label": "Promoted"},
                 {"key": "created_at", "type": "text", "label": "Created"},
             ],
         },
@@ -101,7 +90,6 @@ DATA_SCHEMA = {
         {"method": "GET", "path": "/api/v1/system/activity"},
         {"method": "GET", "path": "/api/v1/system/deals"},
         {"method": "POST", "path": "/api/v1/system/deals"},
-        {"method": "GET", "path": "/api/v1/system/discovery"},
     ],
 }
 
@@ -139,12 +127,14 @@ async def list_toggles():
 
 
 @router.put("/system/toggles/{subsystem}")
-async def upsert_toggle(subsystem: str, body: ToggleInput):
+async def upsert_toggle(subsystem: str, request: Request, body: ToggleInput):
+    await require_admin(request)
     return await storage.upsert_system_toggle(subsystem, body.enabled, body.parameters)
 
 
 @router.delete("/system/toggles/{subsystem}")
-async def delete_toggle(subsystem: str):
+async def delete_toggle(subsystem: str, request: Request):
+    await require_admin(request)
     await storage.delete_system_toggle(subsystem)
     return {"ok": True}
 
@@ -175,7 +165,8 @@ async def list_deals(user_id: str = "default"):
 
 
 @router.post("/system/deals")
-async def create_deal(body: DealInput):
+async def create_deal(request: Request, body: DealInput):
+    await require_admin(request)
     data = body.model_dump(exclude_none=True)
     return await storage.create_deal(data)
 
@@ -189,30 +180,96 @@ async def get_deal(deal_id: int):
 
 
 @router.patch("/system/deals/{deal_id}")
-async def update_deal(deal_id: int, body: DealUpdate):
+async def update_deal(deal_id: int, request: Request, body: DealUpdate):
+    await require_admin(request)
     updates = body.model_dump(exclude_none=True)
     if not updates:
         raise HTTPException(status_code=400, detail="no updates")
     return await storage.update_deal(deal_id, updates)
 
 
-@router.get("/system/discovery")
-async def list_discovery(limit: int = 50):
-    return await storage.get_discovery_drafts(limit)
+
+import subprocess as _subprocess
+import time as _time
+
+_BOOT_AT: float = _time.time()
 
 
-@router.post("/system/discovery")
-async def create_draft(body: dict):
-    return await storage.create_discovery_draft(body)
+@router.get("/system/build-info")
+async def build_info(request: Request):
+    """Git commit + server boot time. Visible to ws/admin only."""
+    uid = request.headers.get("x-user-id")
+    role = request.headers.get("x-user-role", "")
+    if role not in ("admin", "ws"):
+        db_role = None
+        if uid:
+            from sqlalchemy import text as _sa_text
+            from ..database import get_session
+            async with get_session() as _sess:
+                _r = await _sess.execute(
+                    _sa_text("SELECT role FROM users WHERE id = :uid LIMIT 1"),
+                    {"uid": uid},
+                )
+                _row = _r.first()
+                db_role = _row[0] if _row else None
+        if db_role not in ("admin", "ws"):
+            raise HTTPException(status_code=403, detail="ws/admin only")
+    try:
+        raw = _subprocess.check_output(
+            ["git", "log", "-1", "--format=%H|%s|%cI"],
+            stderr=_subprocess.DEVNULL,
+            timeout=3,
+        ).decode().strip()
+        parts = raw.split("|", 2)
+        commit_hash = parts[0][:8] if len(parts) > 0 else "unknown"
+        commit_subject = parts[1] if len(parts) > 1 else ""
+        committed_at = parts[2] if len(parts) > 2 else ""
+    except Exception:
+        commit_hash, commit_subject, committed_at = "unknown", "", ""
+    return {
+        "commit_hash": commit_hash,
+        "commit_subject": commit_subject,
+        "committed_at": committed_at,
+        "boot_at": _BOOT_AT,
+    }
 
 
-@router.post("/system/discovery/{draft_id}/promote")
-async def promote_draft(draft_id: int, body: dict):
-    conv_id = body.get("conversation_id")
-    if not conv_id:
-        raise HTTPException(status_code=400, detail="conversation_id required")
-    await storage.promote_discovery_draft(draft_id, conv_id)
-    return {"ok": True}
+from pathlib import Path as _Path
+
+_DOCS_ROOT = _Path(__file__).resolve().parents[2]
+_ALLOWED_DOCS: dict[str, str] = {
+    "replit.md": "replit.md",
+    "CLAUDE.md": "CLAUDE.md",
+    "copilot.md": "copilot.md",
+    "README.md": "README.md",
+}
+
+
+@router.get("/system/docs")
+async def get_doc_file(file: str, request: Request):
+    """Return one of the four root-level Markdown docs. ws/admin only."""
+    uid = request.headers.get("x-user-id")
+    role = request.headers.get("x-user-role", "")
+    if role not in ("admin", "ws"):
+        db_role = None
+        if uid:
+            from sqlalchemy import text as _sa_text
+            from ..database import get_session
+            async with get_session() as _sess:
+                _r = await _sess.execute(
+                    _sa_text("SELECT role FROM users WHERE id = :uid LIMIT 1"),
+                    {"uid": uid},
+                )
+                _row = _r.first()
+                db_role = _row[0] if _row else None
+        if db_role not in ("admin", "ws"):
+            raise HTTPException(status_code=403, detail="ws/admin only")
+    if file not in _ALLOWED_DOCS:
+        raise HTTPException(status_code=400, detail=f"Unknown file. Allowed: {list(_ALLOWED_DOCS)}")
+    path = _DOCS_ROOT / _ALLOWED_DOCS[file]
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"{file} not found")
+    return {"file": file, "content": path.read_text(encoding="utf-8")}
 
 
 from ..services.editable_registry import editable_registry, EditableField
@@ -226,4 +283,4 @@ editable_registry.register(EditableField(
     patch_endpoint="/api/v1/system/toggles/{subsystem}",
     query_key="/api/v1/system/toggles",
 ))
-# 176:10
+# 226:12 0:6 1:4

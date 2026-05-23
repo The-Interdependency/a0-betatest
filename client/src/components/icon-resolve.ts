@@ -1,4 +1,4 @@
-// 10:0
+// 10:0 0:1 0:0
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -11,4 +11,4 @@ export function resolveIcon(name: string): LucideIcon | null {
   cache.set(name, resolved);
   return resolved;
 }
-// 10:0
+// 10:0 0:1 0:0

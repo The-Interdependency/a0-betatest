@@ -1,9 +1,9 @@
-# 29:0
+# 32:0 0:0 1:2
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..services.inference import call_energy_provider
-from ..services.energy_registry import energy_registry
+from ..services.inference import call_provider
+from ..services.energy_registry import active_provider
 
 router = APIRouter(prefix="/api/v1/guest", tags=["guest"])
 
@@ -23,9 +23,12 @@ async def guest_chat(body: GuestChatBody):
     if not body.message or not body.message.strip():
         raise HTTPException(status_code=400, detail="message is required")
 
-    provider_id = energy_registry.get_active_provider() or "gemini"
+    try:
+        provider_id = await active_provider()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
 
-    content, usage = await call_energy_provider(
+    content, usage = await call_provider(
         provider_id=provider_id,
         messages=[{"role": "user", "content": body.message.strip()}],
         system_prompt=SYSTEM_PROMPT,
@@ -39,4 +42,4 @@ async def guest_chat(body: GuestChatBody):
         tokens_used = max(10, len(body.message.split()) + len(content.split()))
 
     return {"content": content, "tokens_used": tokens_used}
-# 29:0
+# 32:0 0:0 1:2

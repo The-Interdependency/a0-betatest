@@ -1,4 +1,4 @@
-// 32:0
+// 32:0 0:5 0:1
 import { useQuery } from "@tanstack/react-query";
 
 export interface FieldDef {
@@ -36,4 +36,4 @@ export function useUiStructure() {
     staleTime: 30_000,
   });
 }
-// 32:0
+// 32:0 0:5 0:1

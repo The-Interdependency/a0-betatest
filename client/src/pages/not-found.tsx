@@ -1,4 +1,4 @@
-// 19:0
+// 19:0 0:1 0:1
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 
@@ -20,4 +20,4 @@ export default function NotFound() {
     </div>
   );
 }
-// 19:0
+// 19:0 0:1 0:1

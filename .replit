@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["libxcrypt", "postgresql"]
+packages = ["cargo", "libiconv", "libxcrypt", "openssl", "pkg-config", "postgresql", "rustc"]
 
 [[ports]]
 localPort = 5000
@@ -35,7 +35,7 @@ PORT = "5000"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["npm", "start"]
+run = ["bash", "scripts/start-prod.sh"]
 build = ["bash", "scripts/build-prod.sh"]
 publicDir = "dist/public"
 
@@ -61,7 +61,7 @@ args = "bash scripts/start-dev.sh"
 waitForPort = 5000
 
 [agent]
-integrations = ["javascript_database:1.0.0", "javascript_xai:1.0.0", "javascript_gemini_ai_integrations:2.0.0", "google-mail:1.0.0", "google-drive:1.0.0", "javascript_log_in_with_replit:2.0.0", "stripe:2.0.0", "github:1.0.0"]
+integrations = ["javascript_database:1.0.0", "javascript_xai:1.0.0", "javascript_gemini_ai_integrations:2.0.0", "google-mail:1.0.0", "google-drive:1.0.0", "javascript_log_in_with_replit:2.0.0", "stripe:2.0.0", "github:1.0.0", "javascript_object_storage:2.0.0"]
 
 [userenv]
 
@@ -77,4 +77,4 @@ OPENAI_STORE = "false"
 
 [postMerge]
 path = "scripts/post-merge.sh"
-timeoutMs = 20000
+timeoutMs = 90000

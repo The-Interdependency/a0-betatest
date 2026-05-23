@@ -1,4 +1,4 @@
-// 8:0
+// 8:0 4:2 4:1
 import pg from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@shared/schema";
@@ -9,4 +9,4 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 export const db = drizzle({ client: pool, schema });
-// 8:0
+// 8:0 4:2 4:1

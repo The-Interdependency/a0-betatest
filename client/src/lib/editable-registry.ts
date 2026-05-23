@@ -1,4 +1,4 @@
-// 40:16
+// 40:16 0:2 0:0
 /**
  * Frontend Editable Registry — client-side-only editable fields.
  *
@@ -58,4 +58,4 @@ export const FRONTEND_EDITABLE_SCHEMA: FrontendEditableField[] = [
     patch: (v) => localStorage.setItem(MARKDOWN_MODE_KEY, String(v)),
   },
 ];
-// 40:16
+// 40:16 0:2 0:0

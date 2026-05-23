@@ -1,4 +1,4 @@
-// 62:0
+// 62:0 0:0 0:1
 import * as React from "react"
 import { OTPInput, OTPInputContext } from "input-otp"
 import { Dot } from "lucide-react"
@@ -68,4 +68,4 @@ const InputOTPSeparator = React.forwardRef<
 InputOTPSeparator.displayName = "InputOTPSeparator"
 
 export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator }
-// 62:0
+// 62:0 0:0 0:1

@@ -1,4 +1,4 @@
-// 61:0
+// 61:0 1:2 1:1
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
@@ -67,4 +67,4 @@ export const queryClient = new QueryClient({
     },
   },
 });
-// 61:0
+// 61:0 1:2 1:1

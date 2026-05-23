@@ -1,4 +1,4 @@
-# 59:204
+# 67:227 0:0 1:5
 import asyncio
 import json
 import time
@@ -37,6 +37,14 @@ DEFAULT_TASKS = [
         "enabled": True,
         "weight": 0.6,
         "interval_seconds": 21600,
+    },
+    {
+        "name": "prime_seeds_tick",
+        "description": "Propagate 7 prime-seed PTCA cores; merge ST→memory_s; promote LT→memory_l on coherence edge",
+        "task_type": "prime_seeds_tick",
+        "enabled": True,
+        "weight": 0.9,
+        "interval_seconds": 60,
     },
 ]
 
@@ -202,23 +210,37 @@ class HeartbeatService:
             pcna.phi.propagate(steps=5)
             pcna.psi.propagate(steps=4)
             pcna.omega.propagate(steps=3)
-            pcna.guardian.propagate(steps=2)
+            pcna.theta.propagate(steps=2)
             pcna_8 = get_pcna_8()
             pcna_8.phi.propagate(steps=5)
             pcna_8.psi.propagate(steps=4)
             pcna_8.omega.propagate(steps=3)
-            pcna_8.guardian.propagate(steps=2)
+            pcna_8.theta.propagate(steps=2)
             return f"propagate_ok: p7_phi={pcna.phi.ring_coherence:.4f} p8_phi={pcna_8.phi.ring_coherence:.4f}"
 
         if task_type == "conversation_review":
             return await self._run_conversation_review()
 
+        if task_type == "prime_seeds_tick":
+            from ..engine.prime_seeds import get_prime_seeds
+            ps = get_prime_seeds()
+            result = ps.tick()
+            if result["lt_promoted"]:
+                await ps.save_lt_checkpoint()
+            return (
+                f"prime_seeds_tick_ok: tick={result['tick']}"
+                f" lt_promoted={result['lt_promoted']}"
+                f" st_coh={result['st_coherence']}"
+                f" lt_coh={result['lt_coherence']}"
+                f" avg_coh={result['avg_coherence']}"
+            )
+
         return f"unknown_task_type: {task_type}"
 
     async def _run_conversation_review(self) -> str:
         from ..storage import storage
-        from ..services.inference import call_energy_provider
-        from ..services.energy_registry import energy_registry
+        from ..services.inference import call_provider
+        from ..services.energy_registry import cheap_provider
 
         _DEFAULT_REVIEW_INTERVAL_S = 21600
 
@@ -250,20 +272,30 @@ class HeartbeatService:
             return "conversation_review_skip: no new messages"
 
         msg_lines = []
-        for m in messages[-100:]:
+        for m in messages[-20:]:
             role = m.get("role", "?")
             content = (m.get("content") or "")[:200]
             msg_lines.append(f"[{role}]: {content}")
         transcript = "\n".join(msg_lines)
 
         prompt_text = REVIEW_PROMPT + transcript
-        provider_id = energy_registry.get_active_provider() or "gemini"
+        # Use the cheapest available provider for conversation reviews —
+        # this is a structured extraction task, not a creative/reasoning one.
+        # skip_manifest=True: review never needs to know about a0 skills.
+        provider_id = cheap_provider()
+        if not provider_id:
+            return (
+                "conversation_review_skipped: no provider key configured "
+                "(check API key environment variables)"
+            )
 
         try:
-            raw_content, _ = await call_energy_provider(
+            raw_content, _ = await call_provider(
                 provider_id=provider_id,
                 messages=[{"role": "user", "content": prompt_text}],
                 max_tokens=800,
+                use_tools=False,
+                skip_manifest=True,
             )
         except Exception as e:
             return f"conversation_review_error: inference failed: {e}"
@@ -305,4 +337,4 @@ class HeartbeatService:
 
 
 heartbeat_service = HeartbeatService()
-# 59:204
+# 67:227 0:0 1:5

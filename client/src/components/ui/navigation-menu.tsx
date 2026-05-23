@@ -1,4 +1,4 @@
-// 117:0
+// 117:0 0:0 0:2
 import * as React from "react"
 import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu"
 import { cva } from "class-variance-authority"
@@ -127,4 +127,4 @@ export {
   NavigationMenuIndicator,
   NavigationMenuViewport,
 }
-// 117:0
+// 117:0 0:0 0:2

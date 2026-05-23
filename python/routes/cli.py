@@ -1,4 +1,4 @@
-# 106:82
+# 124:88 2:4 1:6
 # DOC module: cli
 # DOC label: CLI Keys
 # DOC description: API key management for CLI and Termux access. Users generate bearer tokens (a0k_...) used to authenticate one-shot or interactive terminal sessions without a browser session.
@@ -153,10 +153,9 @@ class CliChatBody(BaseModel):
 @router.post("/chat")
 async def cli_chat(body: CliChatBody, request: Request):
     """Stateless CLI chat — authenticates via Authorization: Bearer a0k_... header."""
-    from ..services.inference import call_energy_provider
-    from ..services.energy_registry import energy_registry
+    from ..services.energy_registry import active_provider as _active_provider
     from ..storage import storage
-    from .chat import _build_system_prompt
+    from ..services.prompt_assembly import build_system_prompt as _build_system_prompt
 
     api_key = ""
     auth_header = request.headers.get("authorization", "")
@@ -181,7 +180,13 @@ async def cli_chat(body: CliChatBody, request: Request):
         conv_id = body.conversation_id
         prior_msgs = await storage.get_messages(conv_id)
     else:
-        conv = await storage.create_conversation({"user_id": uid, "title": "CLI", "model": body.model or "grok"})
+        _cli_model = body.model
+        if not _cli_model:
+            try:
+                _cli_model = await _active_provider()
+            except RuntimeError as _e:
+                raise HTTPException(status_code=503, detail=str(_e))
+        conv = await storage.create_conversation({"title": "CLI", "model": _cli_model}, owner_user_id=uid)
         conv_id = conv["id"]
         prior_msgs = []
 
@@ -192,8 +197,25 @@ async def cli_chat(body: CliChatBody, request: Request):
     ]
     history.append({"role": "user", "content": body.message})
 
-    model_id = body.model or conv.get("model", "grok")
-    provider_id = energy_registry.get_active_provider() or model_id
+    # Explicit body.model wins over the active provider — codifying the
+    # contract that "I asked for X, give me X" beats the global default.
+    model_id = body.model or conv.get("model")
+    if not model_id:
+        try:
+            model_id = await _active_provider()
+        except RuntimeError as _e:
+            raise HTTPException(status_code=503, detail=str(_e))
+    # Resolve to the actual provider id so persisted message.model is
+    # provider-consistent regardless of whether the caller sent a model
+    # name or a provider id.
+    from ..services.model_catalog import resolve_model_id as _rmi
+    try:
+        provider_id, _ = await _rmi(model_id)
+    except ValueError:
+        try:
+            provider_id = await _active_provider()
+        except RuntimeError:
+            provider_id = model_id
     system_prompt = await _build_system_prompt(tier)
 
     await storage.create_message({
@@ -204,11 +226,13 @@ async def cli_chat(body: CliChatBody, request: Request):
         "metadata": {"tier": tier, "via": "cli"},
     })
 
-    content, usage = await call_energy_provider(
-        provider_id=provider_id,
-        messages=history,
-        system_prompt=system_prompt or None,
+    # Route through the canonical adapter so CLI shares the chat seam.
+    from ..services.call_fn import call_model
+    content, usage = await call_model(
+        provider_id,
+        history,
         user_id=uid,
+        system_prompt=system_prompt or None,
     )
 
     await storage.create_message({
@@ -225,4 +249,4 @@ async def cli_chat(body: CliChatBody, request: Request):
         "tier": tier,
         "usage": usage,
     }
-# 106:82
+# 124:88 2:4 1:6

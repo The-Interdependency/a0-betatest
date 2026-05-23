@@ -1,4 +1,4 @@
-// 25:0
+// 25:0 0:0 0:2
 import * as React from "react"
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
 import { Check } from "lucide-react"
@@ -27,4 +27,4 @@ const Checkbox = React.forwardRef<
 Checkbox.displayName = CheckboxPrimitive.Root.displayName
 
 export { Checkbox }
-// 25:0
+// 25:0 0:0 0:2

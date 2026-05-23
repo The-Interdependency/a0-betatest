@@ -1,4 +1,4 @@
-// 343:1
+// 343:1 0:1 0:4
 // // 1:1
 import { useState, useCallback } from "react";
 import { Plus, Trash2, ChevronDown, ChevronRight, Code2, FormInput } from "lucide-react";
@@ -367,4 +367,4 @@ export default function UiMetaFieldEditor({ value, onChange, disabled = false }:
     </div>
   );
 }
-// 343:1
+// 343:1 0:1 0:4

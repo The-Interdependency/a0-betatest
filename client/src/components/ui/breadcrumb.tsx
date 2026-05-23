@@ -1,4 +1,4 @@
-// 105:0
+// 105:0 0:0 0:2
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { ChevronRight, MoreHorizontal } from "lucide-react"
@@ -114,4 +114,4 @@ export {
   BreadcrumbSeparator,
   BreadcrumbEllipsis,
 }
-// 105:0
+// 105:0 0:0 0:2

@@ -1,4 +1,4 @@
-# 43:6
+# 43:6 0:0 6:0
 import json
 from pathlib import Path
 from typing import Any
@@ -28,7 +28,7 @@ def get_routing_rules() -> list[dict]:
 
 
 def get_default_role() -> str:
-    return load_policy().get("routing", {}).get("default_role", "root_orchestrator")
+    return load_policy().get("routing", {}).get("default_role", "conduct")
 
 
 def get_approval_gate_actions() -> list[str]:
@@ -79,4 +79,4 @@ def get_action_scope(action: str) -> str | None:
 
 def get_version() -> str:
     return load_policy().get("version", "unknown")
-# 43:6
+# 43:6 0:0 6:0

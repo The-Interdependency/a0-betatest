@@ -1,12 +1,12 @@
-# 198:61
+# 205:66 0:0 4:4
 """
 ZetaEngine — Zeta Function Alpha Echo
 
-ZFAE passively learns from every energy provider response.
+ZFAE passively learns from every model response.
 Every assistant reply is evaluated by EDCM (no LLM), producing a coherence
 score that drives PCNA phi/psi/omega reward backprop.
 
-Naming: a0(zeta fun alpha echo) {provider}
+Naming: a0(model)zfae
   - zeta   = the observer function
   - fun    = the phi ring coherence transform
   - alpha  = the learning rate parameter
@@ -139,8 +139,8 @@ class ZetaEngine:
         """
         try:
             from ..main import get_pcna
-            guardian = get_pcna().guardian
-            open_frac = float(guardian.gate_open.mean())
+            theta = get_pcna().theta
+            open_frac = float(theta.gate_open.mean())
             return round(0.8 + open_frac * 0.4, 4)
         except Exception as exc:
             print(f"[zfae:gate_factor] error reading Theta gate factor: {exc}")
@@ -283,6 +283,20 @@ class ZetaEngine:
             print(f"[zfae:sigma] set_content_interval error: {exc}")
             return {}
 
+    def memory_context_for_prompt(self) -> dict:
+        """Return prime-seed memory context for prompt composition.
+
+        LT (N=19) → inject into prompt cache prefix (stable, high-reward).
+        ST (N=17) → inject after cache (volatile, recent).
+        Sub-agent seeds are volatile and not returned here.
+        """
+        try:
+            from .prime_seeds import get_prime_seeds
+            return get_prime_seeds().memory_context()
+        except Exception as exc:
+            print(f"[zfae:memory_context] error: {exc}")
+            return {"lt": {}, "st": {}}
+
     def state(self) -> dict:
         return {
             "agent": self.AGENT_NAME,
@@ -294,4 +308,4 @@ class ZetaEngine:
 
 
 _zeta_engine = ZetaEngine()
-# 198:61
+# 205:66 0:0 4:4

@@ -1,4 +1,4 @@
-// 15:0
+// 15:0 0:1 0:0
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
@@ -18,4 +18,4 @@ export function useIsMobile() {
 
   return !!isMobile
 }
-// 15:0
+// 15:0 0:1 0:0

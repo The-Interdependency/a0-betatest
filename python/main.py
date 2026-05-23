@@ -1,4 +1,4 @@
-# 169:97
+# 326:312 0:0 10:19
 import os
 import time
 from contextlib import asynccontextmanager
@@ -13,9 +13,8 @@ from .database import engine
 from .engine import PCNAEngine
 from .routes import ALL_ROUTERS, collect_ui_meta
 from .services.heartbeat import heartbeat_service
-from .engine.module_registry import initialize_registry, get_registry
 from .agents.zfae import compose_name, ZFAE_AGENT_DEF
-from .services.energy_registry import energy_registry
+from .services.energy_registry import default_provider, BUILTIN_PROVIDERS as _BP_MAIN
 
 _pcna: PCNAEngine | None = None
 _pcna_8: PCNAEngine | None = None
@@ -26,7 +25,7 @@ def get_pcna() -> PCNAEngine:
     global _pcna
     if _pcna is None:
         _pcna = PCNAEngine(phases=7)
-        _instances[_pcna.guardian.instance_id] = _pcna
+        _instances[_pcna.theta.instance_id] = _pcna
     return _pcna
 
 
@@ -35,6 +34,7 @@ def get_pcna_8() -> PCNAEngine:
     if _pcna_8 is None:
         _pcna_8 = PCNAEngine(phases=8)
     return _pcna_8
+
 
 
 _ZFAE_TOOL_SPECS = {
@@ -48,10 +48,6 @@ _ZFAE_TOOL_SPECS = {
     },
     "memory_flush": {
         "description": "Flush active memory seeds to checkpoint — persists summarized context for long-term retrieval",
-        "handler_type": "internal",
-    },
-    "bandit_pull": {
-        "description": "Pull a bandit arm from the EDCM reward router — selects energy provider based on expected coherence yield",
         "handler_type": "internal",
     },
     "edcm_score": {
@@ -84,6 +80,10 @@ _ZFAE_TOOL_SPECS = {
     },
     "set_user_tier": {
         "description": "Set a user's subscription tier (admin-only). Params: user_id (string), tier (string — one of: free, ws, pro, admin, seeker, operator, patron, founder). Requires the calling session to have is_admin: true. Changes take effect immediately without a subscription change.",
+        "handler_type": "internal",
+    },
+    "post_tweet": {
+        "description": "Post a tweet to X (Twitter) using OAuth 1.0a credentials. Params: text (≤280 chars), reply_to (optional tweet id). Requires X_API_KEY/SECRET and X_ACCESS_TOKEN/SECRET env vars.",
         "handler_type": "internal",
     },
 }
@@ -120,27 +120,6 @@ async def _ensure_default_tools() -> None:
         print(f"[tools] {len(_ZFAE_TOOL_SPECS)} ZFAE tools already present")
 
 
-async def _seed_system_shadow_modules() -> None:
-    """Upsert shadow DB records for every hardcoded route module.
-
-    These records are visible in the WS editor but completely immutable via the
-    API (status='system', owner_id='system'). The backing code is never touched;
-    this is purely informational / safe-mode reference.
-    """
-    from .storage import storage as _storage
-    metas = collect_ui_meta()
-    for meta in metas:
-        tab_id = meta.get("tab_id", "")
-        slug = f"system::{tab_id}"
-        label = meta.get("label", tab_id)
-        await _storage.upsert_system_shadow(
-            slug=slug,
-            name=label,
-            description=f"System module — hardcoded route ({tab_id})",
-            ui_meta=meta,
-        )
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("[python] FastAPI starting — DB engine initialized")
@@ -150,9 +129,9 @@ async def lifespan(app: FastAPI):
     pcna_8 = get_pcna_8()
     await pcna_8.load_checkpoint()
     print(f"[python] PCNA p8 online — blueprint {pcna_8.blueprint_hash[:12]}...")
-    await energy_registry.load_from_db()
-    provider = energy_registry.get_active_provider()
-    agent_name = compose_name(provider)
+    provider = default_provider()
+    _pinfo = _BP_MAIN.get(provider) if provider else None
+    agent_name = compose_name(provider, model_id=(_pinfo.get("spec_model") if _pinfo else None))
     print(f"[python] Agent: {agent_name}")
     from .routes.agents import ensure_primary_agent
     await ensure_primary_agent(pcna)
@@ -183,34 +162,365 @@ async def lifespan(app: FastAPI):
         """))
     print("[approval_scopes] table ensured")
     async with get_session() as _sess:
-        await _sess.execute(_sa_text("""
-            CREATE TABLE IF NOT EXISTS ws_modules (
-                id SERIAL PRIMARY KEY,
-                slug VARCHAR(120) UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                description TEXT NOT NULL DEFAULT '',
-                owner_id VARCHAR NOT NULL,
-                status VARCHAR(20) NOT NULL DEFAULT 'inactive',
-                handler_code TEXT,
-                ui_meta JSONB NOT NULL DEFAULT '{}',
-                route_config JSONB NOT NULL DEFAULT '{}',
-                error_log TEXT,
-                version INTEGER NOT NULL DEFAULT 1,
-                content_hash VARCHAR(64),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
+        await _sess.execute(_sa_text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS transcripts_unlocked BOOLEAN NOT NULL DEFAULT false"
+        ))
+    print("[users] transcripts_unlocked column ensured")
+    # Drop the old `server_default='gemini'` on conversations.model. Every
+    # call site (chat.py, forge.py, focus.py, cli.py) already passes a model
+    # explicitly; the default was a silent fallback that could hide a bug
+    # where future code paths forgot to set it. Idempotent — Postgres turns
+    # ALTER COLUMN ... DROP DEFAULT into a no-op when no default exists.
     async with get_session() as _sess:
         await _sess.execute(_sa_text(
-            "ALTER TABLE ws_modules ADD COLUMN IF NOT EXISTS last_swapped_at TIMESTAMP"
+            "ALTER TABLE conversations ALTER COLUMN model DROP DEFAULT"
         ))
-    print("[ws_modules] table ensured")
-    await _seed_system_shadow_modules()
-    print("[ws_modules] system shadows seeded")
-    _hot_count = await get_registry().load_all_active()
-    if _hot_count:
-        print(f"[module_registry] {_hot_count} hot-swap module(s) mounted")
+    print("[conversations] silent 'gemini' default dropped from model column")
+    async with get_session() as _sess:
+        # agent_runs / agent_logs / settings — backbone for per-recursion-level
+        # structured logging, cut-mode + cap enforcement, fleet view.
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS agent_runs (
+                id VARCHAR PRIMARY KEY,
+                parent_run_id VARCHAR,
+                root_run_id VARCHAR,
+                depth INTEGER NOT NULL DEFAULT 0,
+                status VARCHAR(20) NOT NULL DEFAULT 'running',
+                orchestration_mode VARCHAR(40) NOT NULL DEFAULT 'single',
+                cut_mode VARCHAR(10) NOT NULL DEFAULT 'soft',
+                providers JSONB NOT NULL DEFAULT '[]'::jsonb,
+                spawned_by_tool VARCHAR(80),
+                task_summary TEXT,
+                started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                ended_at TIMESTAMP,
+                total_tokens INTEGER NOT NULL DEFAULT 0,
+                total_cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0
+            )
+        """))
+        # Task #122 — sub-agent supervision hardening. Worker liveness,
+        # crash reaping, and explicit retry policy. last_heartbeat_at is
+        # advanced by the per-run heartbeat task; the stale-sweep loop
+        # uses (status, last_heartbeat_at) to find dead claims. worker_id
+        # records *which* process owns the claim so the no-orphan
+        # contract can match registry entries to DB rows. retry_policy
+        # is per-row and defaults to 'none' (current behavior).
+        for _alter in (
+            "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS last_heartbeat_at TIMESTAMP",
+            "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS retry_policy VARCHAR(40) NOT NULL DEFAULT 'none'",
+            "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS failure_reason VARCHAR(120)",
+            "ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS worker_id VARCHAR(120)",
+        ):
+            await _sess.execute(_sa_text(_alter))
+        # Backfill heartbeat for existing rows so the sweep doesn't reap
+        # them on first boot. NULL stays NULL where started_at is NULL.
+        await _sess.execute(_sa_text(
+            "UPDATE agent_runs SET last_heartbeat_at = started_at "
+            "WHERE last_heartbeat_at IS NULL AND started_at IS NOT NULL"
+        ))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS agent_logs (
+                id VARCHAR PRIMARY KEY,
+                run_id VARCHAR NOT NULL,
+                depth INTEGER NOT NULL DEFAULT 0,
+                parent_run_id VARCHAR,
+                level VARCHAR(8) NOT NULL DEFAULT 'INFO',
+                event VARCHAR(40) NOT NULL,
+                payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+                ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS settings (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR NOT NULL DEFAULT '',
+                key VARCHAR(120) NOT NULL,
+                value JSONB NOT NULL DEFAULT '{}'::jsonb,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT uq_settings_user_key UNIQUE (user_id, key)
+            )
+        """))
+        for _idx in (
+            "CREATE INDEX IF NOT EXISTS idx_agent_runs_parent ON agent_runs(parent_run_id)",
+            "CREATE INDEX IF NOT EXISTS idx_agent_runs_root_started ON agent_runs(root_run_id, started_at)",
+            "CREATE INDEX IF NOT EXISTS idx_agent_runs_status_started ON agent_runs(status, started_at DESC)",
+            # Task #122 — feeds the stale-claim sweep without scanning.
+            "CREATE INDEX IF NOT EXISTS idx_agent_runs_status_heartbeat ON agent_runs(status, last_heartbeat_at)",
+            "CREATE INDEX IF NOT EXISTS idx_agent_logs_run_ts ON agent_logs(run_id, ts)",
+            "CREATE INDEX IF NOT EXISTS idx_agent_logs_parent_depth_ts ON agent_logs(parent_run_id, depth, ts)",
+            "CREATE INDEX IF NOT EXISTS idx_agent_logs_event_ts ON agent_logs(event, ts DESC)",
+        ):
+            await _sess.execute(_sa_text(_idx))
+    async with get_session() as _sess:
+        # Fleet benchmarking: persistent contestants + runs.
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS fleet_benchmarks (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR NOT NULL,
+                name TEXT NOT NULL,
+                prompt TEXT NOT NULL DEFAULT '',
+                mode VARCHAR(20) NOT NULL DEFAULT 'one_shot',
+                judge_enabled BOOLEAN NOT NULL DEFAULT false,
+                judge_model VARCHAR(80),
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS fleet_contestants (
+                id SERIAL PRIMARY KEY,
+                benchmark_id INTEGER NOT NULL REFERENCES fleet_benchmarks(id) ON DELETE CASCADE,
+                slot INTEGER NOT NULL,
+                label TEXT NOT NULL DEFAULT '',
+                provider_id VARCHAR(80) NOT NULL,
+                model_id VARCHAR(120) NOT NULL DEFAULT '',
+                agent_id INTEGER,
+                orchestration_mode VARCHAR(40) NOT NULL DEFAULT 'single',
+                providers JSONB NOT NULL DEFAULT '[]'::jsonb,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT uq_fleet_contestants_slot UNIQUE (benchmark_id, slot)
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS fleet_benchmark_runs (
+                id VARCHAR PRIMARY KEY,
+                benchmark_id INTEGER NOT NULL REFERENCES fleet_benchmarks(id) ON DELETE CASCADE,
+                user_id VARCHAR NOT NULL,
+                prompt_snapshot TEXT NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'running',
+                started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                finished_at TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS fleet_contestant_runs (
+                id VARCHAR PRIMARY KEY,
+                run_id VARCHAR NOT NULL REFERENCES fleet_benchmark_runs(id) ON DELETE CASCADE,
+                contestant_id INTEGER NOT NULL,
+                slot INTEGER NOT NULL,
+                conversation_id INTEGER,
+                status VARCHAR(20) NOT NULL DEFAULT 'running',
+                content TEXT NOT NULL DEFAULT '',
+                error TEXT,
+                latency_ms INTEGER NOT NULL DEFAULT 0,
+                prompt_tokens INTEGER NOT NULL DEFAULT 0,
+                completion_tokens INTEGER NOT NULL DEFAULT 0,
+                cost_usd NUMERIC(12,6) NOT NULL DEFAULT 0,
+                started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                finished_at TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS fleet_judgments (
+                id SERIAL PRIMARY KEY,
+                run_id VARCHAR NOT NULL REFERENCES fleet_benchmark_runs(id) ON DELETE CASCADE,
+                judge_model VARCHAR(120) NOT NULL,
+                scores JSONB NOT NULL DEFAULT '{}'::jsonb,
+                winner_contestant_id INTEGER,
+                rationale TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        for _idx in (
+            "CREATE INDEX IF NOT EXISTS idx_fleet_benchmarks_user ON fleet_benchmarks(user_id, updated_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_fleet_contestants_bench ON fleet_contestants(benchmark_id, slot)",
+            "CREATE INDEX IF NOT EXISTS idx_fleet_runs_bench ON fleet_benchmark_runs(benchmark_id, started_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_fleet_contestant_runs_run ON fleet_contestant_runs(run_id, slot)",
+        ):
+            await _sess.execute(_sa_text(_idx))
+    print("[fleet_benchmarks] tables ensured")
+    async with get_session() as _sess:
+        for _ddl in (
+            "ALTER TABLE messages ADD COLUMN IF NOT EXISTS orchestration_mode VARCHAR(32) DEFAULT 'single'",
+            "ALTER TABLE messages ADD COLUMN IF NOT EXISTS cut_mode VARCHAR(8) DEFAULT 'soft'",
+            "ALTER TABLE messages ADD COLUMN IF NOT EXISTS parent_run_id VARCHAR",
+        ):
+            await _sess.execute(_sa_text(_ddl))
+    print("[messages] orchestration columns ensured")
+    async with get_session() as _sess:
+        await _sess.execute(_sa_text(
+            "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS enabled_tools JSONB"
+        ))
+    async with get_session() as _sess:
+        for _ddl in (
+            "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS max_tool_rounds INTEGER",
+            "ALTER TABLE conversations ADD COLUMN IF NOT EXISTS inference_mode VARCHAR(20)",
+        ):
+            await _sess.execute(_sa_text(_ddl))
+    print("[conversations] enabled_tools/max_tool_rounds/inference_mode columns ensured")
+    async with get_session() as _sess:
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS transcript_uploads (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(120),
+                filename TEXT NOT NULL,
+                mime VARCHAR(120),
+                byte_size INTEGER NOT NULL DEFAULT 0,
+                status VARCHAR(24) NOT NULL DEFAULT 'queued',
+                error TEXT,
+                source_slug VARCHAR(100),
+                report_id INTEGER,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                finished_at TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS transcript_messages (
+                id SERIAL PRIMARY KEY,
+                report_id INTEGER NOT NULL,
+                idx INTEGER NOT NULL DEFAULT 0,
+                speaker VARCHAR(120),
+                content TEXT,
+                cm REAL DEFAULT 0,
+                da REAL DEFAULT 0,
+                drift REAL DEFAULT 0,
+                dvg REAL DEFAULT 0,
+                int_val REAL DEFAULT 0,
+                tbf REAL DEFAULT 0,
+                directives_fired JSONB
+            )
+        """))
+        for _ddl in (
+            "ALTER TABLE transcript_reports ADD COLUMN IF NOT EXISTS risk_loop REAL DEFAULT 0",
+            "ALTER TABLE transcript_reports ADD COLUMN IF NOT EXISTS risk_fixation REAL DEFAULT 0",
+            "ALTER TABLE transcript_reports ADD COLUMN IF NOT EXISTS correction_fidelity REAL DEFAULT 0",
+            "ALTER TABLE transcript_reports ADD COLUMN IF NOT EXISTS edcmbone_version VARCHAR(40)",
+            "CREATE INDEX IF NOT EXISTS idx_transcript_uploads_user ON transcript_uploads(user_id, created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_transcript_uploads_report ON transcript_uploads(report_id)",
+            "CREATE INDEX IF NOT EXISTS idx_transcript_messages_report ON transcript_messages(report_id, idx)",
+        ):
+            await _sess.execute(_sa_text(_ddl))
+        # FK hardening — wrapped per-statement so an existing constraint name doesn't abort the lot.
+        for _fk in (
+            ("fk_transcript_uploads_report",
+             "ALTER TABLE transcript_uploads ADD CONSTRAINT fk_transcript_uploads_report "
+             "FOREIGN KEY (report_id) REFERENCES transcript_reports(id) ON DELETE SET NULL"),
+            ("fk_transcript_messages_report",
+             "ALTER TABLE transcript_messages ADD CONSTRAINT fk_transcript_messages_report "
+             "FOREIGN KEY (report_id) REFERENCES transcript_reports(id) ON DELETE CASCADE"),
+        ):
+            try:
+                exists = await _sess.execute(_sa_text(
+                    "SELECT 1 FROM pg_constraint WHERE conname = :n"
+                ), {"n": _fk[0]})
+                if exists.scalar_one_or_none() is None:
+                    await _sess.execute(_sa_text(_fk[1]))
+            except Exception as _e:
+                print(f"[transcript_*] FK skipped ({_fk[0]}): {_e}")
+    print("[transcript_*] tables/columns ensured")
+    # --- EDCMbone explainer tables ---
+    async with get_session() as _sess:
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS transcript_explanations (
+                id SERIAL PRIMARY KEY,
+                report_id INTEGER NOT NULL UNIQUE,
+                user_id VARCHAR(120) NOT NULL,
+                model_id VARCHAR(80) NOT NULL,
+                prompt_tokens INTEGER NOT NULL DEFAULT 0,
+                completion_tokens INTEGER NOT NULL DEFAULT 0,
+                cost_cents INTEGER NOT NULL DEFAULT 0,
+                body TEXT NOT NULL,
+                citations JSONB NOT NULL DEFAULT '[]'::jsonb,
+                paid_with VARCHAR(8) NOT NULL DEFAULT 'free',
+                paid_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        # Idempotent column add for existing deploys created before paid_at
+        # was part of the schema. Safe to run on a fresh deploy too.
+        await _sess.execute(_sa_text(
+            "ALTER TABLE transcript_explanations "
+            "ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        ))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS explanation_credits (
+                user_id VARCHAR(120) PRIMARY KEY,
+                free_remaining INTEGER NOT NULL DEFAULT 3,
+                paid_remaining INTEGER NOT NULL DEFAULT 0,
+                lifetime_purchased INTEGER NOT NULL DEFAULT 0,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text(
+            "CREATE INDEX IF NOT EXISTS idx_transcript_explanations_user "
+            "ON transcript_explanations(user_id, created_at DESC)"
+        ))
+        # FK to transcript_reports — cascade so a report deletion (rare,
+        # operator-initiated) cleans up its paid explanation row too.
+        try:
+            exists = await _sess.execute(_sa_text(
+                "SELECT 1 FROM pg_constraint WHERE conname = 'fk_explanations_report'"
+            ))
+            if exists.scalar_one_or_none() is None:
+                await _sess.execute(_sa_text(
+                    "ALTER TABLE transcript_explanations ADD CONSTRAINT fk_explanations_report "
+                    "FOREIGN KEY (report_id) REFERENCES transcript_reports(id) ON DELETE CASCADE"
+                ))
+        except Exception as _e:
+            print(f"[transcript_explanations] FK skipped: {_e}")
+    print("[transcript_explanations/explanation_credits] tables ensured")
+    print("[agent_runs/agent_logs/settings] tables ensured")
+    # Task #148 — model-instantiation / D&D party tables
+    async with get_session() as _sess:
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS model_instances (
+                id VARCHAR PRIMARY KEY,
+                canonical_name TEXT UNIQUE NOT NULL,
+                kind VARCHAR(20) NOT NULL DEFAULT 'zfae',
+                vendor VARCHAR(40) NOT NULL,
+                model_id TEXT NOT NULL,
+                swarm_context TEXT,
+                remote_url TEXT,
+                remote_secret_ref TEXT,
+                role_slot VARCHAR(20),
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT uq_model_instance_slot UNIQUE (role_slot)
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS instance_memory (
+                id VARCHAR PRIMARY KEY,
+                instance_id VARCHAR NOT NULL,
+                tier VARCHAR(4) NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text(
+            "CREATE INDEX IF NOT EXISTS idx_instance_memory_iid ON instance_memory(instance_id)"
+        ))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS instance_tasks (
+                id VARCHAR PRIMARY KEY,
+                instance_id VARCHAR NOT NULL,
+                title TEXT NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'open',
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS instance_chats (
+                id VARCHAR PRIMARY KEY,
+                instance_id VARCHAR NOT NULL,
+                role VARCHAR(20) NOT NULL,
+                content TEXT NOT NULL,
+                archive_id VARCHAR,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        await _sess.execute(_sa_text("""
+            CREATE TABLE IF NOT EXISTS instance_chat_archives (
+                id VARCHAR PRIMARY KEY,
+                instance_id VARCHAR NOT NULL,
+                label TEXT NOT NULL,
+                archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                merge_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+            )
+        """))
+    print("[model_instances] tables ensured")
+    from .services.energy_registry import BUILTIN_PROVIDERS as _BP
+    print(f"[providers] {len(_BP)} provider(s) in catalog (no DB bootstrap)")
     from .storage import storage as _storage
     _res_toggle = await _storage.get_system_toggle("zfae:resolution")
     if _res_toggle and _res_toggle.get("parameters"):
@@ -221,12 +531,33 @@ async def lifespan(app: FastAPI):
     _sigma = get_sigma()
     _sigma.start_watch()
     print(f"[sigma] Σ online — n={_sigma.n}, resolution={_sigma.resolution}")
+    from .engine.prime_seeds import get_prime_seeds
+    get_prime_seeds().boot()
+    await get_prime_seeds().load_lt_checkpoint()
+    print("[prime_seeds] 7 PTCA seed cores online")
     await heartbeat_service.start()
     # Periodic sweep so expired chat-approval gates don't accumulate on a quiet system.
     from .routes.chat import pending_gate_sweep_loop
     from .services.bg_tasks import spawn as _spawn_bg
     _spawn_bg(pending_gate_sweep_loop(), name="pending_gate_sweep")
     print("[chat] pending-gate sweep loop started")
+    from .services.spawn_executor import (
+        _poll_loop as _spawn_exec_loop,
+        _stale_sweep_loop as _spawn_sweep_loop,
+        HEARTBEAT_INTERVAL_S as _hb_s,
+        STALE_SWEEP_INTERVAL_S as _sweep_s,
+        WORKER_ID as _worker_id,
+    )
+    _spawn_bg(_spawn_exec_loop(), name="spawn_executor_poll")
+    print("[spawn_executor] poll loop started — pending agent_runs will be executed")
+    # Task #122 — supervision sweep. Reaps 'executing' rows whose
+    # heartbeat is stale past 2× the interval. Owned by the same
+    # bg_tasks lifespan as the poller so cancel_all takes both down.
+    _spawn_bg(_spawn_sweep_loop(), name="spawn_executor_sweep")
+    print(
+        f"[spawn_executor] stale-sweep started (heartbeat={_hb_s:.0f}s, "
+        f"sweep={_sweep_s:.0f}s, worker_id={_worker_id})"
+    )
     yield
     await heartbeat_service.stop()
     try:
@@ -239,7 +570,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="A0P Python Backend", lifespan=lifespan)
-initialize_registry(app)
 
 _IS_PROD = os.environ.get("NODE_ENV") == "production" or os.environ.get("ENV") == "production"
 _INTERNAL_SECRET = os.environ.get("INTERNAL_API_SECRET")
@@ -304,14 +634,15 @@ for r in ALL_ROUTERS:
 @app.get("/api/health")
 async def health():
     pcna = get_pcna()
-    provider = energy_registry.get_active_provider()
+    provider = default_provider()
+    _hp = _BP_MAIN.get(provider) if provider else None
     return {
         "status": "ok",
         "service": "python-backend",
         "pcna": "online",
-        "instance_id": pcna.guardian.instance_id,
-        "agent": compose_name(provider),
-        "energy_provider": provider,
+        "instance_id": pcna.theta.instance_id,
+        "agent": compose_name(provider, model_id=(_hp.get("spec_model") if _hp else None)),
+        "provider": provider,
         "uptime_s": round(time.time() - pcna.created_at, 1),
         "heartbeat": heartbeat_service.status(),
     }
@@ -319,14 +650,14 @@ async def health():
 
 @app.get("/api/v1/ui/structure")
 async def ui_structure():
-    from .storage import storage as _storage
     base_tabs = collect_ui_meta()
-    ws_tabs = await _storage.get_active_ws_module_ui_metas()
-    all_tabs = base_tabs + ws_tabs
-    all_tabs.sort(key=lambda t: t.get("order", 99))
+    base_tabs.sort(key=lambda t: t.get("order", 99))
     return {
-        "tabs": all_tabs,
-        "agent": compose_name(energy_registry.get_active_provider()),
+        "tabs": base_tabs,
+        "agent": compose_name(
+            default_provider(),
+            model_id=((_BP_MAIN.get(default_provider()) or {}).get("spec_model")),
+        ),
         "version": "2.0.0",
     }
 
@@ -339,4 +670,4 @@ if IS_PROD and os.path.isdir(STATIC_DIR):
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))
-# 169:97
+# 326:312 0:0 10:19

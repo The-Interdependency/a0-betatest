@@ -1,4 +1,4 @@
-// 42:0
+// 42:0 0:0 0:2
 import * as React from "react"
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
 
@@ -45,4 +45,4 @@ const ScrollBar = React.forwardRef<
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName
 
 export { ScrollArea, ScrollBar }
-// 42:0
+// 42:0 0:0 0:2

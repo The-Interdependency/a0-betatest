@@ -1,24 +1,29 @@
-// 233:0
+// 327:10 2:1 2:8
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useSEO } from "@/hooks/use-seo";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Plus, Loader2, Bot, Zap, Target, AlertTriangle, ChevronDown, ChevronUp, X, Archive, Menu,
+  Plus, Loader2, Bot, Target, Archive, Menu,
 } from "lucide-react";
 import {
   type Message,
   MessageBubble,
+  conversationCostUSD,
+  fmtCostUSD,
 } from "@/components/chat-messages";
+import { LiveOrchProgress } from "@/components/LiveOrchProgress";
+import { Badge } from "@/components/ui/badge";
 import {
   type Conversation,
   ConversationList,
   ContextBoostPanel,
   ChatInput,
+  PreChatInspectorPanel,
+  ConvToolsPopover,
 } from "@/components/chat-widgets";
 
 const CONV_KEY = "a0p_active_conv";
@@ -54,18 +59,41 @@ export default function ChatPage() {
     refetchInterval: showArchived ? 30_000 : false,
   });
 
+  const clearActiveConv = () => {
+    localStorage.removeItem(CONV_KEY);
+    setActiveConvId(null);
+  };
+
   const { data: messages = [], isLoading: msgsLoading } = useQuery<Message[]>({
     queryKey: ["/api/v1/conversations", activeConvId, "messages"],
     enabled: !!activeConvId,
     refetchInterval: 5_000,
+    retry: false,
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/v1/conversations/${activeConvId}/messages`);
+      if (res.status === 404) {
+        // Stale localStorage id — drop it and let auto-select pick a fresh one.
+        clearActiveConv();
+        return [];
+      }
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
   });
 
   useEffect(() => {
-    if (conversations.length > 0 && !conversations.find((c) => c.id === activeConvId)) {
-      const found = archivedConvs.find((c) => c.id === activeConvId);
-      if (!found) selectConv(conversations[0].id);
-    }
-  }, [conversations, activeConvId]);
+    // Only run validation once the conversations list has actually loaded.
+    if (convsLoading || !activeConvId) return;
+    const inActive = conversations.some((c) => c.id === activeConvId);
+    if (inActive) return;
+    const inArchived = archivedConvs.some((c) => c.id === activeConvId);
+    if (inArchived) return;
+    // Active id refers to a conversation we can't see — clear it. If there
+    // are other conversations, jump to the most recent; otherwise leave
+    // empty (user will land on the "Start a conversation" card).
+    if (conversations.length > 0) selectConv(conversations[0].id);
+    else clearActiveConv();
+  }, [conversations, archivedConvs, activeConvId, convsLoading]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -127,17 +155,63 @@ export default function ChatPage() {
     onError: (e: Error) => toast({ title: "Archive failed", description: e.message, variant: "destructive" }),
   });
 
+  // Per-send state for the LiveOrchProgress panel; cleared on success.
+  const [liveSend, setLiveSend] = useState<{
+    runId: string;
+    providers: string[];
+    mode: string;
+  } | null>(null);
   const sendMessage = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (payload: {
+      content: string;
+      attachment_ids?: number[];
+      orchestration_mode?: string;
+      providers?: string[];
+      cut_mode?: string;
+      resolved_providers?: string[];
+      model?: string;
+    }) => {
       if (!activeConvId) throw new Error("No conversation selected");
-      const res = await apiRequest("POST", `/api/v1/conversations/${activeConvId}/messages`, { role: "user", content });
+      const isMulti =
+        !!payload.orchestration_mode && payload.orchestration_mode !== "single";
+      // Fallback id keeps the request flowing if crypto.randomUUID is missing.
+      const runId = isMulti
+        ? typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+        : null;
+      if (runId) {
+        setLiveSend({
+          runId,
+          providers: payload.resolved_providers ?? payload.providers ?? [],
+          mode: payload.orchestration_mode ?? "",
+        });
+      }
+      const body: Record<string, unknown> = {
+        role: "user",
+        content: payload.content,
+        attachment_ids: payload.attachment_ids ?? [],
+      };
+      if (payload.orchestration_mode) body.orchestration_mode = payload.orchestration_mode;
+      if (payload.providers && payload.providers.length) body.providers = payload.providers;
+      if (payload.cut_mode) body.cut_mode = payload.cut_mode;
+      // Per-message model override. Backend chain is body.model > agent
+      // model > active_provider > conv.model — sending it here pins this
+      // single turn to the chosen model without flipping global defaults.
+      if (payload.model) body.model = payload.model;
+      if (runId) body.client_run_id = runId;
+      const res = await apiRequest("POST", `/api/v1/conversations/${activeConvId}/messages`, body);
       return res.json();
     },
     onSuccess: () => {
+      setLiveSend(null);
       qc.invalidateQueries({ queryKey: ["/api/v1/conversations", activeConvId, "messages"] });
       qc.invalidateQueries({ queryKey: ["/api/v1/conversations"] });
     },
-    onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: Error) => {
+      setLiveSend(null);
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
   });
 
   const focusMutation = useMutation({
@@ -151,37 +225,20 @@ export default function ChatPage() {
   });
 
   const [showSidebar, setShowSidebar] = useState(false);
-  const [subagentTask, setSubagentTask] = useState("");
-  const [showSubagent, setShowSubagent] = useState(false);
-  const [subagentConvId, setSubagentConvId] = useState<number | null>(null);
-
-  const { data: subagentStatus } = useQuery<{ status: string; reply?: string; error?: string }>({
-    queryKey: ["/api/v1/subagent", subagentConvId, "status"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/v1/subagent/${subagentConvId}/status`);
-      return res.json();
-    },
-    enabled: !!subagentConvId,
-    refetchInterval: (query) => {
-      const data = query.state.data as { status?: string } | undefined;
-      return data?.status === "running" ? 3000 : false;
-    },
-  });
-
-  const launchSubagent = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/v1/subagent", { task: subagentTask, parent_conv_id: activeConvId });
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setSubagentConvId(data.subagent_conv_id);
-      setSubagentTask("");
-      toast({ title: "Sub-agent launched", description: "Primary a0 remains available." });
-    },
-    onError: (e: Error) => toast({ title: "Sub-agent failed", description: e.message, variant: "destructive" }),
-  });
 
   const activeTitle = conversations.find((c) => c.id === activeConvId)?.title ?? "a0p";
+  const runningCost = conversationCostUSD(messages);
+  const showRunningCost = runningCost > 0;
+  const runningCostBadge = showRunningCost ? (
+    <Badge
+      variant="outline"
+      className="text-[10px] h-5 px-1.5 font-mono text-muted-foreground"
+      title="Estimated USD spent on this conversation so far"
+      data-testid="badge-running-cost"
+    >
+      {fmtCostUSD(runningCost)}
+    </Badge>
+  ) : null;
 
   const sidebar = convsLoading ? (
     <div className="p-3 space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
@@ -224,10 +281,21 @@ export default function ChatPage() {
             <Menu className="h-5 w-5" />
           </Button>
           <span className="flex-1 text-sm font-medium truncate text-foreground">{activeTitle}</span>
+          {runningCostBadge}
           <Button size="icon" variant="ghost" className="h-10 w-10 shrink-0" onClick={() => createConv.mutate()} disabled={createConv.isPending} data-testid="btn-new-chat-mobile">
             {createConv.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           </Button>
         </div>
+        {/* desktop conversation header — shows the active conversation title and
+            the running cost total so the user knows what they've spent without
+            adding up per-message pills by hand. Hidden when no conversation is
+            selected (the empty-state card already says "Start a conversation"). */}
+        {activeConvId && (
+          <div className="hidden md:flex items-center gap-2 px-4 py-1.5 border-b border-border bg-card/50" data-testid="desktop-chat-header">
+            <span className="flex-1 text-sm font-medium truncate text-foreground" data-testid="text-conv-title">{activeTitle}</span>
+            {runningCostBadge}
+          </div>
+        )}
         {!activeConvId ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground" data-testid="chat-empty">
             <Bot className="h-10 w-10" />
@@ -240,56 +308,23 @@ export default function ChatPage() {
           <>
             <ContextBoostPanel convId={activeConvId} />
 
-            <div className="border-b border-border" data-testid="subagent-panel">
-              <button className="w-full flex items-center gap-2 px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors" onClick={() => setShowSubagent(!showSubagent)} data-testid="btn-toggle-subagent">
-                <Zap className="h-3 w-3" />
-                <span>Sub-agent {subagentConvId ? `(${subagentStatus?.status ?? "…"})` : ""}</span>
-                {showSubagent ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
-              </button>
-              {showSubagent && (
-                <div className="px-4 pb-3 space-y-2" data-testid="subagent-editor">
-                  {subagentConvId && subagentStatus ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs">
-                        {subagentStatus.status === "running" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                        {subagentStatus.status === "done" && <Target className="h-3 w-3 text-green-500" />}
-                        {subagentStatus.status === "error" && <AlertTriangle className="h-3 w-3 text-destructive" />}
-                        <span className="font-medium capitalize">{subagentStatus.status}</span>
-                        {subagentStatus.status !== "running" && (
-                          <button
-                            className="text-primary hover:underline text-[10px]"
-                            onClick={() => { selectConv(subagentConvId); setShowSubagent(false); setSubagentConvId(null); }}
-                            data-testid="btn-view-subagent-conv"
-                          >
-                            View conversation
-                          </button>
-                        )}
-                        <button className="ml-auto text-muted-foreground hover:text-foreground" onClick={() => setSubagentConvId(null)} data-testid="btn-close-subagent"><X className="h-3 w-3" /></button>
-                      </div>
-                      {subagentStatus.reply && <pre className="text-[10px] bg-muted rounded p-2 whitespace-pre-wrap max-h-32 overflow-auto" data-testid="subagent-reply">{subagentStatus.reply}</pre>}
-                      {subagentStatus.error && <p className="text-[10px] text-destructive" data-testid="subagent-error">{subagentStatus.error}</p>}
-                    </div>
-                  ) : (
-                    <>
-                      <Textarea value={subagentTask} onChange={(e) => setSubagentTask(e.target.value)} placeholder="Task for background sub-agent… (primary a0 stays available)" className="text-xs min-h-[60px] max-h-[120px] resize-none" data-testid="subagent-task-input" />
-                      <Button size="sm" className="text-xs h-7" onClick={() => launchSubagent.mutate()} disabled={!subagentTask.trim() || launchSubagent.isPending} data-testid="btn-launch-subagent">
-                        {launchSubagent.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Zap className="h-3 w-3 mr-1" />}
-                        Launch
-                      </Button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
             <div ref={scrollRef} className="flex-1 overflow-auto p-4">
               {msgsLoading ? (
                 <div className="flex flex-col gap-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 w-3/4" />)}</div>
-              ) : messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground" data-testid="no-messages"><p className="text-sm">No messages yet</p></div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {messages.map((m) => <MessageBubble key={m.id} message={m} onSend={(c) => sendMessage.mutate(c)} />)}
+                  {messages.length === 0 && !sendMessage.isPending && (
+                    <PreChatInspectorPanel convId={activeConvId} />
+                  )}
+                  {messages.map((m) => <MessageBubble key={m.id} message={m} onSend={(c) => sendMessage.mutate({ content: c })} />)}
+                  {/* Mounted for any in-flight multi-model send, including the first turn. */}
+                  {sendMessage.isPending && liveSend && (
+                    <LiveOrchProgress
+                      clientRunId={liveSend.runId}
+                      fallbackProviders={liveSend.providers}
+                      fallbackMode={liveSend.mode}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -306,11 +341,22 @@ export default function ChatPage() {
                 </Button>
               )}
             </div>
-            <ChatInput onSend={(c) => sendMessage.mutate(c)} isSending={sendMessage.isPending} />
+            <div className="flex items-end gap-1 border-t border-border">
+              <ConvToolsPopover convId={activeConvId} />
+              <div className="flex-1">
+                <ChatInput
+                  onSend={(content, attachment_ids, opts) =>
+                    sendMessage.mutate({ content, attachment_ids, ...(opts ?? {}) })
+                  }
+                  isSending={sendMessage.isPending}
+                  hideBorderTop
+                />
+              </div>
+            </div>
           </>
         )}
       </div>
     </div>
   );
 }
-// 233:0
+// 327:10 2:1 2:8

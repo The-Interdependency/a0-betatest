@@ -1,4 +1,4 @@
-// 126:0
+// 126:0 0:0 0:3
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
@@ -138,4 +138,4 @@ export {
   AlertDialogAction,
   AlertDialogCancel,
 }
-// 126:0
+// 126:0 0:0 0:3

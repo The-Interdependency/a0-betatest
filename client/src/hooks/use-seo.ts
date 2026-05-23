@@ -1,4 +1,4 @@
-// 19:0
+// 19:0 0:1 0:0
 import { useEffect } from "react";
 
 interface SEOProps {
@@ -20,4 +20,4 @@ export function useSEO({ title, description }: SEOProps) {
     }
   }, [title, description]);
 }
-// 19:0
+// 19:0 0:1 0:0

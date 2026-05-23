@@ -1,15 +1,15 @@
-# a0p — Autonomous AI Agent Platform
+# a0p — a research instrument
 
-## Overview
-a0p is a mobile-first autonomous AI agent platform. One agent `a0(zeta fun alpha echo)` (ZFAE) owns one PCNA instance; LLMs (Gemini, Claude, Grok) are "energy providers" not agents; sub-agents `a0(zeta{n})` fork PCNA and merge back. The Python/FastAPI backend declares `UI_META` + `DATA_SCHEMA` per route module; Guardian assembles them into `GET /api/v1/ui/structure`; the frontend is a generic renderer.
+## Identity
+**a0p is a research instrument, not a product.** It is the deployed instance of `a0` (this codebase / repository) running publicly. It explores agent / energy-provider / PCNA dynamics in the open. Anyone may read and use it. Code-altering access is restricted to the owner (Erin) and a small set of explicitly-invited collaborators. The instrument is funded by donations; it does not solicit subscribers.
+
+> Naming: `a0` = the project / runtime / repository. `a0p` = the deployed instance (used in user-facing UI copy, billing, splash).
 
 ## User Preferences
-- Clear and concise explanations.
+- Clear and concise explanations. Confirmation before significant changes.
 - Iterative development and continuous feedback.
-- Confirmation before significant codebase or external system changes.
 - Detailed logging and transparency into the agent's decision-making process.
 - Control over AI model selection and custom tool definitions.
-- Feature toggles and tunable parameters.
 - Mobile-first UI with dark mode by default.
 - Full token accounting with per-model, per-stage, per-conversation cost tracking.
 - All AI model conversations logged verbatim.
@@ -17,35 +17,16 @@ a0p is a mobile-first autonomous AI agent platform. One agent `a0(zeta fun alpha
 
 ## System Architecture
 
-### Runtime
-- **Express server** on port 5000 (external port 80) — handles auth, session, guest chat, proxies `/api/*` to Python
-- **Vite dev server** on port 5001 — React frontend, proxied by Express in development
-- **Python/FastAPI backend** on port 8001 — primary AI + data backend (NOT externally exposed; all access via Express)
-- All three start via `scripts/start-dev.sh` through the "Start application" workflow
+**Three processes:**
+- **Express** (:5000, external :80) — auth, session, guest chat, proxies `/api/*` to Python
+- **Vite** (:5001) — React frontend, proxied by Express in dev
+- **Python/FastAPI** (:8001, internal only) — AI + data backend; all access via Express
 
-### Security
-- Express adds `x-a0p-internal` header on all proxied requests; Python rejects any request missing it
-- Express is the only public entry point — Python never needs to be accessed directly
-- Session secret must be set via `SESSION_SECRET` env var in production; fallback is dev-only
-- `INTERNAL_API_SECRET` env var can override the default internal token (recommended for production)
-- Guest chat rate-limited by IP hash; token limits configurable via `GUEST_TOKEN_LIMIT` env var
+**Security:** Express injects `x-a0p-internal` + identity headers on every proxy. Python rejects requests missing the internal header. Session secret via `SESSION_SECRET` env var in production.
 
-### Python Backend (`python/`)
-- `python/main.py` — FastAPI app, mounts all routers, `/api/v1/ui/structure`, heartbeat lifespan
-- `python/database.py` — Async SQLAlchemy (asyncpg), sync engine for migrations
-- `python/models.py` — SQLAlchemy ORM models for all tables
-- `python/pcna.py` — PCNA engine (53-node ring topology)
-- `python/logger.py` — JSONL append logger
-- `python/agents/zfae.py` — ZFAE agent definition, compose_name(), sub_agent_name()
-- `python/services/energy_registry.py` — LLM provider registry (Gemini, Claude, Grok)
-- `python/services/heartbeat.py` — Background heartbeat service (30s tick)
-- `python/services/bandit.py` — Multi-Armed Bandit (UCB1) service
-- `python/services/edcm.py` — EDCM behavioral directives scoring
-- `python/services/research.py` — Autonomous research (GitHub, AI social search)
-- `python/services/agent_lifecycle.py` — Sub-agent spawn/merge lifecycle
-- `python/services/zeta_observe.py` — ZFAE observation service
-- `python/storage/core.py` — Core CRUD storage (raw SQL via asyncpg)
-- `python/storage/domain.py` — Domain-specific storage (heartbeat, memory, PCNA, bandits)
+**Key entry points:** `server/index.ts`, `python/main.py`, `python/routes/__init__.py`, `client/src/App.tsx`
+
+> Full file-by-file detail: `docs/ARCHITECTURE.md`
 
 ### Route Modules (`python/routes/`)
 Each declares `UI_META` (tab config for frontend) + `DATA_SCHEMA` (field specs).
@@ -58,9 +39,9 @@ Each declares `UI_META` (tab config for frontend) + `DATA_SCHEMA` (field specs).
 - `tools.py` — Custom tools CRUD
 - `heartbeat_api.py` — Heartbeat tasks and logs
 - `pcna_api.py` — PCNA state and propagation
-- `billing.py` — Stripe billing: status, plans, checkout, portal, webhook
+- `billing.py` — Stripe billing: status, donations, portal, webhook (donations-only — no recurring subscription tier)
 - `contexts.py` — Prompt contexts CRUD (admin-only write via ADMIN_USER_ID)
-- `founders.py` — Founders registry (53-slot lifetime tier)
+- `focus.py` — Context boost, focus regain, sub-agent delegation; also hosts the pre-chat inspector endpoints (context-preview, per-conversation tool selection GET/PATCH)
 
 ### Frontend (`client/`)
 React + Vite + TypeScript, Tailwind CSS, shadcn/ui components. Fully metadata-driven:
@@ -75,61 +56,46 @@ React + Vite + TypeScript, Tailwind CSS, shadcn/ui components. Fully metadata-dr
   - `tests/e2e/console-tabs.spec.ts` — Playwright e2e test. Logs in, opens every console tab, asserts each renders with `data-renderer` of `custom` or `generic` (never `missing`), and asserts every id in `REQUIRED_CUSTOM_TAB_IDS` actually rendered as `custom`. Run with `npx playwright test`. Requires the dev server running on port 5000 and Chromium installed (`npx playwright install chromium`).
   - `scripts/check-console-tabs.mjs` — fast static preflight: parses `CUSTOM_TAB_RENDERERS`, fetches `/api/v1/ui/structure`, fails if any API tab has no renderer and no sections. Run locally with `node scripts/check-console-tabs.mjs` (against Express on :5000) or `API_BASE=http://localhost:8001 INTERNAL_API_SECRET=… node scripts/check-console-tabs.mjs` (direct against uvicorn). The script reads `INTERNAL_API_SECRET` and forwards it as the `x-a0p-internal` header so it can call the gated Python backend without going through the Express proxy.
   - **CI integration (Task #92):** the `check-console-tabs` job in both `.github/workflows/deploy.yml` and `cloudbuild.yaml` boots an ephemeral Postgres + uvicorn backend on every push to `main` and runs the script. The `deploy` job declares `needs: check-console-tabs`, so the Cloud Run deploy is blocked when the script exits non-zero, which happens for either (a) a tab returned by the API with no custom renderer and no sections, or (b) an orphan entry in `CUSTOM_TAB_RENDERERS` whose `tab_id` is no longer returned by `/api/v1/ui/structure`. See `DEPLOYMENT.md` → "Pre-deploy checks".
-- `client/src/pages/chat.tsx` — chat shell with conversation list + message bubbles
-- `client/src/components/top-nav.tsx` — Agent/Console nav, agent name + tier badge, upgrade toast listener
+- `client/src/pages/chat.tsx` — chat shell with conversation list + message bubbles; shows `PreChatInspectorPanel` on empty conversations and `ConvToolsPopover` in input bar (Task #141)
+- `client/src/components/chat-widgets.tsx` — `PreChatInspectorPanel` (Context tab: read-only system prompt; Tools tab: per-tool toggles) + `ConvToolsPopover` (compact wrench icon in input bar) (Task #141)
+- `client/src/components/top-nav.tsx` — Agent/Console nav, agent name + tier badge
 - `client/src/components/tabs/` — Legacy hardcoded tab components (unused, retained for reference)
 - `client/src/hooks/use-billing-status.ts` — fetches /api/v1/billing/status (5-min stale), exposes tier, isAdmin
-- `client/src/pages/pricing.tsx` — Pricing page: 4 tier cards, Founder Lifetime, BYOK Add-On, Stripe checkout
+- `client/src/pages/pricing.tsx` — Donations-only support page (research-instrument framing; verbatim 501c3 copy block; one-off donation flow)
 - `client/src/pages/admin-contexts.tsx` — Admin-only prompt context editor (guarded by isAdmin)
 
 ### Database
 PostgreSQL via SQLAlchemy (Python) and Drizzle ORM (schema management).
 - `shared/schema.ts` — Drizzle schema (source of truth for `db:push`)
 - `drizzle.config.ts` — Drizzle Kit configuration
+- `conversations.enabled_tools` — JSONB column (Task #141): null = all tools on; string[] = explicit allow-list enforced at inference time via ContextVar in `tool_executor.py`
 
 ## Agent Architecture
 
-### ZFAE Agent
-- Full name: `a0(zeta fun alpha echo) {EnergyProvider}`
-- One PCNA instance per agent
-- Sub-agents: `a0(zeta{n}) {Provider}` — fork PCNA, execute, merge back
-- Deprecated names (alfa/beta/gamma) cleaned on boot
+**ZFAE** — `a0(zeta fun alpha echo) {EnergyProvider}`. One PCNA instance per agent. Sub-agents fork PCNA, execute, merge back.
 
-### Energy Providers
-LLMs are energy sources, not agents. Managed by `energy_registry.py`:
-- **grok** — xAI Grok-3 Mini (default)
-- **gemini** — Google Gemini 2.5 Flash
-- **claude** — Anthropic Claude
+**Energy Providers** (LLMs are energy sources, not agents):
+- **grok** — xAI Grok-4 Fast | **gemini** — Gemini 2.5 Flash | **gemini3** — Gemini 3 Pro
+- **claude** — Claude Sonnet 4.5 | **openai** — GPT-5 mini | **openai-5.5** — GPT-5.5 | **openai-5.5-pro** — GPT-5.5 Pro
 
-### PCNA Engine
-53-node circular topology with 4 rings: Phi, Psi, Omega, Guardian.
-Each ring has coherence tracking and propagation.
+**PCNA Engine** — 53-node six-ring pipeline: Phi, Psi, Omega, Theta, Memory-L (N=19), Memory-S (N=17).
 
-### Key Concepts
-- **UI_META + DATA_SCHEMA**: Every route module declares both; `collect_ui_meta()` aggregates; `/api/v1/ui/structure` serves; frontend has zero hardcoded tabs
-- **Heartbeat**: 30s tick, runs scheduled tasks (audit, snapshot, propagate, research)
-- **Bandits**: UCB1 + EMA decay across tool, model, routing domains
-- **EDCM**: Behavioral directive scoring (CM, DA, DRIFT, DVG, INT, TBF)
-- **Sub-agent lifecycle**: fork() at spawn → absorb() on completion → retired
-- **Monetization**: 4 tiers (Free/$0, Seeker/$12, Operator/$39, Patron/$53) + Founder Lifetime ($530, 53 slots) + BYOK add-on ($9/mo) + credit packs. Stripe webhook updates `subscription_tier` on user record; tier determines which `prompt_context` is injected into chat system prompt. No hard rate limiting — EDCM + The Way constrain behavior.
-- **ADMIN_USER_ID**: Env var set to Erin's Replit user ID; only this user can write to `prompt_contexts` via `PUT /api/v1/contexts/{name}`
+**Prime-Seed PTCA Layer** — 7 PTCACore instances (N=3…19) seeded from sigma at boot. N=17→memory_s every 60s tick; N=19→memory_l on bandit promotion (persisted to DB). LT tag injected into prompt cache prefix; ST tag injected after `## Memory` marker. Fail-safe: returns `("","")` on any error.
 
-## External Dependencies
-- **AI**: Gemini 2.5 Flash (Replit integration), Grok-3 Mini (XAI_API_KEY), Claude (Anthropic)
-- **Google**: Gmail, Google Drive (Replit connectors)
-- **GitHub**: Repository ops, Codespace management (Replit connector + GITHUB_PAT)
-- **Auth**: Replit Auth (OpenID Connect)
-- **Payments**: Stripe (sandbox, Replit integration)
-- **Database**: PostgreSQL (Replit managed)
+**Party Slots** — six named role slots, each holds at most one model instance (`agent_instances.role_slot`). Allowlist enforced by `instances_api.py`.
 
-## Module Doctrine
-The authoritative reference for all module conventions (file annotation, naming, `# DOC` blocks, `UI_META`, registration checklist, hot-swap rules, 400-line budget) is `.agents/skills/a0p-module-doctrine/SKILL.md`. Load it before creating or modifying any route module, service, or component.
+| Slot | Role |
+|------|------|
+| `conduct` | Primary reasoning — main conversation turns |
+| `perform` | Active execution — tool calls and agentic task runs |
+| `practice` | Shadow / calibration — parallel run for bandit scoring |
+| `record` | Structured logging — note-taking and output formatting |
+| `derive` | Synthesis — post-turn PCNA reward signals and analysis |
+| `edcmbone` | Transcript analysis — EDCMbone scoring and explanation |
 
-### Self-Declaring Module Convention (summary)
-- Every `.py`, `.ts`, `.tsx` file opens and closes with `# N:M` / `// N:M` (code lines : comment lines). Run `python scripts/annotate.py` to re-stamp.
-- Python route files declare `# DOC module/label/description/tier/endpoint` comment blocks. `collect_doc_meta()` parses these and serves them via `GET /api/v1/docs`. DocsTab displays them live.
-- Route naming: `{name}.py` = self-contained handler. `{name}_api.py` = thin delegate to `python/{name}.py` or `python/services/{name}.py`.
-- Every new route file must be registered in 4 places in `python/routes/__init__.py`: router import, `ALL_ROUTERS`, `collect_doc_meta()` file list, `collect_ui_meta()` module list.
+All six slots are wired into inference routing via `_slot_routing_info()` in `inference.py`. When a task is classified to a slot, the model_instance assigned to that slot determines both the injected instance memory and the provider that handles the call (matched via `BUILTIN_PROVIDERS` model field). `edcmbone` additionally has its own dedicated lookup in `edcmbone_explainer.py`.
+
+> Full slot contract + wiring milestone: `docs/ARCHITECTURE.md` → Party Slots
 
 ## Hard Rules
 - No file over 400 lines
@@ -137,3 +103,33 @@ The authoritative reference for all module conventions (file annotation, naming,
 - Express handles auth/session/guest; Python handles all other API logic
 - All API paths go through Express (`/api/*`) — never call Python (port 8001) directly from the frontend
 - SQL column names in dynamic UPDATE queries must use an explicit allowlist
+
+## Module Doctrine
+Authoritative reference: `.agents/skills/a0p-module-doctrine/SKILL.md`. Load before creating or modifying any route module, service, or component.
+
+- Every `.py`, `.ts`, `.tsx` file opens and closes with `# N:M` / `// N:M`. Run `python scripts/annotate.py` to re-stamp.
+- Every new route file must be registered in 4 places in `python/routes/__init__.py`.
+- Route naming: `{name}.py` = self-contained handler. `{name}_api.py` = thin delegate to a service.
+
+## Funding
+a0p runs on donations. No subscription tier. No perks unlocked by donating.
+
+> "I don't have the cash required for 501c3 status, so I have to report it for taxes, but every tax payer is allowed to claim up to five hundred dollars in charitable donations per year without receipts required."
+
+The single productized service is the **EDCMbone transcript explainer** — $50 for 3 explanations. 3 free lifetime credits per user. See `docs/ARCHITECTURE.md` → Explainer Pricing for full billing detail.
+
+**Runtime tiers:** `free` (default, full read access) | `ws` (interdependentway.org accounts) | `admin` (owner + collaborators). No `supporter` tier in new sign-ups.
+
+## Access Control (two-tier write gating)
+1. **Admin** — `users.role = 'admin'` or email in `admin_emails`. Can mutate shared instrument state: prompt contexts, WS modules, provider seeds, custom tools, tier overrides.
+2. **Everyone else** — read console, run own chats, manage own Forge agents and transcripts. Cannot reach shared instrument state.
+
+Enforced at the route layer. Contract: `python/tests/contracts/route_gating.py`.
+
+## External Dependencies
+- **AI**: Gemini 2.5 Flash (Replit integration), Grok-4 Fast (XAI_API_KEY), Claude Sonnet 4.5, GPT-5 mini
+- **Google**: Gmail, Google Drive (Replit connectors)
+- **GitHub**: Repository ops (Replit connector)
+- **Auth**: Replit Auth (OpenID Connect)
+- **Payments**: Stripe (donations + EDCMbone explainer, Replit integration)
+- **Database**: PostgreSQL (Replit managed)

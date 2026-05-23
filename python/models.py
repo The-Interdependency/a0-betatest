@@ -1,4 +1,4 @@
-# 313:8
+# 358:23 0:0 3:0
 from sqlalchemy import (
     Column, Integer, String, Text, Boolean, Float, DateTime, JSON,
     ARRAY, ForeignKey, UniqueConstraint, Index, text
@@ -36,6 +36,7 @@ class User(Base):
     stripe_subscription_id = Column(String)
     subscription_status = Column(String(50), nullable=False, server_default="active")
     byok_enabled = Column(Boolean, nullable=False, server_default="false")
+    transcripts_unlocked = Column(Boolean, nullable=False, server_default="false")
     founder_slot = Column(Integer)
     created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     updated_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
@@ -45,8 +46,15 @@ class Conversation(Base):
     __tablename__ = "conversations"
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(Text, nullable=False, server_default="New Chat")
-    model = Column(Text, nullable=False, server_default="gemini")
+    model = Column(Text, nullable=False)
     user_id = Column(String)
+    context_boost = Column(Text)
+    parent_conv_id = Column(Integer)
+    subagent_status = Column(String(20))
+    subagent_error = Column(Text)
+    archived = Column(Boolean, nullable=False, server_default=text("false"))
+    agent_id = Column(Integer)
+    enabled_tools = Column(JSONB)
     created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
     updated_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
@@ -133,19 +141,9 @@ class EdcmSnapshot(Base):
     created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 
-class BanditArm(Base):
-    __tablename__ = "bandit_arms"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    domain = Column(Text, nullable=False)
-    arm_name = Column(Text, nullable=False)
-    pulls = Column(Integer, nullable=False, server_default="0")
-    total_reward = Column(Float, nullable=False, server_default="0")
-    avg_reward = Column(Float, nullable=False, server_default="0")
-    ema_reward = Column(Float, nullable=False, server_default="0")
-    ucb_score = Column(Float, nullable=False, server_default="0")
-    enabled = Column(Boolean, nullable=False, server_default="true")
-    last_pulled = Column(DateTime)
-    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+# Task #112 — BanditArm model removed; the bandit_arms table is dropped
+# at lifespan startup. Live arm state lives on PCNAEngine.bandit_state;
+# the audit log is the BanditPull model below.
 
 
 class CustomTool(Base):
@@ -253,17 +251,6 @@ class MemoryTensorSnapshot(Base):
     created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 
-class BanditCorrelation(Base):
-    __tablename__ = "bandit_correlations"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    tool_arm = Column(Text)
-    model_arm = Column(Text)
-    ptca_arm = Column(Text)
-    pcna_arm = Column(Text)
-    joint_reward = Column(Float, nullable=False, server_default="0")
-    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-
-
 class SystemToggle(Base):
     __tablename__ = "system_toggles"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -271,19 +258,6 @@ class SystemToggle(Base):
     enabled = Column(Boolean, nullable=False, server_default="true")
     parameters = Column(JSONB)
     updated_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
-
-
-class DiscoveryDraft(Base):
-    __tablename__ = "discovery_drafts"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    source_task = Column(Text, nullable=False)
-    title = Column(Text, nullable=False)
-    summary = Column(Text, nullable=False)
-    relevance_score = Column(Float, nullable=False, server_default="0")
-    source_data = Column(JSONB)
-    promoted_to_conversation = Column(Boolean, nullable=False, server_default="false")
-    conversation_id = Column(Integer)
-    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 
 class TranscriptSource(Base):
@@ -312,7 +286,80 @@ class TranscriptReport(Base):
     directives_fired = Column(JSONB)
     top_snippets = Column(JSONB)
     file_breakdown = Column(JSONB)
+    risk_loop = Column(Float, server_default="0")
+    risk_fixation = Column(Float, server_default="0")
+    correction_fidelity = Column(Float, server_default="0")
+    edcmbone_version = Column(String(40))
     created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
+class TranscriptUpload(Base):
+    __tablename__ = "transcript_uploads"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(120))
+    filename = Column(Text, nullable=False)
+    mime = Column(String(120))
+    byte_size = Column(Integer, nullable=False, server_default="0")
+    status = Column(String(24), nullable=False, server_default="'queued'")
+    error = Column(Text)
+    source_slug = Column(String(100))
+    report_id = Column(Integer)
+    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    finished_at = Column(DateTime)
+
+
+class TranscriptMessage(Base):
+    __tablename__ = "transcript_messages"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_id = Column(Integer, nullable=False)
+    idx = Column(Integer, nullable=False, server_default="0")
+    speaker = Column(String(120))
+    content = Column(Text)
+    cm = Column(Float, server_default="0")
+    da = Column(Float, server_default="0")
+    drift = Column(Float, server_default="0")
+    dvg = Column(Float, server_default="0")
+    int_val = Column(Float, server_default="0")
+    tbf = Column(Float, server_default="0")
+    directives_fired = Column(JSONB)
+
+
+class TranscriptExplanation(Base):
+    """Owner-billed model-written explanation of a transcript_reports row.
+
+    UNIQUE(report_id) enforces one explanation per report so a refresh on the
+    report screen is free — re-fetch returns the cached row instead of
+    re-billing. user_id is denormalized from the upload chain at insert time
+    so the credit decrement (which happens before the explainer runs) and the
+    explanation row stay coherent if the underlying upload is later deleted.
+    """
+    __tablename__ = "transcript_explanations"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_id = Column(Integer, nullable=False, unique=True)
+    user_id = Column(String(120), nullable=False)
+    model_id = Column(String(80), nullable=False)
+    prompt_tokens = Column(Integer, nullable=False, server_default="0")
+    completion_tokens = Column(Integer, nullable=False, server_default="0")
+    cost_cents = Column(Integer, nullable=False, server_default="0")
+    body = Column(Text, nullable=False)
+    citations = Column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    paid_with = Column(String(8), nullable=False, server_default="free")
+    paid_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
+class ExplanationCredits(Base):
+    """Per-user explainer credit balance.
+
+    Free credits are seeded on first request (3 lifetime). Paid credits arrive
+    in packs of 3 via Stripe webhook. Decrement order: free first, then paid.
+    """
+    __tablename__ = "explanation_credits"
+    user_id = Column(String(120), primary_key=True)
+    free_remaining = Column(Integer, nullable=False, server_default="3")
+    paid_remaining = Column(Integer, nullable=False, server_default="0")
+    lifetime_purchased = Column(Integer, nullable=False, server_default="0")
+    updated_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 
 class Founder(Base):
@@ -352,30 +399,53 @@ class ApprovalScope(Base):
     __table_args__ = (UniqueConstraint("user_id", "scope", name="uq_approval_scope_user_scope"),)
 
 
-class WsModule(Base):
-    """A user-defined or system-shadow console module.
+class ToolResult(Base):
+    """Persistent store of raw tool-call outputs.
 
-    status values:
-      system   — shadow record for a hardcoded route module; visible, immutable via API
-      active   — user module mounted and live
-      inactive — user module persisted but not mounted
-      locked   — active/inactive module write-protected by its owner
-      error    — compilation or mount failed; error_log has details
+    Distillation compresses large tool results before they go back to the
+    calling model. This table preserves the full original so an agent can
+    later call tool_result_fetch(call_id, chunk=N) to drill back in without
+    paying for a re-execution of the original tool.
     """
-    __tablename__ = "ws_modules"
+    __tablename__ = "tool_results"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    slug = Column(String(120), unique=True, nullable=False)
-    name = Column(Text, nullable=False)
-    description = Column(Text, nullable=False, server_default="")
-    owner_id = Column(String, nullable=False)
-    status = Column(String(20), nullable=False, server_default="inactive")
-    handler_code = Column(Text)
-    ui_meta = Column(JSONB, nullable=False, server_default="{}")
-    route_config = Column(JSONB, nullable=False, server_default="{}")
-    error_log = Column(Text)
-    version = Column(Integer, nullable=False, server_default="1")
-    content_hash = Column(String(64))
-    last_swapped_at = Column(DateTime)
-    created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
-    updated_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
-# 313:8
+    call_id = Column(String(64), nullable=False, unique=True)
+    tool_name = Column(Text, nullable=False)
+    arguments = Column(JSONB)
+    raw_result = Column(Text, nullable=False)
+    result_size_bytes = Column(Integer, nullable=False, server_default="0")
+    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
+class MessageAttachment(Base):
+    """Image (or other media) attached to a chat message. Files live under
+    uploads/; storage_url is a relative path that Express serves directly."""
+    __tablename__ = "message_attachments"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    message_id = Column(Integer)
+    owner_user_id = Column(String)
+    kind = Column(Text, nullable=False, server_default="image")
+    mime_type = Column(Text, nullable=False)
+    storage_url = Column(Text, nullable=False)
+    width = Column(Integer)
+    height = Column(Integer)
+    bytes = Column(Integer)
+    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+
+
+class GeneratedImage(Base):
+    """Output of the image_generate tool. Local file under uploads/."""
+    __tablename__ = "generated_images"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    owner_user_id = Column(Text)
+    prompt = Column(Text, nullable=False)
+    model = Column(Text, nullable=False)
+    aspect_ratio = Column(Text, nullable=False, server_default="1:1")
+    storage_url = Column(Text, nullable=False)
+    bytes = Column(Integer, nullable=False, server_default="0")
+    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    public = Column(Boolean, nullable=False, server_default=text("false"))
+    featured = Column(Boolean, nullable=False, server_default=text("false"))
+    tags = Column(JSONB, server_default=text("'[]'::jsonb"))
+    skill_origin = Column(Text)
+# 358:23 0:0 3:0

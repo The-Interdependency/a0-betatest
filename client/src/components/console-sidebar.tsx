@@ -1,4 +1,4 @@
-// 85:0
+// 85:0 0:1 0:4
 import { cn } from "@/lib/utils";
 import { resolveIcon } from "@/components/icon-resolve";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -61,7 +61,7 @@ export default function ConsoleSidebar({
                 {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
                 <span className="truncate">{tab.label}</span>
                 <span className="ml-auto text-[10px] opacity-50">
-                  {tab.sections.length}
+                  {Array.isArray(tab.sections) ? tab.sections.length : 0}
                 </span>
               </button>
             );
@@ -87,4 +87,4 @@ export default function ConsoleSidebar({
     </div>
   );
 }
-// 85:0
+// 85:0 0:1 0:4

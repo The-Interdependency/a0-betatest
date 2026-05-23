@@ -1,4 +1,4 @@
-// 142:0
+// 142:0 0:1 0:2
 import { Link } from "wouter";
 import { Shield, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -151,4 +151,4 @@ export default function SplashPage() {
     </div>
   );
 }
-// 142:0
+// 142:0 0:1 0:2
