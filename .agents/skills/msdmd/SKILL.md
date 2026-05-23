@@ -133,7 +133,7 @@ Implementation rules every runner MUST follow:
    conventional non-source paths (`__pycache__`, `node_modules`,
    `.git`, build outputs, the runner's own test directory).
 2. **Detect comment marker by extension**, not by content sniffing.
-   The mapping is not exhaustive here: use the marker maps in
+   The mapping examples below are not exhaustive: use the marker maps in
    `parsers/universal.py` and `parsers/universal.ts` as the source of
    truth. For example, `.py / .rb / .ex / .exs / .sh → #`. `.ts / .js /
    .mjs / .tsx / .jsx / .rs / .go / .java / .c / .cc / .cpp / .h /
