@@ -14,6 +14,18 @@ Useful contributions include:
 6. documenting memory, context, and agent behavior;
 7. improving the public website and contributor onboarding.
 
+## Prerequisites
+
+Use these versions for local development unless a task-specific issue says otherwise:
+
+- **Node.js 20+** — `README.md` lists Node.js 20+ for local development, and `package.json` pins `@types/node` to the 20.x line.
+- **Python 3.12+** — `README.md` lists Python 3.12+, and `pyproject.toml` declares `requires-python = ">=3.12"`.
+- **npm** — JavaScript and TypeScript commands are exposed through `package.json` scripts such as `npm run build`, `npm run check`, and `npm run db:push`.
+- **pip or an equivalent PEP 517 installer** — the README uses `pip install -e .`; Python package metadata lives in `pyproject.toml`.
+- **PostgreSQL** — required for the full local stack and contract suite paths described in `README.md`.
+
+Grounding files: `README.md`, `package.json`, `pyproject.toml`.
+
 ## First steps
 
 1. Read `README.md` — including the "Project name: `a0` vs `a0p`" and "Access model" sections so you know what is open versus owner-only in the deployed instance (`a0p`).
