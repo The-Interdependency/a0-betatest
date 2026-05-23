@@ -45,15 +45,22 @@ human request
 
 A short implementation map for the working component layers in this repo:
 
-- `a0 agent interface` → `client/` for the browser UI, `server/` for the Express proxy, and `python/routes/` for backend API endpoints.
-- `context / memory layer` → `python/engine/pcna.py` (PCNA engine and memory inference), with persisted state modeled in `python/models.py` and `python/storage/domain.py`.
-- `planner / policy layer` → `python/services/inference.py` for orchestration and `python/config/policy_loader.py` for policy config.
-- `provider routing layer` → `python/services/energy_registry.py` and `python/services/providers/` (including `python/services/providers/_resolver.py`).
-- `model call(s)` → `python/services/inference.py` plus provider implementations under `python/services/providers/`.
-- `tool execution layer` → `python/services/tool_executor.py` and tool handlers in `python/services/tools/`.
-- `audit / logging layer` → `python/logger.py` for log streams and audit plumbing in services such as `python/services/spawn_executor.py`.
-- `gating / access control` → `python/services/gating.py` (with explicit allowlist rules in `python/services/gating_allowlist.py`).
-- `agent runtime` → `python/main.py` for FastAPI startup, PCNA lifecycle, and route registration.
+| Layer (from working component map) | Where to look |
+|---|---|
+| `human request` | `client/src/pages/chat.tsx`, `client/src/pages/console.tsx`, `server/index.ts` |
+| `a0 agent interface` | `client/`, `server/`, `python/routes/` |
+| `context / memory layer` | `python/engine/pcna.py`, `python/engine/zeta.py`, `python/models.py`, `python/storage/` |
+| `planner / policy layer` | `python/services/inference.py`, `python/config/policy_loader.py`, `python/services/edcm.py` |
+| `provider routing layer` | `python/services/energy_registry.py`, `python/services/providers/`, `python/services/providers/_resolver.py` |
+| `model call(s)` | `python/services/inference.py`, `python/services/providers/` |
+| `tool execution layer` | `python/services/tool_executor.py`, `python/services/tools/` |
+| `audit/logging layer` | `python/services/run_logger.py`, `python/services/run_context.py`, `python/logger.py` |
+| `response / artifact / repository update` | `python/services/artifacts.py`, `python/routes/artifacts.py`, `python/services/tools/github_write_file.py` |
+
+Cross-cutting concerns referenced elsewhere in this doc:
+
+- `gating / access control` → `python/services/gating.py`, `python/services/gating_allowlist.py`, `python/tests/contracts/gating.py`
+- `agent runtime` → `python/main.py`, `python/services/heartbeat.py`, `python/services/agent_lifecycle.py`
 
 ## AIMMH boundary
 
