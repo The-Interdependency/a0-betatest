@@ -76,13 +76,15 @@ A test function:
 
 ## Authoring a runner
 
-The reference Python runner uses `msdmd/parsers/universal.py`:
+The reference Python runner uses `msdmd/parsers/universal.py`. When
+running this example from this repo, make `.agents/skills` importable
+first (for example: `PYTHONPATH=.agents/skills python runner.py`):
 
 ```python
 from pathlib import Path
 import asyncio, importlib, sys
 from collections import Counter
-from skill_lib.msdmd.parsers.universal import walk_tree
+from msdmd.parsers.universal import walk_tree
 
 async def run_one(entry: dict) -> dict:
     call = entry.get("call")
