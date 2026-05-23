@@ -93,15 +93,20 @@ export function registerAttachmentRoutes(app: Express) {
         });
       } catch (e) {
         try {
-          const candidatePath = path.resolve(file.path);
-          const relative = path.relative(UPLOADS_DIR, candidatePath);
-          const isWithinUploads =
-            relative !== "" &&
-            !relative.startsWith("..") &&
-            !path.isAbsolute(relative);
+          const safeGeneratedName = file.filename || "";
+          const hasExpectedNameFormat = /^[a-f0-9]{32}\.[a-z0-9]+$/i.test(safeGeneratedName);
 
-          if (isWithinUploads) {
-            fs.unlinkSync(candidatePath);
+          if (hasExpectedNameFormat) {
+            const candidatePath = path.resolve(path.join(UPLOADS_DIR, safeGeneratedName));
+            const relative = path.relative(UPLOADS_DIR, candidatePath);
+            const isWithinUploads =
+              relative !== "" &&
+              !relative.startsWith("..") &&
+              !path.isAbsolute(relative);
+
+            if (isWithinUploads) {
+              fs.unlinkSync(candidatePath);
+            }
           }
         } catch {}
         const msg = e instanceof Error ? e.message : "db insert failed";
