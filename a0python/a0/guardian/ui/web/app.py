@@ -155,7 +155,7 @@ def _build_browser_tab() -> None:
 # ---------------------------------------------------------------------------
 
 def _save_settings(
-    model: str, api_key: str, port: int, host: str,
+    model: str, _api_key: str, port: int, host: str,
     local_model: str, ollama_base: str, model_path: str,
     memory_key: str,
     runtime: str, trainer_model: str, training_dir: str,
@@ -163,7 +163,6 @@ def _save_settings(
     env_path: Path = _env.ENV_PATH
     lines = [
         f"A0_MODEL={model}",
-        f"ANTHROPIC_API_KEY={api_key}",
         f"A0_PORT={int(port)}",
         f"A0_HOST={host}",
         f"A0_LOCAL_MODEL={local_model}",
