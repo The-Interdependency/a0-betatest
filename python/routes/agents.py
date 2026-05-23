@@ -1,5 +1,6 @@
 # 262:31 1:3 2:8
 import time
+import logging
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
@@ -22,6 +23,8 @@ from ..services.agent_lifecycle import (
     list_sub_agents as _lifecycle_list,
 )
 from ._admin_gate import require_admin
+
+logger = logging.getLogger(__name__)
 
 # DOC module: agents
 # DOC label: Agents
@@ -273,7 +276,8 @@ async def learning_summary(limit: int = 200):
             "instance_id": p.theta.instance_id,
         }
     except Exception as exc:
-        primary_error = f"{type(exc).__name__}: {exc}"[:200]
+        logger.exception("Failed to capture primary PCNA snapshot")
+        primary_error = "Primary PCNA snapshot unavailable"
     # Paid-explainer rollup — separate from `cumulative` and `by_provider`
     # above so the merge counter isn't inflated by paid one-shot calls.
     paid = {
