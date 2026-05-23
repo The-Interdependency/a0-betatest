@@ -12,7 +12,7 @@ Public API:
 
     parse_text(text, block_name, marker="#") -> list[dict]
     parse_file(path, block_name) -> list[dict]
-    walk_tree(root, block_name, *, skip=None) -> tuple[annotated, untested]
+    walk_tree(root, block_name, *, skip=None, extensions=None) -> tuple[annotated, untested]
 
 This module has zero non-stdlib dependencies and is safe to copy
 verbatim into any project that wants msdmd support.
