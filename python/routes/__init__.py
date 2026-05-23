@@ -88,6 +88,7 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.cli",
         "python.routes.liminals",
         "python.routes.artifacts",
+        "python.routes.transcripts",
     ]
     tabs = []
     for mod_name in modules:
@@ -161,7 +162,9 @@ def collect_doc_meta() -> list[dict]:
         "billing.py", "contexts.py", "openai_api.py",
         "zfae_api.py", "approval_scopes.py", "docs.py",
         "sigma_api.py", "editable_schema.py", "cli.py", "forge.py",
-        "artifacts.py", "instances_api.py",
+        "artifacts.py", "instances_api.py", "guest.py", "admin.py",
+        "_admin_gate.py", "forge_archetypes.py", "billing_helpers.py",
+        "transcripts.py",
     ]
     results: list[dict] = []
     for fname in route_files:
