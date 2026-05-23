@@ -98,7 +98,8 @@ def _extract_pdf_text(abs_path: str) -> str:
     try:
         reader = PdfReader(abs_path)
     except Exception as e:
-        return f"[pdf open failed: {type(e).__name__}: {e}]"
+        _log.exception("PDF open failed for attachment path=%r", abs_path)
+        return f"[pdf open failed: {type(e).__name__}]"
     pages: list[str] = []
     total = len(reader.pages)
     for i, page in enumerate(reader.pages):
@@ -119,7 +120,8 @@ def _extract_text_file(abs_path: str) -> str:
         with open(abs_path, "rb") as fh:
             raw = fh.read()
     except OSError as e:
-        return f"[read failed: {type(e).__name__}: {e}]"
+        _log.exception("Attachment read failed for path=%r", abs_path)
+        return f"[read failed: {type(e).__name__}]"
     try:
         return raw.decode("utf-8")
     except UnicodeDecodeError:

@@ -26,6 +26,7 @@
 import uuid
 import os
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
@@ -37,6 +38,7 @@ from ._admin_gate import require_admin
 from ..services.agent_instance import AgentInstance
 
 router = APIRouter(prefix="/api/v1", tags=["instances"])
+_log = logging.getLogger("a0p.instances_api")
 
 # ── Pydantic ──────────────────────────────────────────────────────────────────
 
@@ -408,7 +410,8 @@ async def post_chat(iid: str, request: Request, body: ChatMsg):
     try:
         content, _usage = await instance.run(messages)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Model error: {exc}") from exc
+        _log.exception("Model inference failed for instance_id=%s", iid)
+        raise HTTPException(status_code=502, detail="Model request failed") from exc
 
     # Persist assistant reply.
     aid = str(uuid.uuid4())
