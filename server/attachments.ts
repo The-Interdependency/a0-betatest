@@ -92,7 +92,18 @@ export function registerAttachmentRoutes(app: Express) {
           kind,
         });
       } catch (e) {
-        try { fs.unlinkSync(file.path); } catch {}
+        try {
+          const candidatePath = path.resolve(file.path);
+          const relative = path.relative(UPLOADS_DIR, candidatePath);
+          const isWithinUploads =
+            relative !== "" &&
+            !relative.startsWith("..") &&
+            !path.isAbsolute(relative);
+
+          if (isWithinUploads) {
+            fs.unlinkSync(candidatePath);
+          }
+        } catch {}
         const msg = e instanceof Error ? e.message : "db insert failed";
         res.status(500).json({ error: msg });
       }
