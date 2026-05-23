@@ -118,15 +118,25 @@ def walk_tree(
         if extensions is not None
         else set(_MARKERS.keys())
     )
+
+    def iter_source_files(path: Path) -> Iterable[Path]:
+        if path.name in skip_set:
+            return
+        try:
+            children = sorted(path.iterdir())
+        except OSError:
+            return
+        for child in children:
+            if child.is_dir():
+                if child.name in skip_set:
+                    continue
+                yield from iter_source_files(child)
+            elif child.is_file() and child.suffix.lower() in ext_set:
+                yield child
+
     annotated: list[tuple[Path, list[dict]]] = []
     untested: list[Path] = []
-    for path in sorted(root.rglob("*")):
-        if not path.is_file():
-            continue
-        if any(part in skip_set for part in path.parts):
-            continue
-        if path.suffix.lower() not in ext_set:
-            continue
+    for path in iter_source_files(root):
         entries = parse_file(path, block_name)
         if entries:
             annotated.append((path, entries))
