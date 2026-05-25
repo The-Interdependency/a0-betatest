@@ -1,4 +1,4 @@
-# 163:17 0:0 0:31
+# 164:17 0:0 0:31
 from .chat import router as chat_router
 from .agents import router as agents_router
 from .memory import router as memory_router
@@ -89,6 +89,7 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.liminals",
         "python.routes.artifacts",
         "python.routes.transcripts",
+        "python.routes.fleet",
     ]
     tabs = []
     for mod_name in modules:
@@ -194,4 +195,4 @@ def collect_doc_meta() -> list[dict]:
 # === END CONTRACTS ===
 # 171:16
 
-# 163:17 0:0 0:31
+# 164:17 0:0 0:31
