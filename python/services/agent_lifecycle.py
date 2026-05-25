@@ -1,4 +1,4 @@
-# 91:55 0:0 3:2
+# 91:55 0:0 5:2
 # N:M
 """Canonical in-memory sub-agent registry (Task #122).
 
@@ -167,4 +167,4 @@ def registry_snapshot() -> list[dict]:
         for name, (_e, meta) in items
     ]
 # N:M
-# 91:55 0:0 3:2
+# 91:55 0:0 5:2

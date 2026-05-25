@@ -1,4 +1,4 @@
-# 112:47 0:0 2:3
+# 112:47 0:0 3:3
 """AgentInstance — runtime handle for "the thing that calls a model".
 
 Unifies three concepts that previously each had bespoke plumbing:
@@ -175,4 +175,4 @@ class AgentInstance:
             f"tools={self.use_tools}, "
             f"resolved={self.provider_id!r})"
         )
-# 112:47 0:0 2:3
+# 112:47 0:0 3:3
