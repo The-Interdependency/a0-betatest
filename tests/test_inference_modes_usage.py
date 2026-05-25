@@ -171,7 +171,7 @@ def test_aggregate_round_trips_through_cache_breakdown():
     energy_registry.cache_breakdown — which the chat route calls on the
     final usage — reads back the same numbers without subtracting
     cache_read twice."""
-    from python.services.energy_registry import energy_registry
+    from python.services import energy_registry
     serialized = [
         {"model": "claude", "content": "x", "error": None,
          "usage": {"input_tokens": 200, "output_tokens": 50,

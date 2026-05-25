@@ -1,4 +1,4 @@
-# 127:32 0:0 4:0
+# 136:37 0:0 4:0
 """PTCA subagent definitions for the claude-agent-sdk.
 
 Each AgentDefinition maps to a PTCA architectural role.
@@ -15,7 +15,22 @@ Law 13: Meta-13 chooses; advisory layers may influence salience but do not decid
 """
 from __future__ import annotations
 
-from claude_agent_sdk import AgentDefinition
+try:
+    from claude_agent_sdk import AgentDefinition
+except ImportError:
+    # claude_agent_sdk is an optional runtime dependency (see
+    # ClaudeAgentAdapter._SDK_AVAILABLE). When it is absent the adapter
+    # degrades gracefully, so these definitions must remain importable too.
+    # This stand-in carries the same fields the SDK's AgentDefinition does,
+    # keeping ALL_SUBAGENTS / MODE_SUBAGENTS populated for inspection.
+    from dataclasses import dataclass, field
+
+    @dataclass
+    class AgentDefinition:  # type: ignore[no-redef]
+        description: str = ""
+        prompt: str = ""
+        tools: list[str] = field(default_factory=list)
+        model: str = ""
 
 # ---------------------------------------------------------------------------
 # Private cognitive cores
@@ -175,4 +190,4 @@ MODE_SUBAGENTS: dict[str, dict[str, AgentDefinition]] = {
     "route": ROUTE_SUBAGENTS,
     "act": ACT_SUBAGENTS,
 }
-# 127:32 0:0 4:0
+# 136:37 0:0 4:0
