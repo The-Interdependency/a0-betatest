@@ -13,7 +13,7 @@ from .tools.pdf_tool import run_pdf_extract
 from .tools.whisper_tool import run_whisper_segments
 
 _DEFAULT_LOG_DIR = Path(__file__).resolve().parent / "logs"
-LOG_DIR = Path(os.environ["A0_LOG_DIR"]) if "A0_LOG_DIR" in os.environ else _DEFAULT_LOG_DIR
+LOG_DIR = Path(os.environ.get("A0_LOG_DIR", _DEFAULT_LOG_DIR))
 
 
 def _select_adapter(req: A0Request):

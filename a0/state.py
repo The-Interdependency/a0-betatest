@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 _DEFAULT_STATE_PATH = Path(__file__).resolve().parent / "state" / "a0_state.json"
-STATE_PATH = Path(os.environ["A0_STATE_PATH"]) if "A0_STATE_PATH" in os.environ else _DEFAULT_STATE_PATH
+STATE_PATH = Path(os.environ.get("A0_STATE_PATH", _DEFAULT_STATE_PATH))
 
 def load_state() -> Dict[str, Any]:
     if STATE_PATH.exists():
