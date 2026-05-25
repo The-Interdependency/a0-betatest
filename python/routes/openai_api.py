@@ -1,6 +1,6 @@
-# 61:6 0:2 1:2
+# 62:6 0:2 1:2
 from fastapi import APIRouter, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 
 from ..logger import append_openai_hmmm, read_openai_hmmm
@@ -47,6 +47,7 @@ router = APIRouter(prefix="/api/v1/openai", tags=["openai"])
 
 
 class HmmmItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     id: Optional[str] = None
     status: str = "open"
     unresolved_constraint: str = Field(..., min_length=1)
@@ -77,4 +78,4 @@ async def add_hmmm(request: Request, body: HmmmItem):
     }
     await append_openai_hmmm(item)
     return {"ok": True, "item": item}
-# 61:6 0:2 1:2
+# 62:6 0:2 1:2
