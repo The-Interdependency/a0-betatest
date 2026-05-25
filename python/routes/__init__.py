@@ -1,4 +1,4 @@
-# 164:17 0:0 0:31
+# 163:16 0:0 0:31
 from .chat import router as chat_router
 from .agents import router as agents_router
 from .memory import router as memory_router
@@ -88,7 +88,6 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.cli",
         "python.routes.liminals",
         "python.routes.artifacts",
-        "python.routes.transcripts",
         "python.routes.fleet",
     ]
     tabs = []
@@ -193,6 +192,4 @@ def collect_doc_meta() -> list[dict]:
 #   class: security
 #   call:  python.tests.contracts.route_gating.test_every_write_route_is_gated
 # === END CONTRACTS ===
-# 171:16
-
-# 164:17 0:0 0:31
+# 163:16 0:0 0:31
