@@ -1,4 +1,4 @@
-# 12:0
+# 13:0
 import json
 from pathlib import Path
 
@@ -16,4 +16,5 @@ def test_openai_hmmm_seed_items_use_structured_fields():
         for field in _HMMM_FIELDS:
             assert isinstance(item[field], str)
             assert item[field]
-# 12:0
+        assert len({item[field] for field in _HMMM_FIELDS}) > 1
+# 13:0
