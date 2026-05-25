@@ -1,4 +1,4 @@
-# 326:312 0:0 10:19
+# 329:312 0:0 10:19
 import os
 import time
 from contextlib import asynccontextmanager
@@ -123,6 +123,9 @@ async def _ensure_default_tools() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("[python] FastAPI starting — DB engine initialized")
+    from .services.interdependent_bootstrap import require_interdependent_core_ready
+    _idl = require_interdependent_core_ready()
+    print(f"[interdependent-core] status={_idl.get('status')} version={_idl.get('version')} payload_py={_idl.get('payload_py')}")
     pcna = get_pcna()
     await pcna.load_checkpoint()
     print(f"[python] PCNA p7 online — blueprint {pcna.blueprint_hash[:12]}...")
@@ -670,4 +673,4 @@ if IS_PROD and os.path.isdir(STATIC_DIR):
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
         return FileResponse(os.path.join(STATIC_DIR, "index.html"))
-# 326:312 0:0 10:19
+# 329:312 0:0 10:19
