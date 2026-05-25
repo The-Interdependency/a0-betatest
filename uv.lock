@@ -920,6 +920,15 @@ wheels = [
 ]
 
 [[package]]
+name = "interdependent-lib"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/ed/0547df2bf878dd7f3ab04ac477b712be110ff120e4ae4dc04e9647e08352/interdependent_lib-0.1.0.tar.gz", hash = "sha256:9b9d8da3ffdc8cad64e62d22e8c4da336a1c0c9f01a6ac46ffc5974c6e13c22f", size = 6310, upload-time = "2026-04-07T04:39:02.607Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/11/8649f354acc8511e0c2fdf646916078069b4b5beb47ab9472c08466f503e/interdependent_lib-0.1.0-py3-none-any.whl", hash = "sha256:3c82c09436d4cb185d985df93e4913470a375cb614d77e3917c53a42555261d9", size = 9481, upload-time = "2026-04-07T04:39:01.087Z" },
+]
+
+[[package]]
 name = "itsdangerous"
 version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1840,6 +1849,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "google-genai" },
     { name = "httpx" },
+    { name = "interdependent-lib" },
     { name = "itsdangerous" },
     { name = "mako" },
     { name = "numpy" },
@@ -1876,6 +1886,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.135.1" },
     { name = "google-genai", specifier = ">=1.73.1" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "interdependent-lib", specifier = ">=0.1.0" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "mako", specifier = ">=1.3.11" },
     { name = "numpy", specifier = ">=2.4.3" },
