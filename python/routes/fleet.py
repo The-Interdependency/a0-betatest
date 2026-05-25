@@ -1,4 +1,4 @@
-# 378:32 2:10 1:4
+# 392:32 2:10 1:4
 # N:M
 """Fleet benchmarking — head-to-head comparison of model/agent/orchestration tuples.
 
@@ -44,6 +44,20 @@ UI_META = {
     "label": "Fleet Bench",
     "icon": "Trophy",
     "order": 26,
+    "sections": [
+        {
+            "id": "benchmarks",
+            "label": "Benchmarks",
+            "endpoint": "/api/v1/fleet/benchmarks",
+            "fields": [
+                {"key": "id", "type": "text", "label": "ID"},
+                {"key": "name", "type": "text", "label": "Name"},
+                {"key": "mode", "type": "text", "label": "Mode"},
+                {"key": "contestant_count", "type": "text", "label": "Contestants"},
+                {"key": "updated_at", "type": "text", "label": "Updated"},
+            ],
+        },
+    ],
 }
 
 MAX_CONTESTANTS = 6
@@ -473,4 +487,4 @@ async def list_runs(bid: int, request: Request):
             "WHERE benchmark_id = :bid ORDER BY started_at DESC LIMIT 50"
         ), {"bid": bid})).mappings().all()
     return [dict(r) for r in rows]
-# 378:32 2:10 1:4
+# 392:32 2:10 1:4
