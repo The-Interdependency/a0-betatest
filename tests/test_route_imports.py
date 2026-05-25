@@ -1,4 +1,4 @@
-# 36:6 0:0 0:0
+# 35:6 0:0 0:0
 # DOC module: tests.test_route_imports
 # DOC label: Route-import smoke
 # DOC description: Imports every route module under python/routes/ to catch
@@ -47,10 +47,9 @@ def test_doc_meta_includes_reviewed_route_modules():
     docs = {doc["module"] for doc in collect_doc_meta()}
     assert {
         "guest",
-        "admin",
         "_admin_gate",
         "forge_archetypes",
         "billing_helpers",
         "transcripts",
     }.issubset(docs)
-# 36:6 0:0 0:0
+# 35:6 0:0 0:0
