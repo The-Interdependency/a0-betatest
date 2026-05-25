@@ -1,4 +1,4 @@
-# 163:16 0:0 0:31
+# 163:21 0:0 0:31
 from .chat import router as chat_router
 from .agents import router as agents_router
 from .memory import router as memory_router
@@ -88,6 +88,10 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.cli",
         "python.routes.liminals",
         "python.routes.artifacts",
+        # transcripts is a standalone page (routed at /transcripts via the top
+        # nav), not a metadata-driven console tab. Its UI_META is a page-nav
+        # descriptor (path, no tab_id/sections) and must not be aggregated here,
+        # or the console renders an unrenderable placeholder tab for it.
         "python.routes.fleet",
     ]
     tabs = []
@@ -192,4 +196,6 @@ def collect_doc_meta() -> list[dict]:
 #   class: security
 #   call:  python.tests.contracts.route_gating.test_every_write_route_is_gated
 # === END CONTRACTS ===
-# 163:16 0:0 0:31
+# 171:16
+
+# 163:21 0:0 0:31

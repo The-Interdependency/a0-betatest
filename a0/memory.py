@@ -1,4 +1,4 @@
-# 67:23 0:0 1:2
+# 67:23 0:0 2:2
 """Memory — continuity substrate.
 
 Memory is not raw history.
@@ -111,4 +111,4 @@ class Memory:
                 )
         except (json.JSONDecodeError, KeyError):
             pass
-# 67:23 0:0 1:2
+# 67:23 0:0 2:2

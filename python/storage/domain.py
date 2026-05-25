@@ -1,4 +1,4 @@
-# 5:7
+# 5:7 0:0 4:3
 # Combiner — do not add methods here. Add them to the appropriate mixin:
 #   transcripts.py  — uploads, sources, reports, messages, explanations, credits
 #   memory.py       — seeds, projection, tensor snapshots, EDCM metrics
@@ -17,4 +17,4 @@ class DatabaseStorage(TranscriptMixin, MemoryMixin, SystemMixin):
 
 
 storage = DatabaseStorage()
-# 5:7
+# 5:7 0:0 4:3

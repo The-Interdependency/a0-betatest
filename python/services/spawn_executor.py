@@ -1,4 +1,4 @@
-# 175:131
+# 175:131 0:0 2:7
 # N:M
 """spawn_executor — execute the rows that sub_agent_spawn writes.
 
@@ -333,4 +333,4 @@ async def _poll_loop() -> None:
 def inflight_count() -> int:
     """Introspection helper — returns the number of in-flight execution tasks."""
     return len(_inflight)
-# 175:131
+# 175:131 0:0 2:7

@@ -1,4 +1,4 @@
-# 287:36
+# 287:36 0:0 2:3
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from sqlalchemy import select, update, delete, func, desc, asc, text as _sa_text
@@ -355,4 +355,4 @@ class TranscriptMixin(_CoreStorage):
                 select(ExplanationCredits).where(ExplanationCredits.user_id == user_id)
             )
             return _row_to_dict(result.scalar_one())
-# 287:36
+# 287:36 0:0 2:3

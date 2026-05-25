@@ -1,4 +1,4 @@
-# 113:30
+# 113:30 0:0 1:5
 """spawn_sweep — stale-claim reaper and no-orphan invariant check.
 
 Owns: _reap_stale_claims (single sweep pass), _emit_worker_lost_event,
@@ -163,4 +163,4 @@ async def check_no_orphan_invariant() -> dict:
         "ok": not registry_orphans and not worker_orphans,
         "worker_id": WORKER_ID,
     }
-# 113:30
+# 113:30 0:0 1:5

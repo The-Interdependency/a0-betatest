@@ -1,4 +1,4 @@
-# 93:4
+# 93:4 0:0 2:3
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from sqlalchemy import select, update, desc, asc
@@ -112,4 +112,4 @@ class MemoryMixin(_CoreStorage):
                 select(MemoryTensorSnapshot).order_by(desc(MemoryTensorSnapshot.created_at)).limit(limit)
             )
             return [_row_to_dict(r) for r in result.scalars().all()]
-# 93:4
+# 93:4 0:0 2:3

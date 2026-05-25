@@ -1,4 +1,4 @@
-# 335:41 3:17 1:3
+# 338:41 3:17 1:4
 # DOC module: instances_api
 # DOC label: Model Instances
 # DOC description: CRUD for model instances (D&D party), per-instance memory, task board, and chat/archive sub-routes.
@@ -453,4 +453,4 @@ async def get_archives(iid: str):
     return [{"id": str(r["id"]), "label": r["label"],
              "archived_at": str(r["archived_at"]), "merge_status": r["merge_status"]}
             for r in rows]
-# 335:41 3:17 1:3
+# 338:41 3:17 1:4
