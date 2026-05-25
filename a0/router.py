@@ -1,6 +1,7 @@
-# 57:5 0:0 4:8
+# 59:5 0:0 4:8
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from .contract import A0Request, A0Response, normalize_hmmm
 from .logging import log_event
@@ -11,7 +12,8 @@ from .tools.edcm_tool import run_edcm
 from .tools.pdf_tool import run_pdf_extract
 from .tools.whisper_tool import run_whisper_segments
 
-LOG_DIR = Path(__file__).resolve().parent / "logs"
+_DEFAULT_LOG_DIR = Path(__file__).resolve().parent / "logs"
+LOG_DIR = Path(os.environ["A0_LOG_DIR"]) if "A0_LOG_DIR" in os.environ else _DEFAULT_LOG_DIR
 
 
 def _select_adapter(req: A0Request):
@@ -76,4 +78,4 @@ def handle(req: A0Request) -> A0Response:
         "hmmm": hmmm,
     })
     return A0Response(task_id=req.task_id, result={"text": resp.get("text", ""), "artifacts": []}, hmmm=hmmm)
-# 57:5 0:0 4:8
+# 59:5 0:0 4:8

@@ -1,4 +1,4 @@
-# 53:10 0:0 0:0
+# 64:10 0:0 0:0
 # DOC module: tests.test_a0_package
 # DOC label: a0 package import + CLI smoke
 # DOC description: Imports every module under the a0/ package to catch
@@ -45,7 +45,13 @@ def test_subagent_registry_populated_without_sdk():
     assert bandit.tools and bandit.model
 
 
-def test_handle_round_trips_in_process():
+def test_handle_round_trips_in_process(tmp_path, monkeypatch):
+    import a0.state
+    import a0.router
+
+    monkeypatch.setattr(a0.state, "STATE_PATH", tmp_path / "a0_state.json")
+    monkeypatch.setattr(a0.router, "LOG_DIR", tmp_path / "logs")
+
     from a0.contract import A0Request, normalize_hmmm
     from a0.router import handle
 
@@ -61,7 +67,9 @@ def test_handle_round_trips_in_process():
     assert resp.result is not None
 
 
-def test_a0_cli_smoke():
+def test_a0_cli_smoke(tmp_path):
+    import os
+
     payload = {
         "task_id": "smoke1",
         "input": {"text": "hello a0", "files": [], "metadata": {}},
@@ -69,13 +77,19 @@ def test_a0_cli_smoke():
         "mode": "analyze",
         "hmmm": ["hmm"],
     }
+    env = {
+        **os.environ,
+        "A0_STATE_PATH": str(tmp_path / "a0_state.json"),
+        "A0_LOG_DIR": str(tmp_path / "logs"),
+    }
     proc = subprocess.run(
         [sys.executable, "-m", "a0.a0"],
         input=json.dumps(payload).encode("utf-8"),
         stdout=subprocess.PIPE,
+        env=env,
         check=True,
     )
     out = json.loads(proc.stdout.decode("utf-8"))
     assert out["task_id"] == "smoke1"
     assert "result" in out
-# 53:10 0:0 0:0
+# 64:10 0:0 0:0
