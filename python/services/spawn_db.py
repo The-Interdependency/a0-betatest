@@ -1,4 +1,4 @@
-# 159:28
+# 159:28 0:0 2:2
 """spawn_db — raw database operations for the spawn executor.
 
 Owns: claim, heartbeat, persist-provider, mark-terminal, retry scheduling,
@@ -209,4 +209,4 @@ async def _maybe_schedule_retry(
     except Exception:
         pass
     return True
-# 159:28
+# 159:28 0:0 2:2

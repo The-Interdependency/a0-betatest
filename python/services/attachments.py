@@ -1,4 +1,4 @@
-# 160:33 0:0 2:1
+# 176:35 0:0 2:1
 """attachments — attachment resolution, extraction, and provider message building.
 
 Extracted from inference.py. Activated only when a message carries
@@ -246,4 +246,4 @@ def build_provider_messages(messages: list[dict], provider_id: str) -> list[dict
             composed_text = (composed_text or "") + marker
         out.append({**base, "content": composed_text})
     return out
-# 160:33 0:0 2:1
+# 176:35 0:0 2:1

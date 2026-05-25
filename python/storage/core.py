@@ -1,4 +1,4 @@
-# 393:56 0:0 2:2
+# 393:56 0:0 4:2
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from sqlalchemy import select, update, delete, func, desc, asc, or_
@@ -507,4 +507,4 @@ class _CoreStorage:
 #   class: security
 #   call:  python.tests.contracts.chat.test_create_anonymous_owner_null
 # === END CONTRACTS ===
-# 393:56 0:0 2:2
+# 393:56 0:0 4:2

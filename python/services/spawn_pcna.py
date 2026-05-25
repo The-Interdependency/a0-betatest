@@ -1,4 +1,4 @@
-# 53:20
+# 53:20 0:0 1:3
 """spawn_pcna — provider resolution and PCNA helpers for the spawn executor.
 
 Owns: resolve_provider (active/explicit), snapshot_pcna, try_get_primary_pcna,
@@ -87,4 +87,4 @@ def _retire_fork_quietly(parent_pcna: Any, sub_name: str) -> None:
         merge_sub_agent(parent_pcna, sub_name)
     except Exception:
         pass
-# 53:20
+# 53:20 0:0 1:3

@@ -1,4 +1,4 @@
-# 49:0
+# 49:0 0:0 0:0
 import importlib.util
 from pathlib import Path
 
@@ -66,4 +66,4 @@ def test_check_interdependent_core_import_error_is_reported(monkeypatch):
     got = ib.check_interdependent_core()
     assert got["status"] == "error"
     assert got["error"] == "boom"
-# 49:0
+# 49:0 0:0 0:0
