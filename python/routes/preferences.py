@@ -1,4 +1,4 @@
-# 56:14 2:2 1:1
+# 56:15 2:2 1:1
 # N:M
 """User preferences — small key/value store backed by the settings table.
 
@@ -17,6 +17,7 @@ from ..database import get_session
 # DOC label: User Preferences
 # DOC description: Per-user key/value preferences (orchestration_mode, cut_mode, etc.) backed by the settings table.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/users/me/preferences | Return all preferences for the caller.
 # DOC endpoint: PATCH /api/v1/users/me/preferences | Upsert one or more preferences.
 # DOC notes: Anonymous callers get an empty dict and PATCH 401s.
@@ -84,4 +85,4 @@ async def patch_preferences(body: PrefPatch, request: Request):
             ), {"u": uid, "k": k, "v": __import__("json").dumps({"v": v})})
     return {"ok": True, "updated": len(updates), "values": updates}
 # N:M
-# 56:14 2:2 1:1
+# 56:15 2:2 1:1

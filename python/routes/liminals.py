@@ -1,4 +1,4 @@
-# 60:7 1:1 1:1
+# 60:8 1:1 1:1
 from fastapi import APIRouter, HTTPException, Request
 
 from ..storage import storage
@@ -7,6 +7,7 @@ from ..storage import storage
 # DOC label: Liminals
 # DOC description: Aggregated view of in-between system states — running sub-agents and archived conversations. Read-only convenience surface; each item links back to its native tab.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/liminals | Aggregated liminal items grouped by category
 
 UI_META = {
@@ -78,4 +79,4 @@ async def get_liminals(request: Request):
         "categories": categories,
         "total": sum(c["count"] for c in categories),
     }
-# 60:7 1:1 1:1
+# 60:8 1:1 1:1

@@ -1,4 +1,4 @@
-# 306:10 0:6 2:2
+# 306:11 0:6 2:2
 import math
 import random
 from fastapi import APIRouter, HTTPException, Request
@@ -12,6 +12,7 @@ from ._admin_gate import require_admin
 # DOC label: Memory
 # DOC description: Manages memory seeds — structured slots that persist context across sessions. Seeds can be seeded with initial values, updated, cleared, or imported in bulk.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/memory/seeds | List all memory seeds
 # DOC endpoint: GET /api/v1/memory/seeds/{index} | Get a specific seed by index
 # DOC endpoint: PUT /api/v1/memory/seeds/{index} | Replace a seed's value
@@ -372,4 +373,4 @@ async def get_subcore_state():
             "anomalies": anomalies,
         },
     }
-# 306:10 0:6 2:2
+# 306:11 0:6 2:2

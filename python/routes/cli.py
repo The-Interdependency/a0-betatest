@@ -1,8 +1,9 @@
-# 124:88 2:4 1:6
+# 124:89 2:4 1:6
 # DOC module: cli
 # DOC label: CLI Keys
 # DOC description: API key management for CLI and Termux access. Users generate bearer tokens (a0k_...) used to authenticate one-shot or interactive terminal sessions without a browser session.
 # DOC tier: ws
+# DOC role: route
 # DOC endpoint: POST /api/v1/cli/keys | Generate a new CLI API key
 # DOC endpoint: GET /api/v1/cli/keys | List your CLI keys
 # DOC endpoint: DELETE /api/v1/cli/keys/{key_id} | Revoke a CLI key
@@ -249,4 +250,4 @@ async def cli_chat(body: CliChatBody, request: Request):
         "tier": tier,
         "usage": usage,
     }
-# 124:88 2:4 1:6
+# 124:89 2:4 1:6

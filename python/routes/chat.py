@@ -1,4 +1,4 @@
-# 637:186 2:7 2:16
+# 637:187 2:7 2:16
 import time
 import traceback
 from fastapi import APIRouter, HTTPException, Request
@@ -94,6 +94,7 @@ def _attach_cost_usd(usage: dict | None, provider_id: str | None) -> None:
 # DOC label: Chat
 # DOC description: Manages conversations and messages between users and the agent. Supports streaming replies, conversation history, and per-conversation metadata.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/conversations | List all conversations for the current user
 # DOC endpoint: POST /api/v1/conversations | Create a new conversation
 # DOC endpoint: GET /api/v1/conversations/{id} | Get a single conversation
@@ -905,4 +906,4 @@ async def send_message(conv_id: int, body: SendMessage, request: Request):
 #   class: correctness
 #   call:  python.tests.contracts.chat.test_unknown_body_model_400
 # === END CONTRACTS ===
-# 637:186 2:7 2:16
+# 637:187 2:7 2:16

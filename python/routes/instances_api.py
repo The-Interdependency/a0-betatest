@@ -1,8 +1,9 @@
-# 338:41 3:17 1:4
+# 338:42 3:17 1:4
 # DOC module: instances_api
 # DOC label: Model Instances
 # DOC description: CRUD for model instances (D&D party), per-instance memory, task board, and chat/archive sub-routes.
 # DOC tier: ws
+# DOC role: api
 # DOC endpoint: GET /api/v1/agents/models | Model roster grouped by vendor
 # DOC endpoint: GET /api/v1/agents/instances | List all instances with counts
 # DOC endpoint: POST /api/v1/agents/instances | Create a new instance (admin)
@@ -453,4 +454,4 @@ async def get_archives(iid: str):
     return [{"id": str(r["id"]), "label": r["label"],
              "archived_at": str(r["archived_at"]), "merge_status": r["merge_status"]}
             for r in rows]
-# 338:41 3:17 1:4
+# 338:42 3:17 1:4

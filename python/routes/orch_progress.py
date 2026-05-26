@@ -1,4 +1,4 @@
-# 39:10 0:1 2:1
+# 39:11 0:1 2:1
 """SSE endpoint for live multi-model orchestration progress.
 GET /api/v1/orchestration/{client_run_id}/stream — read-only."""
 import asyncio
@@ -17,6 +17,7 @@ from ..services.orch_progress import (
 # DOC label: Live Orchestration
 # DOC description: SSE channel for live per-voice token meters during multi-model chat sends.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/orchestration/{client_run_id}/stream | SSE per-voice progress events for one in-flight send.
 # DOC notes: Read-only. Bus is in-memory and ephemeral; events are not persisted.
 
@@ -58,4 +59,4 @@ async def stream_orch_progress(client_run_id: str, request: Request):
             unregister_subscriber(client_run_id, q)
 
     return StreamingResponse(gen(), media_type="text/event-stream")
-# 39:10 0:1 2:1
+# 39:11 0:1 2:1

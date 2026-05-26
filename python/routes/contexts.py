@@ -1,4 +1,4 @@
-# 80:168 0:2 2:2
+# 80:169 0:2 2:2
 import math
 import os
 from fastapi import APIRouter, HTTPException, Request
@@ -13,6 +13,7 @@ ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
 # DOC label: Contexts
 # DOC description: Manages named prompt context blocks injected into the agent's system prompt. Admin-only. Each context is a named text value retrieved by the agent at inference time.
 # DOC tier: admin
+# DOC role: route
 # DOC endpoint: GET /api/v1/contexts/{name} | Get a named prompt context value
 # DOC endpoint: PUT /api/v1/contexts/{name} | Set or replace a named prompt context value
 
@@ -293,4 +294,4 @@ editable_registry.register(EditableField(
     patch_endpoint="/api/v1/context/system-sections",
     query_key="/api/v1/contexts",
 ))
-# 80:168 0:2 2:2
+# 80:169 0:2 2:2

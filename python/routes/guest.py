@@ -1,8 +1,9 @@
-# 32:5 0:0 1:2
+# 32:6 0:0 1:2
 # DOC module: guest
 # DOC label: Guest Chat
 # DOC description: Unauthenticated preview chat endpoint that routes through the currently active provider.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: POST /api/v1/guest/chat | Send one guest preview message.
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -47,4 +48,4 @@ async def guest_chat(body: GuestChatBody):
         tokens_used = max(10, len(body.message.split()) + len(content.split()))
 
     return {"content": content, "tokens_used": tokens_used}
-# 32:5 0:0 1:2
+# 32:6 0:0 1:2

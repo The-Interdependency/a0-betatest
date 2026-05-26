@@ -1,4 +1,4 @@
-# 125:20 0:5 4:2
+# 125:21 0:5 4:2
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 from typing import Optional, Any
@@ -9,6 +9,7 @@ from ..storage import storage
 # DOC label: Tools
 # DOC description: Registry for custom agent tools. Tools define callable capabilities the agent can invoke during conversations, with typed parameters and descriptions.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/tools | List all registered tools
 # DOC endpoint: POST /api/v1/tools | Register a new tool
 # DOC endpoint: GET /api/v1/tools/{id} | Get a specific tool
@@ -176,4 +177,4 @@ editable_registry.register(EditableField(
     patch_endpoint="/api/v1/tools/{id}",
     query_key="/api/v1/tools",
 ))
-# 125:20 0:5 4:2
+# 125:21 0:5 4:2

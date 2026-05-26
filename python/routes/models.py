@@ -1,8 +1,9 @@
-# 9:12 1:1 5:1
+# 9:13 1:1 5:1
 # DOC module: models
 # DOC label: Models
 # DOC description: Unified model catalog — every model the caller can actually use, with provider + role-assignment + tier provenance.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/models | List every model the caller can invoke, grouped by provider, with provenance
 
 from typing import Optional
@@ -29,4 +30,4 @@ async def list_models(request: Request) -> dict:
     user's disabled_models list.
     """
     return await list_models_for_user(_uid(request))
-# 9:12 1:1 5:1
+# 9:13 1:1 5:1

@@ -1,4 +1,4 @@
-# 213:37 5:8 1:7
+# 213:38 5:8 1:7
 """The Forge — character-sheet style agent instantiation.
 
 Self-updating tool/model docs DB:
@@ -23,6 +23,7 @@ from .forge_archetypes import ARCHETYPES, TOOL_CATEGORIES
 # DOC label: Forge
 # DOC description: Character-sheet style agent creation. Pick a template archetype, swap in a model, check tools, set personality. Self-updating tool/model registry feeds the form.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/forge/templates | List built-in archetype templates
 # DOC endpoint: GET /api/v1/forge/tools | Live tool catalog (auto-introspected from TOOL_SCHEMAS_CHAT)
 # DOC endpoint: GET /api/v1/forge/models | Live model catalog (delegated to model_catalog.list_models_for_user)
@@ -293,4 +294,4 @@ async def duel_stub(request: Request) -> dict:
 def _jsonb(value) -> str:
     import json
     return json.dumps(value) if value is not None else "null"
-# 213:37 5:8 1:7
+# 213:38 5:8 1:7

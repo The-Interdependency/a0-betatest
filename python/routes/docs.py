@@ -1,8 +1,9 @@
-# 27:8 1:2 1:0
+# 27:9 1:2 1:0
 # DOC module: docs
 # DOC label: Docs
 # DOC description: Living API reference. Each route module self-declares its documentation via # DOC comment blocks in its source file; this module aggregates and serves them. Minimum required fields per module: module, label, description, tier.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/docs | Return all module documentation entries sorted by label
 # DOC endpoint: GET /api/v1/docs/readme | Return replit.md content and per-module code:comment stats
 
@@ -41,4 +42,4 @@ async def get_readme(request: Request):
         content = "# a0p\n\nNo README found."
     modules = collect_doc_meta()
     return {"content": content, "modules": modules}
-# 27:8 1:2 1:0
+# 27:9 1:2 1:0

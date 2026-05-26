@@ -1,4 +1,4 @@
-# 113:37 0:7 1:3
+# 113:38 0:7 1:3
 """
 ZFAE API — Zeta Function Alpha Echo routes.
 
@@ -20,6 +20,7 @@ from ._admin_gate import require_admin
 # DOC label: ZFAE
 # DOC description: Zeta Function Alpha Echo subsystem. Maintains a rolling event echo buffer and exposes the ZetaEngine state and review history. Supports per-directory and global resolution levels (1–5) to control observation depth; comment lines are free of the 400-line budget.
 # DOC tier: ws
+# DOC role: api
 # DOC endpoint: GET /api/v1/zfae/echo | Get the rolling 50-event echo buffer
 # DOC endpoint: GET /api/v1/zfae/state | Get ZetaEngine state including resolution config
 # DOC endpoint: GET /api/v1/zfae/review-history | Get recent review history entries
@@ -185,4 +186,4 @@ async def remove_directory_resolution(body: RemoveDirectoryResolutionBody, reque
     config = _get_zeta().remove_directory_resolution(body.path)
     await _persist_resolution(config)
     return config
-# 113:37 0:7 1:3
+# 113:38 0:7 1:3

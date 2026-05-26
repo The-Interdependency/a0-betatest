@@ -1,4 +1,4 @@
-# 226:12 0:6 2:4
+# 226:13 0:6 2:4
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, Any
@@ -10,6 +10,7 @@ from ._admin_gate import require_admin
 # DOC label: System
 # DOC description: Controls platform-level subsystem toggles, cost tracking, and event logs. Restricted to admin users.
 # DOC tier: admin
+# DOC role: route
 # DOC endpoint: GET /api/v1/system/toggles | List all subsystem toggles
 # DOC endpoint: PUT /api/v1/system/toggles/{subsystem} | Enable or configure a subsystem toggle
 # DOC endpoint: DELETE /api/v1/system/toggles/{subsystem} | Remove a subsystem toggle
@@ -283,4 +284,4 @@ editable_registry.register(EditableField(
     patch_endpoint="/api/v1/system/toggles/{subsystem}",
     query_key="/api/v1/system/toggles",
 ))
-# 226:12 0:6 2:4
+# 226:13 0:6 2:4
