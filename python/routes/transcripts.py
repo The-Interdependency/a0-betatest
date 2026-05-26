@@ -1,4 +1,4 @@
-# 231:78 3:6 2:4
+# 231:79 3:6 2:4
 # DOC module: transcripts
 # DOC label: Transcripts
 # DOC description: Transcript upload and EDCMBONE scoring — ingest files, list uploads/reports, and drill into per-round messages.
@@ -35,6 +35,7 @@ UNLIMITED_TIERS = {"supporter", "ws", "admin"}
 
 router = APIRouter(prefix="/api/v1/transcripts", tags=["transcripts"])
 
+# Standalone top-nav page metadata (not a console tab; not consumed by collect_ui_meta).
 PAGE_META = {"label": "Transcripts", "module": "transcripts", "order": 25, "path": "/transcripts"}
 
 
@@ -364,4 +365,4 @@ async def explain_report_endpoint(request: Request, report_id: int):
             status_code=502,
             detail=f"explainer failed: {type(exc).__name__}: {exc}",
         )
-# 231:78 3:6 2:4
+# 231:79 3:6 2:4
