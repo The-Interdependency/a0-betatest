@@ -1,4 +1,4 @@
-# 231:78 3:6 2:4
+# 230:78 3:6 2:4
 # DOC module: transcripts
 # DOC label: Transcripts
 # DOC description: Transcript upload and EDCMBONE scoring — ingest files, list uploads/reports, and drill into per-round messages.
@@ -34,9 +34,6 @@ FREE_MONTHLY_UPLOAD_LIMIT = 1
 UNLIMITED_TIERS = {"supporter", "ws", "admin"}
 
 router = APIRouter(prefix="/api/v1/transcripts", tags=["transcripts"])
-
-UI_META = {"label": "Transcripts", "module": "transcripts", "order": 25, "path": "/transcripts"}
-
 
 def _caller_uid(request: Request) -> Optional[str]:
     return request.headers.get("x-user-id") or None
@@ -364,4 +361,4 @@ async def explain_report_endpoint(request: Request, report_id: int):
             status_code=502,
             detail=f"explainer failed: {type(exc).__name__}: {exc}",
         )
-# 231:78 3:6 2:4
+# 230:78 3:6 2:4
