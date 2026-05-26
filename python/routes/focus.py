@@ -1,8 +1,9 @@
-# 321:52 0:7 1:9
+# 321:53 0:7 1:9
 # DOC module: focus
 # DOC label: Focus
 # DOC description: Model focus management. Provides context boost injection per conversation, focus regain directives, per-conversation tool selection, and system prompt preview.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/conversations/{id}/boost | Get the context boost for a conversation
 # DOC endpoint: PUT /api/v1/conversations/{id}/boost | Set context boost text injected into the system prompt
 # DOC endpoint: DELETE /api/v1/conversations/{id}/boost | Clear the context boost
@@ -448,4 +449,4 @@ async def get_prompt_sections(conv_id: int, request: Request):
     sections["has_messages"] = has_messages
     sections["conversation_id"] = conv_id
     return sections
-# 321:52 0:7 1:9
+# 321:53 0:7 1:9

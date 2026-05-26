@@ -1,4 +1,4 @@
-# 86:9 0:5 1:2
+# 86:10 0:5 1:2
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
@@ -10,6 +10,7 @@ from ._admin_gate import require_admin
 # DOC label: Heartbeat
 # DOC description: Scheduled task runner and activity log. Heartbeat tasks fire on configurable intervals and their execution history is stored in the log.
 # DOC tier: free
+# DOC role: api
 # DOC endpoint: GET /api/v1/heartbeat/tasks | List all scheduled tasks
 # DOC endpoint: POST /api/v1/heartbeat/tasks | Create a new scheduled task
 # DOC endpoint: PATCH /api/v1/heartbeat/tasks/{id} | Update a task schedule or payload
@@ -113,4 +114,4 @@ async def delete_task(task_id: int, request: Request):
 @router.get("/heartbeat/logs")
 async def list_logs(limit: int = 24):
     return await storage.get_heartbeats(limit)
-# 86:9 0:5 1:2
+# 86:10 0:5 1:2

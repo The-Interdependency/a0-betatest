@@ -1,4 +1,4 @@
-# 163:21 0:0 0:31
+# 162:41 0:0 0:31
 from .chat import router as chat_router
 from .agents import router as agents_router
 from .memory import router as memory_router
@@ -87,11 +87,11 @@ def collect_ui_meta() -> list[dict]:
         "python.routes.editable_schema",
         "python.routes.cli",
         "python.routes.liminals",
-        "python.routes.artifacts",
-        # transcripts is a standalone page (routed at /transcripts via the top
-        # nav), not a metadata-driven console tab. Its UI_META is a page-nav
-        # descriptor (path, no tab_id/sections) and must not be aggregated here,
-        # or the console renders an unrenderable placeholder tab for it.
+        # artifacts (the "Archive") and transcripts are standalone pages,
+        # routed at /archive and /transcripts via the top nav, not
+        # metadata-driven console tabs. Their UI_META has no custom renderer
+        # and no sections, so aggregating them here makes the console render an
+        # unrenderable placeholder tab (caught by the console-tab guard).
         "python.routes.fleet",
     ]
     tabs = []
@@ -195,7 +195,26 @@ def collect_doc_meta() -> list[dict]:
 #          Stale ALLOWLIST entries (route no longer exists) also fail.
 #   class: security
 #   call:  python.tests.contracts.route_gating.test_every_write_route_is_gated
+#
+# id: routes_doc_blocks_complete
+#   given: every python/routes/*.py file (excluding __init__.py)
+#   then:  it declares # DOC module/label/description/tier/role exactly
+#          once each, with role drawn from the allowed doctrine set
+#   class: correctness
+#   call:  python.tests.contracts.module_doctrine.test_route_doc_blocks_are_complete
+#
+# id: routes_files_annotated
+#   given: every python/routes/*.py file (excluding __init__.py)
+#   then:  its first and last non-blank lines are # N:M annotation comments
+#   class: correctness
+#   call:  python.tests.contracts.module_doctrine.test_route_files_are_annotated
+#
+# id: routes_routers_registered
+#   given: every python/routes/*.py file that defines a module-level router
+#   then:  it is imported and added to ALL_ROUTERS in __init__.py
+#   class: correctness
+#   call:  python.tests.contracts.module_doctrine.test_router_defining_files_are_registered
 # === END CONTRACTS ===
 # 171:16
 
-# 163:21 0:0 0:31
+# 162:41 0:0 0:31

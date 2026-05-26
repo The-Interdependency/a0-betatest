@@ -1,4 +1,4 @@
-# 202:28 0:4 2:1
+# 202:29 0:4 2:1
 # N:M
 """Fleet view API — agent_runs tree, per-run summary, paginated logs, SSE tail.
 
@@ -20,6 +20,7 @@ from ..database import get_session
 # DOC label: Fleet
 # DOC description: Live tree of agent_runs with per-recursion-level structured logs and SSE tail.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/runs/tree | Full subtree of agent_runs from optional root.
 # DOC endpoint: GET /api/v1/runs/{run_id} | Single run summary + recent log events.
 # DOC endpoint: GET /api/v1/runs/{run_id}/logs | Paginated log entries (limit+before cursor).
@@ -261,4 +262,4 @@ async def stream_logs(run_id: str, request: Request):
 
     return StreamingResponse(gen(), media_type="text/event-stream")
 # N:M
-# 202:28 0:4 2:1
+# 202:29 0:4 2:1

@@ -187,17 +187,17 @@ async def test_marks_failed_on_exception() -> None:
         await _delete_run(rid)
 
 
-def test_resolve_provider_rejects_empty() -> None:
+async def test_resolve_provider_rejects_empty() -> None:
     """_resolve_provider raises ValueError on empty/malformed providers
     input — no silent default-to-active fallback."""
     try:
-        _resolve_provider([])
+        await _resolve_provider([])
     except ValueError:
         pass
     else:
         raise AssertionError("expected ValueError on empty providers list")
     try:
-        _resolve_provider("not a list and not json")
+        await _resolve_provider("not a list and not json")
     except ValueError:
         pass
     else:

@@ -1,4 +1,4 @@
-# 104:16 2:5 3:1
+# 104:17 2:5 3:1
 """HTTP API for the unified artifacts archive."""
 from typing import Optional
 import datetime as _dt
@@ -13,6 +13,7 @@ from ..services import artifacts as _A
 # DOC label: Archive
 # DOC description: Unified archive of every file a0 produces (images, reports, evidence). Backed by Replit Object Storage with sha256 dedupe and full provenance.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/artifacts | List artifacts with filters (kind, tool, since)
 # DOC endpoint: GET /api/v1/artifacts/{id} | Fetch a single artifact + provenance
 # DOC endpoint: GET /api/v1/artifacts/{id}/download | Stream the artifact bytes
@@ -146,4 +147,4 @@ async def patch_artifact(artifact_id: str, body: PatchArtifact, request: Request
     if not row:
         raise HTTPException(status_code=404, detail="artifact not found")
     return _serialize(row)
-# 104:16 2:5 3:1
+# 104:17 2:5 3:1

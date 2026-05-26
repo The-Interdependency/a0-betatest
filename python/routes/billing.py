@@ -1,4 +1,4 @@
-# 418:311 5:7 2:4
+# 418:312 5:7 2:4
 import os
 import stripe
 from urllib.parse import urlparse
@@ -14,6 +14,7 @@ from .billing_helpers import is_supporter_subscription
 # DOC label: Billing
 # DOC description: Donations-only billing surface. a0p is a research instrument, not a subscription product — there is no recurring sign-up tier. Existing Supporter subscribers are honored until they cancel via the Stripe portal. ws tier auto-assigned to @interdependentway.org accounts; admin tier reserved for the owner + invited collaborators.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/billing/status | Get current user billing status and tier
 # DOC endpoint: GET /api/v1/billing/plans | List supported flows (donation only; legacy Supporter tier retired)
 # DOC endpoint: GET /api/v1/billing/funding-statement | Verbatim 501c3/$500 disclosure copy
@@ -858,4 +859,4 @@ async def explainer_checkout(request: Request):
 #   class: idempotency
 #   call:  python.tests.contracts.billing.test_webhook_replay_is_idempotent
 # === END CONTRACTS ===
-# 418:311 5:7 2:4
+# 418:312 5:7 2:4

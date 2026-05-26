@@ -1,4 +1,4 @@
-# 291:11 0:6 1:3
+# 291:12 0:6 1:3
 import time
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
@@ -9,6 +9,7 @@ from ._admin_gate import require_admin
 # DOC label: PCNA Engine
 # DOC description: Probabilistic Cognitive Network Architecture engine. Manages inference, reward signaling, phi-state propagation, and audit trails for the core reasoning subsystem.
 # DOC tier: ws
+# DOC role: api
 # DOC endpoint: GET /api/v1/pcna/state | Get current PCNA engine state
 # DOC endpoint: POST /api/v1/pcna/infer | Run an inference step
 # DOC endpoint: POST /api/v1/pcna/reward | Submit a reward signal
@@ -380,4 +381,4 @@ async def pcna_compare():
         "psi_delta": round(p7_psi - p8_psi, 4),
         "omega_delta": round(p7_omega - p8_omega, 4),
     }
-# 291:11 0:6 1:3
+# 291:12 0:6 1:3

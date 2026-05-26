@@ -1,8 +1,9 @@
-# 104:7 0:0 1:0
+# 104:8 0:0 1:0
 # DOC module: forge_archetypes
 # DOC label: Forge Archetypes
 # DOC description: Static archetype template catalog and tool category mapping consumed by forge route handlers.
 # DOC tier: free
+# DOC role: config
 """Archetype template data and tool category map for the Forge.
 
 Pure data module — no FastAPI, no DB. Imported by forge.py routes.
@@ -113,4 +114,4 @@ ARCHETYPES: list[dict] = [
         "system_prompt": "You are The Captain — break the task into orders, dispatch sub-agents, merge results, report.",
     },
 ]
-# 104:7 0:0 1:0
+# 104:8 0:0 1:0

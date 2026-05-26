@@ -1,4 +1,4 @@
-# 392:32 2:10 1:4
+# 392:33 2:10 1:4
 # N:M
 """Fleet benchmarking — head-to-head comparison of model/agent/orchestration tuples.
 
@@ -26,6 +26,7 @@ from ..services.energy_registry import cache_breakdown, estimate_cost
 # DOC label: Fleet
 # DOC description: Persistent benchmarks — fan one prompt across N (model, agent, orchestration) tuples and compare.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/fleet/benchmarks | List user's saved benchmarks.
 # DOC endpoint: POST /api/v1/fleet/benchmarks | Create a benchmark.
 # DOC endpoint: GET /api/v1/fleet/benchmarks/{id} | Benchmark + contestants + recent runs.
@@ -487,4 +488,4 @@ async def list_runs(bid: int, request: Request):
             "WHERE benchmark_id = :bid ORDER BY started_at DESC LIMIT 50"
         ), {"bid": bid})).mappings().all()
     return [dict(r) for r in rows]
-# 392:32 2:10 1:4
+# 392:33 2:10 1:4

@@ -1,4 +1,4 @@
-# 118:18 3:4 1:4
+# 118:19 3:4 1:4
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
@@ -9,6 +9,7 @@ from ..config.policy_loader import get_scope_categories, get_safety_floor_action
 # DOC label: Approval Scopes
 # DOC description: Pre-approved action scope registry. Users can grant the agent permission to perform specific write actions without a per-action approval prompt. Viewing the catalog is free; granting and revoking requires ws tier.
 # DOC tier: ws
+# DOC role: route
 # DOC endpoint: GET /api/v1/approval-scopes/catalog | List all available scope categories and their actions
 # DOC endpoint: GET /api/v1/approval-scopes | List the current user's granted scopes
 # DOC endpoint: POST /api/v1/approval-scopes | Grant a scope to the current user
@@ -160,4 +161,4 @@ editable_registry.register(EditableField(
     patch_endpoint="/api/v1/approval-scopes",
     query_key="/api/v1/approval-scopes",
 ))
-# 118:18 3:4 1:4
+# 118:19 3:4 1:4

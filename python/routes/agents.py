@@ -1,4 +1,4 @@
-# 265:31 1:3 2:8
+# 265:32 1:3 2:8
 import time
 import logging
 from fastapi import APIRouter, HTTPException, Request
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # DOC label: Agents
 # DOC description: Manages agent instances and sub-agent spawning. Lists running agents and supports manual merge operations.
 # DOC tier: free
+# DOC role: route
 # DOC endpoint: GET /api/v1/agents | List all agent instances
 # DOC endpoint: POST /api/v1/agents/spawn | Spawn a new agent instance
 # DOC endpoint: POST /api/v1/agents/{name}/merge | Merge a named agent configuration
@@ -324,4 +325,4 @@ async def learning_summary(limit: int = 200):
     }
 
 
-# 265:31 1:3 2:8
+# 265:32 1:3 2:8

@@ -1,4 +1,4 @@
-# 38:8 1:2 1:1
+# 38:9 1:2 1:1
 import os
 from fastapi import APIRouter, HTTPException, Request
 
@@ -8,6 +8,7 @@ from ..services.editable_registry import editable_registry
 # DOC label: Editable Schema
 # DOC description: Machine-readable index of all registered mutable backend fields. WSEM fetches this index on activation to know what is editable, what control type to render, and which endpoint to PATCH. Also serves the project README with live per-module code:comment stats.
 # DOC tier: ws
+# DOC role: route
 # DOC endpoint: GET /api/v1/editable-schema/index | Return all registered editable fields in camelCase (ws/admin only)
 # DOC endpoint: GET /api/v1/editable-schema/readme | Return replit.md content and per-module stats (all authenticated users)
 
@@ -53,4 +54,4 @@ async def get_editable_schema_readme(request: Request):
         content = "# a0p\n\nNo README found."
     modules = collect_doc_meta()
     return {"content": content, "modules": modules}
-# 38:8 1:2 1:1
+# 38:9 1:2 1:1
