@@ -1,4 +1,4 @@
-# 64:10 0:0 0:0
+# 63:10 0:0 0:0
 # DOC module: tests.test_a0_package
 # DOC label: a0 package import + CLI smoke
 # DOC description: Imports every module under the a0/ package to catch
@@ -91,4 +91,4 @@ def test_a0_cli_smoke(tmp_path):
     out = json.loads(proc.stdout.decode("utf-8"))
     assert out["task_id"] == "smoke1"
     assert "result" in out
-# 64:10 0:0 0:0
+# 63:10 0:0 0:0
