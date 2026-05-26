@@ -35,7 +35,7 @@ UNLIMITED_TIERS = {"supporter", "ws", "admin"}
 
 router = APIRouter(prefix="/api/v1/transcripts", tags=["transcripts"])
 
-UI_META = {"label": "Transcripts", "module": "transcripts", "order": 25, "path": "/transcripts"}
+PAGE_META = {"label": "Transcripts", "module": "transcripts", "order": 25, "path": "/transcripts"}
 
 
 def _caller_uid(request: Request) -> Optional[str]:
