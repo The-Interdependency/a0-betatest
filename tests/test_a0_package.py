@@ -53,7 +53,6 @@ def test_handle_round_trips_in_process(tmp_path, monkeypatch):
     monkeypatch.setattr(a0.router, "LOG_DIR", tmp_path / "logs")
 
     from a0.contract import A0Request, normalize_hmmm
-    from a0.router import handle
 
     req = A0Request(
         task_id="unit-1",
@@ -62,7 +61,7 @@ def test_handle_round_trips_in_process(tmp_path, monkeypatch):
         mode="analyze",
         hmmm=normalize_hmmm(["hmm"]),
     )
-    resp = handle(req)
+    resp = a0.router.handle(req)
     assert resp.task_id == "unit-1"
     assert resp.result is not None
 
