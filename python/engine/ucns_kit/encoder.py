@@ -53,6 +53,7 @@ def _entry_to_ucns(entry: dict):
     bone_class_hash = int.from_bytes(
         hashlib.sha256(cls.encode("utf-8")).digest()[:2], "big"
     ) % 53 or 1
+    return UCNSObject(
         n_dec=bone_class_hash,
         n_min=1,
         anchors_pos=(AnchorPayload(theta=Fraction(0), payload=None),),
