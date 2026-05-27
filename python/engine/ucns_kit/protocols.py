@@ -15,21 +15,31 @@ class RingState(Protocol):
 
     n: int
 
-    def inject(self, signal) -> None: ...
-    def nodes(self) -> Iterable: ...
-    def apply_rule(self, rule: "PropagationRule") -> None: ...
-    def serialize(self) -> bytes: ...
+    def inject(self, signal) -> None:
+        pass
+
+    def nodes(self) -> Iterable:
+        pass
+
+    def apply_rule(self, rule: "PropagationRule") -> None:
+        pass
+
+    def serialize(self) -> bytes:
+        pass
 
     @classmethod
-    def restore(cls, data: bytes) -> "RingState": ...
+    def restore(cls, data: bytes) -> "RingState":
+        pass
 
 
 class PropagationRule(Protocol):
-    def apply(self, node, neighbors) -> object: ...
+    def apply(self, node, neighbors) -> object:
+        pass
 
 
 class CoherenceMeasure(Protocol):
-    def measure(self, ring: RingState) -> float: ...
+    def measure(self, ring: RingState) -> float:
+        pass
 
 
 class RewardMechanism(Protocol):
@@ -41,10 +51,14 @@ class RewardMechanism(Protocol):
           Mechanism choice is upstream of this interface.
     """
 
-    def apply_reward(self, state, outcome: float) -> None: ...
+    def apply_reward(self, state, outcome: float) -> None:
+        pass
 
 
 class Serializer(Protocol):
-    def to_bytes(self, state) -> bytes: ...
-    def from_bytes(self, data: bytes): ...
+    def to_bytes(self, state) -> bytes:
+        pass
+
+    def from_bytes(self, data: bytes):
+        pass
 # 19:13
