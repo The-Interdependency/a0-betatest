@@ -48,8 +48,11 @@ def _entry_to_ucns(entry: dict):
     Provisional: unit object with n_dec derived from bone class hash.
     """
     from fractions import Fraction
-    bone_class_hash = abs(hash(entry.get("class", ""))) % 53 or 1
-    return UCNSObject(
+    import hashlib
+    cls = str(entry.get("class", ""))
+    bone_class_hash = int.from_bytes(
+        hashlib.sha256(cls.encode("utf-8")).digest()[:2], "big"
+    ) % 53 or 1
         n_dec=bone_class_hash,
         n_min=1,
         anchors_pos=(AnchorPayload(theta=Fraction(0), payload=None),),
