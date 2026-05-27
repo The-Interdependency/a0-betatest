@@ -33,12 +33,12 @@ class Orchestrator:
         pool: UCNSPool | None = None,
     ) -> None:
         self._check_compatibility(ring_state, reward_mechanism)
-        self.ring    = ring_state
-        self.rule    = propagation_rule
+        self.ring = ring_state
+        self.rule = propagation_rule
         self.measure = coherence_measure
-        self.reward  = reward_mechanism
-        self.serial  = serializer
-        self.pool    = pool or UCNSPool()
+        self.reward = reward_mechanism
+        self.serial = serializer
+        self.pool = pool or UCNSPool()
 
     def run(self, text: str) -> dict:
         """Run the six-step pipeline on text; return metrics dict."""
