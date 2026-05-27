@@ -31,8 +31,8 @@ def text_to_ucns(text: str) -> list:
     """
     if not _EDCMBONE_AVAILABLE:
         raise RuntimeError(
-            "edcmbone not importable. Run from repo root or resolve "
-            "edcmbone issue #46 (ucns_v04 must be on sys.path)."
+            "edcmbone dependencies not importable (expected `ucns_v04` and "
+            "`closed_tokens`). Run from repo root or resolve edcmbone issue #46."
         )
     result = []
     for token in _tokenize(text):
