@@ -15,21 +15,16 @@ class RingState(Protocol):
 
     n: int
 
-    def inject(self, signal) -> None:
-        pass
+    def inject(self, signal) -> None: ...
 
-    def nodes(self) -> Iterable:
-        pass
+    def nodes(self) -> Iterable: ...
 
-    def apply_rule(self, rule: "PropagationRule") -> None:
-        pass
+    def apply_rule(self, rule: "PropagationRule") -> None: ...
 
-    def serialize(self) -> bytes:
-        pass
+    def serialize(self) -> bytes: ...
 
     @classmethod
-    def restore(cls, data: bytes) -> "RingState":
-        pass
+    def restore(cls, data: bytes) -> "RingState": ...
 
 
 class PropagationRule(Protocol):
