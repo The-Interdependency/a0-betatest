@@ -92,7 +92,7 @@ export default function AgentsPage() {
             value={draft.capabilities} onChange={e => setDraft({...draft, capabilities: e.target.value})}
             data-testid="agent-caps"/>
           <input className="input-term md:col-span-2"
-            placeholder="default_models — e.g. emergent:openai:gpt-5.4, emergent:anthropic:claude-sonnet-4-6"
+            placeholder="default_models — e.g. emergent:openai:gpt-5, emergent:anthropic:claude-sonnet-4-5"
             value={draft.default_models} onChange={e => setDraft({...draft, default_models: e.target.value})}
             data-testid="agent-models"/>
           <select className="input-term" value={draft.aimmh_pattern}

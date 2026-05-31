@@ -12,16 +12,16 @@ from .base import ChatResult
 # Curated inventory — emergent key only supports these providers.
 _INVENTORY = [
     # OpenAI
-    {"id": "openai:gpt-5.4",        "provider": "emergent", "label": "GPT-5.4 (via Emergent)",        "via": "openai"},
-    {"id": "openai:gpt-5.4-mini",   "provider": "emergent", "label": "GPT-5.4 mini (via Emergent)",   "via": "openai"},
-    {"id": "openai:gpt-5.2",        "provider": "emergent", "label": "GPT-5.2 (via Emergent)",        "via": "openai"},
+    {"id": "openai:gpt-5",          "provider": "emergent", "label": "GPT-5 (via Emergent)",          "via": "openai"},
+    {"id": "openai:gpt-5-mini",     "provider": "emergent", "label": "GPT-5 mini (via Emergent)",     "via": "openai"},
+    {"id": "openai:gpt-5.1",        "provider": "emergent", "label": "GPT-5.1 (via Emergent)",        "via": "openai"},
     {"id": "openai:gpt-4o",         "provider": "emergent", "label": "GPT-4o (via Emergent)",         "via": "openai"},
     {"id": "openai:gpt-4o-mini",    "provider": "emergent", "label": "GPT-4o mini (via Emergent)",    "via": "openai"},
     {"id": "openai:o3-mini",        "provider": "emergent", "label": "o3-mini (via Emergent)",        "via": "openai"},
     # Anthropic
-    {"id": "anthropic:claude-sonnet-4-6", "provider": "emergent", "label": "Claude Sonnet 4.6 (via Emergent)", "via": "anthropic"},
-    {"id": "anthropic:claude-haiku-4-5-20251001", "provider": "emergent", "label": "Claude Haiku 4.5 (via Emergent)", "via": "anthropic"},
-    {"id": "anthropic:claude-opus-4-5-20251101",  "provider": "emergent", "label": "Claude Opus 4.5 (via Emergent)",  "via": "anthropic"},
+    {"id": "anthropic:claude-sonnet-4-5",         "provider": "emergent", "label": "Claude Sonnet 4.5 (via Emergent)", "via": "anthropic"},
+    {"id": "anthropic:claude-haiku-4-5-20251001", "provider": "emergent", "label": "Claude Haiku 4.5 (via Emergent)",  "via": "anthropic"},
+    {"id": "anthropic:claude-opus-4-5-20251101",  "provider": "emergent", "label": "Claude Opus 4.5 (via Emergent)",   "via": "anthropic"},
     # Gemini
     {"id": "gemini:gemini-3-flash-preview", "provider": "emergent", "label": "Gemini 3 Flash (via Emergent)", "via": "gemini"},
     {"id": "gemini:gemini-2.5-flash",       "provider": "emergent", "label": "Gemini 2.5 Flash (via Emergent)", "via": "gemini"},

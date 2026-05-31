@@ -43,8 +43,8 @@ export default function WorkspacePage() {
       setSessions(sess.sessions || []);
       // pick three sane defaults via emergent
       const defaults = [
-        "emergent:openai:gpt-5.4-mini",
-        "emergent:anthropic:claude-sonnet-4-6",
+        "emergent:openai:gpt-5-mini",
+        "emergent:anthropic:claude-sonnet-4-5",
         "emergent:gemini:gemini-2.5-flash",
       ];
       setSelectedModels(defaults);

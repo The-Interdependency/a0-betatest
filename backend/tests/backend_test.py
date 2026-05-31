@@ -306,6 +306,24 @@ class TestChat:
             assert s["step"] == i + 1
             assert "model_id" in s
 
+    def test_chat_fanout_invalid_model_surfaces_error(self, client):
+        """Validates the _invoke fix: invalid emergent model id must yield
+        result entry with a non-null 'error' (no silent empty content)."""
+        r = client.post(f"{API}/chat/fanout", json={
+            "user_id": USER_ID,
+            "prompt": "ping",
+            "model_ids": ["emergent:openai:does-not-exist"],
+        }, timeout=120)
+        assert r.status_code == 200, r.text
+        results = r.json().get("results", [])
+        assert len(results) == 1
+        item = results[0]
+        # The fix requires that error is propagated (non-null) for invalid IDs
+        assert item.get("error"), (
+            "Regression: invalid emergent model id produced no error field. "
+            f"_invoke must propagate provider error. item={item}"
+        )
+
     def test_chat_synthesize(self, client):
         # Use any prior fanout output OR fall back to fabricated panel content.
         if TestChat.fanout_results:
@@ -357,10 +375,31 @@ class TestAgents:
     def test_list_seeded(self, client):
         r = client.get(f"{API}/agents", timeout=15)
         assert r.status_code == 200, r.text
-        slugs = {a["slug"] for a in r.json()["agents"]}
+        agents = r.json()["agents"]
+        slugs = {a["slug"] for a in agents}
         for required in ("research-council", "daisy-prover",
                          "zfae-classic", "premium-symphony"):
             assert required in slugs, f"starter {required} missing; have {slugs}"
+        # Verify starter default_models use only valid Emergent IDs after fix.
+        by_slug = {a["slug"]: a for a in agents}
+        invalid_ids = {
+            "emergent:openai:gpt-5.4",
+            "emergent:openai:gpt-5.4-mini",
+            "emergent:anthropic:claude-sonnet-4-6",
+        }
+        for slug in ("research-council", "daisy-prover"):
+            dms = by_slug[slug].get("default_models", [])
+            assert dms, f"{slug} has empty default_models"
+            bad = [m for m in dms if m in invalid_ids]
+            assert not bad, f"{slug} still references invalid IDs: {bad} (full={dms})"
+            # Sanity: at least one of the allow-listed substitutes should appear
+            assert any(
+                m in dms for m in (
+                    "emergent:openai:gpt-5",
+                    "emergent:openai:gpt-5-mini",
+                    "emergent:anthropic:claude-sonnet-4-5",
+                )
+            ), f"{slug} default_models has no recognised valid IDs: {dms}"
 
     def test_create_agent(self, client):
         # ensure clean slate for our test slug

@@ -27,6 +27,7 @@ async def _invoke(call_fn: CallFn, model_id: str, messages: list[dict]) -> Model
                 content=str(r.get("content", "")),
                 usage=r.get("usage", {}) or {},
                 meta=r.get("meta", {}) or {},
+                error=r.get("error"),
             )
         return ModelResult(model_id=model_id, content=str(r))
     except Exception as e:
