@@ -1,0 +1,143 @@
+"""Pydantic models for the API surface."""
+from __future__ import annotations
+from datetime import datetime, timezone
+from typing import Any, Optional, List
+from pydantic import BaseModel, ConfigDict, Field
+import uuid
+
+
+class _Base(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+PROVIDERS = ("openai", "anthropic", "gemini", "xai", "emergent")
+
+
+class KeyUpsert(BaseModel):
+    user_id: str = Field(default="local")
+    provider: str
+    api_key: str
+    label: Optional[str] = None
+
+
+class KeyPublic(BaseModel):
+    id: str
+    user_id: str
+    provider: str
+    label: Optional[str] = None
+    masked: str
+    has_key: bool
+    last_used_at: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+class SiteAccountUpsert(BaseModel):
+    user_id: str = Field(default="local")
+    site: str                # e.g. "github.com", "gmail.com"
+    account_label: str       # e.g. "personal", "work"
+    env: dict[str, str] = Field(default_factory=dict)   # plaintext-input; encrypted at rest
+
+
+class SiteAccountPublic(BaseModel):
+    id: str
+    user_id: str
+    site: str
+    account_label: str
+    env_keys: List[str]      # only the keys, not the values
+    created_at: str
+    updated_at: str
+
+
+class SessionUpsert(BaseModel):
+    user_id: str = Field(default="local")
+    title: Optional[str] = None
+    system_context: str = ""
+    persona: Optional[str] = None
+    selected_models: List[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ChatTurn(BaseModel):
+    role: str           # "user" | "assistant" | "system"
+    content: str
+    model_id: Optional[str] = None
+    usage: dict[str, Any] = Field(default_factory=dict)
+    ts: str = Field(default_factory=_utc_now_iso)
+
+
+class SessionPublic(BaseModel):
+    id: str
+    user_id: str
+    title: Optional[str] = None
+    system_context: str = ""
+    persona: Optional[str] = None
+    selected_models: List[str] = []
+    turns: List[ChatTurn] = []
+    created_at: str
+    updated_at: str
+
+
+class DraftUpsert(BaseModel):
+    user_id: str = Field(default="local")
+    title: Optional[str] = None
+    content: str
+    tags: List[str] = Field(default_factory=list)
+
+
+class DraftPublic(BaseModel):
+    id: str
+    user_id: str
+    title: Optional[str] = None
+    content: str
+    tags: List[str] = []
+    created_at: str
+    updated_at: str
+
+
+class FanOutRequest(BaseModel):
+    user_id: str = Field(default="local")
+    prompt: str
+    system_context: str = ""
+    model_ids: List[str]               # ["openai:gpt-4o-mini", "anthropic:claude-...", ...]
+    session_id: Optional[str] = None
+    use_emergent_for: List[str] = Field(default_factory=list)  # providers to route via emergent
+
+
+class DaisyChainRequest(BaseModel):
+    user_id: str = Field(default="local")
+    prompt: str
+    system_context: str = ""
+    model_ids: List[str]
+    rounds: int = 1
+    session_id: Optional[str] = None
+    use_emergent_for: List[str] = Field(default_factory=list)
+
+
+class SynthesizeRequest(BaseModel):
+    user_id: str = Field(default="local")
+    prompt: str
+    responses: List[dict]              # [{model_id, content}]
+    synth_model: str
+    use_emergent_for: List[str] = Field(default_factory=list)
+
+
+class AgentExport(BaseModel):
+    slug: str
+    name: str
+    description: str = ""
+    system_context: str = ""
+    persona: str = ""
+    default_models: List[str] = Field(default_factory=list)
+    capabilities: List[str] = Field(default_factory=list)
+    aimmh_pattern: str = "fan_out"     # fan_out | daisy_chain | council | room_synthesized
+    rounds: int = 1
+    is_premium: bool = False
+
+
+def new_id() -> str:
+    return str(uuid.uuid4())
