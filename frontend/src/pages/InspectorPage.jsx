@@ -17,10 +17,12 @@ export default function InspectorPage() {
   const [snap, setSnap] = useState(null);
   const [intent, setIntent] = useState("");
   const [busy, setBusy] = useState(false);
+  const [skill, setSkill] = useState(null);
 
   async function load() {
-    const r = await api.inspectorSnap();
+    const [r, s] = await Promise.all([api.inspectorSnap(), api.skillReport("CAPABILITIES")]);
     setSnap(r.agent_card?.snapshot || null);
+    setSkill(s);
   }
   useEffect(() => { load(); }, []);
 
@@ -109,6 +111,65 @@ export default function InspectorPage() {
               </div>
             </div>
           ))}
+        </div>
+      </Panel>
+
+      <Panel title="msdmd · skill coverage"
+        right={skill ? <Pill tone={skill.gaps_count ? "rose" : "emerald"} testid="skill-status">
+          {skill.gaps_count ? `${skill.gaps_count} gap(s)` : "100% covered"}
+        </Pill> : <Pill>loading</Pill>}>
+        <div className="p-4 space-y-3" data-testid="skill-panel">
+          <div className="text-xs text-neutral-400 font-sans leading-relaxed max-w-3xl">
+            Every <span className="text-accent-cyan font-mono">.py</span> file under <span className="font-mono">/app/backend</span> must
+            declare a <span className="text-accent-cyan font-mono">CAPABILITIES</span> block. The runner walks the tree, parses every block,
+            and reports per-file entries plus a gap list. Gaps must stay visible (the doctrine — see <span className="font-mono">interdependent_lib/_msdmd/SKILL.md</span>).
+          </div>
+          <div className="grid grid-cols-3 gap-2 font-mono text-xs">
+            <div className="border border-white/10 bg-bg-deep p-3">
+              <div className="section-overline">scanned</div>
+              <div className="text-2xl text-white" data-testid="skill-scanned">{skill?.scanned ?? "—"}</div>
+            </div>
+            <div className="border border-white/10 bg-bg-deep p-3">
+              <div className="section-overline">covered</div>
+              <div className="text-2xl text-accent-emerald" data-testid="skill-covered">{skill?.covered ?? "—"}</div>
+            </div>
+            <div className="border border-white/10 bg-bg-deep p-3">
+              <div className="section-overline">gaps</div>
+              <div className={"text-2xl " + ((skill?.gaps_count ?? 0) > 0 ? "text-accent-rose" : "text-accent-emerald")}
+                data-testid="skill-gaps-count">{skill?.gaps_count ?? "—"}</div>
+            </div>
+          </div>
+          {(skill?.gaps || []).length > 0 ? (
+            <div className="border border-accent-rose/40 bg-rose-500/5 p-3 text-xs font-mono">
+              <div className="text-accent-rose mb-2">{skill.gaps.length} module(s) missing the CAPABILITIES block:</div>
+              <ul className="space-y-0.5">
+                {skill.gaps.map(g => <li key={g} className="text-neutral-300">· {g}</li>)}
+              </ul>
+            </div>
+          ) : (
+            <div className="text-xs font-mono text-accent-emerald">
+              ✓ no gaps · 100 % module compliance
+            </div>
+          )}
+          <details className="text-xs font-mono">
+            <summary className="cursor-pointer text-neutral-400 hover:text-white">
+              show all {skill ? Object.values(skill.by_file).flat().length : 0} entries
+            </summary>
+            <div className="mt-2 max-h-[300px] overflow-auto border border-white/5 bg-bg-deep p-2 space-y-1">
+              {skill && Object.entries(skill.by_file).map(([f, entries]) => (
+                entries.length > 0 && (
+                  <div key={f}>
+                    <div className="text-accent-cyan">{f}</div>
+                    {entries.map(e => (
+                      <div key={e.id} className="pl-4 text-neutral-400">
+                        · <span className="text-white">{e.id}</span>{e.summary ? ` — ${e.summary}` : ""}
+                      </div>
+                    ))}
+                  </div>
+                )
+              ))}
+            </div>
+          </details>
         </div>
       </Panel>
 

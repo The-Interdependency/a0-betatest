@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: ptca_exchange
+#   summary: deterministic prime-circular state-exchange protocol
+#   exposes: exchange
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Exchange mechanics — deterministic prime-circular state-exchange protocol."""
 from .primes import first_n_primes
 

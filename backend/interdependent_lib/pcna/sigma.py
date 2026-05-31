@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: pcna_sigma
+#   summary: substrate signature encoder — deterministic blake2b digest + band mapping
+#   exposes: sigma_encode, sigma_band
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Sigma — filesystem substrate encoder, companion to the Ψ ring.
 
 Encodes any path-like string into a deterministic 32-byte signature

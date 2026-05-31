@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: pcna_theta
+#   summary: phase-modulation ring — bounded sinusoidal map over 7 phase bands
+#   exposes: theta_modulate
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Theta — phase modulation ring. Maps a signal x in [0,1] to a phase-shifted output."""
 import math
 

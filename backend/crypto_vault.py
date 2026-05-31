@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: a0p_crypto_vault
+#   summary: Fernet encrypt/decrypt + mask for at-rest BYOK credentials
+#   exposes: encrypt, decrypt, mask
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Fernet-encrypted at-rest storage for BYOK keys."""
 import os
 from cryptography.fernet import Fernet, InvalidToken

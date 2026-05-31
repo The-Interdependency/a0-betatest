@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: provider_anthropic
+#   summary: Anthropic BYOK adapter — list models, messages via httpx
+#   exposes: AnthropicProvider
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Anthropic adapter — /v1/models + /v1/messages via httpx."""
 from __future__ import annotations
 import httpx

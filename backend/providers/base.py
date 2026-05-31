@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: provider_base
+#   summary: common Protocol + TypedDict contract for BYOK LLM provider adapters
+#   exposes: ProviderAdapter, ChatResult
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Common interface for BYOK LLM providers."""
 from __future__ import annotations
 from typing import Any, Protocol, TypedDict

@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: pcna_edcm
+#   summary: Energy Dissonance Circuit Model — CM/DA/DRIFT/DVG/INT/TBF per-tick scoring
+#   exposes: EDCM, EDCMScores
+#   stability: experimental
+# === END CAPABILITIES ===
+
 """EDCM — Energy Dissonance Circuit Model.
 
 Behavioral-directive scoring: tracks six per-tick metrics:

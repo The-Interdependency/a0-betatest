@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: pcna_zeta
+#   summary: zeta-injection ring — harmonic LT/ST/SUB memory mix + alpha-echo resonance
+#   exposes: zeta_inject, harmonic_resonance, echo
+#   stability: experimental
+# === END CAPABILITIES ===
+
 """Zeta-function injection ring — frequency-domain harmonic memory mix.
 
 Memory layers per spec:

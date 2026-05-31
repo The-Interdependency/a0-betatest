@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: ptca_primes
+#   summary: prime generator + first-N prime cache (default capacity 200, supports PTCA N=157)
+#   exposes: first_n_primes, PRIMES_FIRST_N
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Prime generator and the first-N prime cache used by PTCA."""
 
 

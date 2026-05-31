@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: providers_pkg
+#   summary: BYOK adapter registry — openai, anthropic, gemini, xai, emergent
+#   exposes: REGISTRY, ProviderAdapter, ChatResult
+#   stability: stable
+# === END CAPABILITIES ===
+
 """LLM provider adapters — BYOK pass-through via httpx.
 
 Each adapter exposes:

@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: pcea_instance
+#   summary: stateful PCEA instance — auto-advances last_state per call
+#   exposes: PCEAInstance
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Stateful PCEA instance — advances last_state automatically after each call."""
 from .cipher import encrypt_state, decrypt_state
 

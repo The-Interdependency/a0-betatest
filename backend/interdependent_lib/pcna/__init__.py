@@ -12,12 +12,13 @@ Modular inference engine — six rings:
 Three 157-seed PTCA cores (phi, psi, omega) drive the principal rings;
 theta / sigma / epsilon are supporting modulators wired to the cores.
 
-# === MODULE_BUILD ===
-# id: pcna_engine
-#   summary: six-ring inference engine with 3x PTCA(157) cores
-#   exposes: PCNAEngine
+# === CAPABILITIES ===
+# id: pcna_pkg
+#   summary: six-ring inference engine (Φ Ψ Ω Θ Σ Ε) driven by three PTCA(157) cores
+#   exposes: PCNAEngine, EDCM, EDCMScores, MemoryCore, zeta_inject, sigma_encode, theta_modulate
 #   tick: phi -> psi -> omega -> theta -> mem_l -> mem_s
-# === END MODULE_BUILD ===
+#   stability: experimental
+# === END CAPABILITIES ===
 """
 from .pcna import PCNAEngine
 from .edcm import EDCM, EDCMScores

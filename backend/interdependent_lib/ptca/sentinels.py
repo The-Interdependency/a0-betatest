@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: ptca_sentinels
+#   summary: tagged signal lanes with priority ordering — SentinelChannel + SentinelMessage
+#   exposes: SentinelChannel, SentinelMessage
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Sentinel channels — tagged signal lanes with priority ordering."""
 from __future__ import annotations
 from dataclasses import dataclass, field

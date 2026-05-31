@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: aimmh_patterns_impl
+#   summary: pure-async multi-model orchestration patterns over call_fn(model_id, messages)
+#   exposes: ModelResult, fan_out, daisy_chain, room_all, room_synthesized, council
+#   stability: stable
+# === END CAPABILITIES ===
+
 """AIMMH interaction patterns — pure async, no external deps."""
 from __future__ import annotations
 import asyncio

@@ -4,12 +4,13 @@ PTCA — Prime Tensor Circular Architecture.
 Sentinel channels, prime-node tensors, provenance hashing, exchange mechanics.
 Pure Python (uses python list-of-lists for tensor shape [N, 4, 7, 7]).
 
-# === MODULE_BUILD ===
-# id: ptca_core
+# === CAPABILITIES ===
+# id: ptca_pkg
 #   summary: prime-tensor circular core with sentinel channels and provenance
-#   exposes: PTCAInstance, PrimeTensor, SentinelChannel
+#   exposes: PTCAInstance, PrimeTensor, SentinelChannel, hash_state, exchange, first_n_primes, PRIMES_FIRST_N
 #   tensor_shape: [N_primes, 4_dims, 7_phases, 7_heptagram]
-# === END MODULE_BUILD ===
+#   stability: experimental
+# === END CAPABILITIES ===
 """
 from .primes import PRIMES_FIRST_N, first_n_primes
 from .tensor import PrimeTensor

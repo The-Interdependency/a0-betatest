@@ -5,11 +5,12 @@ The single persistent agent identity. LLMs are *energy providers*; ZFAE
 is the agent persona that wraps the PCNA engine and exposes a stable
 identity across heartbeats.
 
-# === MODULE_BUILD ===
-# id: zfae_agent
+# === CAPABILITIES ===
+# id: zfae_pkg
 #   summary: persistent agent identity wrapping PCNA + memory
 #   exposes: ZFAEAgent
-# === END MODULE_BUILD ===
+#   stability: experimental
+# === END CAPABILITIES ===
 """
 from __future__ import annotations
 import time

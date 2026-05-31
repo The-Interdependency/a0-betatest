@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: provider_xai
+#   summary: xAI Grok BYOK adapter — OpenAI-compatible /v1 via httpx
+#   exposes: XAIProvider
+#   stability: stable
+# === END CAPABILITIES ===
+
 """xAI Grok adapter — OpenAI-compatible at https://api.x.ai/v1."""
 from __future__ import annotations
 import httpx

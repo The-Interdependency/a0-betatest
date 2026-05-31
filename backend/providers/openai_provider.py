@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: provider_openai
+#   summary: OpenAI BYOK adapter — list models, chat completion via httpx
+#   exposes: OpenAIProvider
+#   stability: stable
+# === END CAPABILITIES ===
+
 """OpenAI adapter — /v1/models + /v1/chat/completions via httpx."""
 from __future__ import annotations
 import httpx

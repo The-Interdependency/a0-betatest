@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: pcna_engine_impl
+#   summary: six-ring inference engine implementation — Φ Ψ Ω Θ Σ Ε rings + EDCM + memory + three PTCA(157) cores
+#   exposes: PCNAEngine
+#   stability: experimental
+# === END CAPABILITIES ===
+
 """
 PCNAEngine — the six-ring inference engine.
 

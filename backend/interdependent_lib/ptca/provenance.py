@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: ptca_provenance
+#   summary: deterministic SHA-256 provenance hashing for tensor ops + lineage chains
+#   exposes: hash_state
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Provenance hashing — deterministic SHA-256 over tensor state + op metadata."""
 import hashlib
 import json

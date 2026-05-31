@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: pcna_memory_core
+#   summary: dual prime-ring memory — LT N=19, ST N=17, plus volatile sub-agent caches
+#   exposes: MemoryCore
+#   stability: stable
+# === END CAPABILITIES ===
+
 """MemoryCore — persistent activation state, two prime rings (N=19 LT, N=17 ST)."""
 from __future__ import annotations
 from collections import deque

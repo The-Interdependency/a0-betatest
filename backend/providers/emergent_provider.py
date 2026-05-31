@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: provider_emergent
+#   summary: Emergent universal-key adapter via emergentintegrations.LlmChat (openai/anthropic/gemini sub-providers)
+#   exposes: EmergentProvider
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Emergent Universal Key adapter — uses emergentintegrations.LlmChat.
 
 Used for testing/dev when the user has not yet plugged in their own keys.

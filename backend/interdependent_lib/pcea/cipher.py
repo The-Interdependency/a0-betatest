@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: pcea_cipher
+#   summary: prime-circular bijective encrypt/decrypt over a previous-state key
+#   exposes: encrypt_state, decrypt_state
+#   stability: stable
+# === END CAPABILITIES ===
+
 """PCEA core cipher."""
 from .primes import PRIME_CIRCLE
 from .codec import to_bijective, from_bijective, key_digits

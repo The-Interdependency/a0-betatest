@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: a0p_server
+#   summary: FastAPI app — BYOK keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   exposes: app, api, AGENT
+#   stability: stable
+# === END CAPABILITIES ===
+
 """
 a0p — research instrument backend.
 
@@ -48,6 +55,7 @@ import crypto_vault as cv
 from providers import REGISTRY
 from interdependent_lib.aimmh import fan_out as aimmh_fan_out, daisy_chain as aimmh_daisy
 from interdependent_lib.zfae import ZFAEAgent
+from interdependent_lib._msdmd import report as msdmd_report
 
 
 def _utc_now_iso() -> str:
@@ -670,6 +678,20 @@ async def list_usage(user_id: str = "local", limit: int = 100):
         agg["by_provider"][prov] = agg["by_provider"].get(prov, 0) + t
         agg["by_model"][u.get("model_id", "?")] = agg["by_model"].get(u.get("model_id", "?"), 0) + t
     return {"records": out, "aggregate": agg}
+
+
+# ---------- msdmd skill coverage ----------
+# === CONTRACTS ===
+# id: skill_report_visibility
+#   given: GET /api/skill/report
+#   then: returns scanned/covered/gaps_count plus per-file entries; gaps array MUST be present (the doctrine)
+#   class: observability
+# === END CONTRACTS ===
+@api.get("/skill/report")
+async def skill_report(block: str = "CAPABILITIES"):
+    """msdmd coverage report. Gap-list MUST remain visible in normal output."""
+    from pathlib import Path
+    return msdmd_report(Path("/app/backend"), block)
 
 
 app.include_router(api)

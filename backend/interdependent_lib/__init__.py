@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: interdependent_lib_pkg
+#   summary: meta-package — pcea, ptca, pcna, aimmh, zfae submodules built from spec
+#   exposes: pcea, ptca, pcna, zfae, aimmh, available, __version__
+#   stability: experimental
+# === END CAPABILITIES ===
+
 """
 interdependent_lib — convergence of four/five-letter acronym modules.
 

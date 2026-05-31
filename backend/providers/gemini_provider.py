@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: provider_gemini
+#   summary: Google Gemini BYOK adapter — list models, generateContent via httpx
+#   exposes: GeminiProvider
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Google Gemini adapter — generativelanguage.googleapis.com via httpx."""
 from __future__ import annotations
 import httpx

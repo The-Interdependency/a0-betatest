@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: a0p_db_motor
+#   summary: Motor async client + collection accessors + index ensurance
+#   exposes: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, ensure_indexes
+#   stability: stable
+# === END CAPABILITIES ===
+
 """MongoDB Motor client + collection accessors."""
 import os
 from motor.motor_asyncio import AsyncIOMotorClient

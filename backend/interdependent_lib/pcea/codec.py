@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: pcea_codec
+#   summary: bijective base-p codec — digits in {1..p}, plus standard key-digit stream
+#   exposes: to_bijective, from_bijective, key_digits
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Bijective base-p codec — digits in {1..p}, not {0..p-1}."""
 
 

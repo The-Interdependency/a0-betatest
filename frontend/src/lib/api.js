@@ -38,6 +38,9 @@ export const api = {
   updateDraft:      (id, body) => client.patch(`/drafts/${id}`, body).then(r => r.data),
   deleteDraft:      (id, user_id = "local") => client.delete(`/drafts/${id}`, { params: { user_id } }).then(r => r.data),
 
+  // msdmd skill coverage
+  skillReport:      (block = "CAPABILITIES") => client.get("/skill/report", { params: { block } }).then(r => r.data),
+
   // Chat
   chatSingle:       (body) => client.post("/chat/single", body, { timeout: 180000 }).then(r => r.data),
   chatFanout:       (body) => client.post("/chat/fanout", body, { timeout: 300000 }).then(r => r.data),

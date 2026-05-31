@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: ptca_instance
+#   summary: PTCA engine — tensor + sentinel channels + lineage hashing
+#   exposes: PTCAInstance
+#   stability: stable
+# === END CAPABILITIES ===
+
 """PTCAInstance — the main engine class binding tensor + sentinels + provenance.
 
 The instance carries N prime nodes; the standard research seed is N=157

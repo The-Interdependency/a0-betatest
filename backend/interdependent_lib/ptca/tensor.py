@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: ptca_tensor
+#   summary: prime-indexed nested-list tensor — current shape [N,4,7,7] (spec-target [N,9,7,7]+4 sentinels pending)
+#   exposes: PrimeTensor
+#   stability: experimental
+# === END CAPABILITIES ===
+
 """PrimeTensor — pure-Python nested-list tensor [N, 4, 7, 7] indexed by prime nodes."""
 from __future__ import annotations
 from .primes import first_n_primes

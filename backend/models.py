@@ -1,3 +1,10 @@
+# === CAPABILITIES ===
+# id: a0p_models
+#   summary: Pydantic surface models for the public API (BYOK keys, vault, sessions, drafts, chat, agents)
+#   exposes: KeyUpsert, KeyPublic, SiteAccountUpsert, SiteAccountPublic, SessionUpsert, SessionPublic, ChatTurn, DraftUpsert, DraftPublic, FanOutRequest, DaisyChainRequest, SynthesizeRequest, AgentExport, PROVIDERS, new_id
+#   stability: stable
+# === END CAPABILITIES ===
+
 """Pydantic models for the API surface."""
 from __future__ import annotations
 from datetime import datetime, timezone
