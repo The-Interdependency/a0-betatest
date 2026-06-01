@@ -1,10 +1,21 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: pcna_engine_impl
-#   summary: six-ring inference engine implementation — Φ Ψ Ω Θ Σ Ε rings + EDCM + memory + three PTCA(157) cores
-#   exposes: PCNAEngine
-#   stability: experimental
-# === END CAPABILITIES ===
-
+#   module_name: pcna
+#   module_kind: engine
+#   summary: current PCNAEngine impl — three 157-prime cores + six scalar ring signals (canon target is full 61-seed topology + tensor rings)
+#   owner: a0p maintainer
+#   public_surface: PCNAEngine
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+#   unresolved: replace with canon 61-seed topology + tensor rings + canonical seed primes
+# === END MODULE_BUILD ===
 """
 PCNAEngine — the six-ring inference engine.
 

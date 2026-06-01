@@ -39,7 +39,10 @@ export const api = {
   deleteDraft:      (id, user_id = "local") => client.delete(`/drafts/${id}`, { params: { user_id } }).then(r => r.data),
 
   // msdmd skill coverage
-  skillReport:      (block = "CAPABILITIES") => client.get("/skill/report", { params: { block } }).then(r => r.data),
+  skillReport:        (block = "CAPABILITIES") => client.get("/skill/report", { params: { block } }).then(r => r.data),
+  skillCapabilities:  () => client.get("/skill/capabilities/report").then(r => r.data),
+  skillContracts:     () => client.get("/skill/contracts/report", { timeout: 60000 }).then(r => r.data),
+  skillModuleBuild:   () => client.get("/skill/module-build/report").then(r => r.data),
 
   // Chat
   chatSingle:       (body) => client.post("/chat/single", body, { timeout: 180000 }).then(r => r.data),

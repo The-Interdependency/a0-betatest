@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: pcna_memory_core
+#   module_name: memory_core
+#   module_kind: engine
 #   summary: dual prime-ring memory — LT N=19, ST N=17, plus volatile sub-agent caches
-#   exposes: MemoryCore
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: MemoryCore
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """MemoryCore — persistent activation state, two prime rings (N=19 LT, N=17 ST)."""
 from __future__ import annotations
 from collections import deque

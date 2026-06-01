@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: pcna_theta
-#   summary: phase-modulation ring — bounded sinusoidal map over 7 phase bands
-#   exposes: theta_modulate
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   module_name: theta
+#   module_kind: engine
+#   summary: phase-modulation ring — bounded sinusoidal map over 7 phase bands (canon Θ is N=29 microkernel gate; pending tensor lift)
+#   owner: a0p maintainer
+#   public_surface: theta_modulate
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """Theta — phase modulation ring. Maps a signal x in [0,1] to a phase-shifted output."""
 import math
 

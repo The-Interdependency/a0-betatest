@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: provider_anthropic
+#   module_name: anthropic_provider
+#   module_kind: adapter
 #   summary: Anthropic BYOK adapter — list models, messages via httpx
-#   exposes: AnthropicProvider
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: AnthropicProvider
+#   internal_surface: version
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove from providers.REGISTRY
+# === END MODULE_BUILD ===
 """Anthropic adapter — /v1/models + /v1/messages via httpx."""
 from __future__ import annotations
 import httpx

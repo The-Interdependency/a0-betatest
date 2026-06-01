@@ -1,10 +1,21 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: ptca_instance
-#   summary: PTCA engine — tensor + sentinel channels + lineage hashing
-#   exposes: PTCAInstance
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   module_name: instance
+#   module_kind: engine
+#   summary: current PTCA engine — tensor + sentinel channels + lineage hashing (pre-stratified)
+#   owner: a0p maintainer
+#   public_surface: PTCAInstance
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+#   unresolved: replace with stratified Fiq→Circle→Seed model from canon prime_core
+# === END MODULE_BUILD ===
 """PTCAInstance — the main engine class binding tensor + sentinels + provenance.
 
 The instance carries N prime nodes; the standard research seed is N=157

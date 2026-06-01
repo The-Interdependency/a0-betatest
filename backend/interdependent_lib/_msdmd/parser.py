@@ -1,102 +1,178 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: msdmd_parser
-#   summary: stdlib-only universal parser for msdmd fenced comment blocks
-#   exposes: parse, strip_marker, COMMENT_MARKER_BY_EXT
-#   stability: stable
-# === END CAPABILITIES ===
-"""Universal msdmd parser. Pure stdlib. Zero deps."""
+#   module_name: parser
+#   module_kind: skill
+#   summary: canonical msdmd parser — line-for-line sync of skill-lib/msdmd/parsers/universal.py
+#   owner: a0p maintainer
+#   public_surface: parse_text, parse_file, walk_tree, marker_for
+#   internal_surface: _MARKERS, _DEFAULT_SKIP, _block_regex
+#   auth_boundary: none
+#   storage_boundary: read
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: interdependent_lib._msdmd.tests.test_parser
+#   rollout: default_enabled
+#   rollback: revert to mine — last working sha in git history
+#   since: 2026-05-31
+# === END MODULE_BUILD ===
+"""Universal msdmd parser — pure stdlib.
+
+Implements the parser contract from ``msdmd/SKILL.md``: extracts every
+``# === <NAME> ===`` … ``# === END <NAME> ===`` block from a source file
+and returns its entries as flat dicts.
+
+Comment marker is auto-detected by file extension. The block syntax
+itself is identical across languages; only the per-line marker changes.
+
+Public API:
+
+    parse_text(text, block_name, marker="#") -> list[dict]
+    parse_file(path, block_name)             -> list[dict]
+    walk_tree(root, block_name, *, skip=None, extensions=None)
+        -> tuple[annotated, untested]
+
+This module has zero non-stdlib dependencies and is safe to copy
+verbatim into any project that wants msdmd support.
+
+Synced from The-Interdependency/skill-lib/main/msdmd/parsers/universal.py.
+"""
 from __future__ import annotations
 import re
-from typing import Iterator
+from pathlib import Path
+from typing import Iterable
 
-# === REQUIRES ===
-# id: msdmd_parser_stdlib
-#   module: re
-#   version: any
-# === END REQUIRES ===
-
-
-COMMENT_MARKER_BY_EXT: dict[str, str] = {
-    ".py": "#", ".rb": "#", ".ex": "#", ".sh": "#", ".bash": "#",
-    ".ts": "//", ".tsx": "//", ".js": "//", ".jsx": "//",
-    ".rs": "//", ".go": "//", ".java": "//", ".c": "//", ".cpp": "//", ".swift": "//",
+# extension → comment marker
+_MARKERS: dict[str, str] = {
+    ".py": "#", ".rb": "#", ".ex": "#", ".exs": "#", ".sh": "#",
+    ".ts": "//", ".tsx": "//", ".js": "//", ".jsx": "//", ".mjs": "//",
+    ".rs": "//", ".go": "//", ".java": "//", ".c": "//", ".cpp": "//",
+    ".cc": "//", ".h": "//", ".hpp": "//", ".swift": "//", ".kt": "//",
     ".sql": "--", ".lua": "--", ".hs": "--",
 }
 
-
-def strip_marker(line: str) -> str:
-    """Strip the leading comment marker (#, //, --) and at most one space."""
-    s = line
-    # strip leading whitespace once, then a marker, then one space
-    lstripped = s.lstrip()
-    for marker in ("#", "//", "--"):
-        if lstripped.startswith(marker):
-            body = lstripped[len(marker):]
-            return body[1:] if body.startswith(" ") else body
-    return lstripped
+_DEFAULT_SKIP = (
+    "__pycache__", "node_modules", ".git", ".venv", "venv",
+    "dist", "build", ".next", ".nuxt", "target", ".pytest_cache",
+    ".mypy_cache", ".tox",
+)
 
 
-def _iter_blocks(text: str, block_name: str) -> Iterator[str]:
-    """Yield the body (text between fences, exclusive) of each matching block."""
-    # The marker is greedy across `#`, `//`, `--`. We anchor the fence with
-    # `===  BLOCK_NAME  ===` allowing any comment marker prefix.
-    open_re = re.compile(
-        r"^[ \t]*(?:#+|//+|--+)[ \t]*===[ \t]*"
-        + re.escape(block_name)
-        + r"[ \t]*===[ \t]*$",
-        re.M,
+def marker_for(path: Path) -> str | None:
+    """Return the comment marker for a file path, or None if unsupported."""
+    return _MARKERS.get(path.suffix.lower())
+
+
+def _block_regex(block_name: str, marker: str) -> re.Pattern[str]:
+    m = re.escape(marker)
+    name = re.escape(block_name)
+    return re.compile(
+        rf"^{m} === {name} ===\s*$(?P<body>.*?)^{m} === END {name} ===\s*$",
+        re.MULTILINE | re.DOTALL,
     )
-    close_re = re.compile(
-        r"^[ \t]*(?:#+|//+|--+)[ \t]*===[ \t]*END[ \t]+"
-        + re.escape(block_name)
-        + r"[ \t]*===[ \t]*$",
-        re.M,
-    )
-    pos = 0
-    while True:
-        m_open = open_re.search(text, pos)
-        if not m_open:
-            return
-        m_close = close_re.search(text, m_open.end())
-        if not m_close:
-            return
-        yield text[m_open.end():m_close.start()]
-        pos = m_close.end()
 
 
-def parse(text: str, block_name: str) -> list[dict]:
-    """Parse all `block_name` blocks in `text`. Returns flat list of entries.
+def parse_text(text: str, block_name: str, marker: str = "#") -> list[dict]:
+    """Extract every entry from every matching block in ``text``.
 
-    Each entry is a dict with at minimum `id`, plus whatever fields were
-    declared. No semantic validation — that's the application's job.
+    Entries are flat ``dict[str, str]`` keyed by field name. The first
+    line of an entry must be ``id: <id>``; subsequent lines until
+    the next ``id:`` (or block end) carry indented ``<key>: <value>``
+    pairs.
     """
+    block_re = _block_regex(block_name, marker)
+    m = re.escape(marker)
+    id_re = re.compile(rf"^\s*{m}\s*id:\s*(?P<id>\S+)\s*$")
+    field_re = re.compile(rf"^\s*{m}\s+(?P<key>[a-z_]+):\s*(?P<val>.+?)\s*$")
+
     entries: list[dict] = []
-    for body in _iter_blocks(text, block_name):
+    for block in block_re.finditer(text):
         current: dict[str, str] | None = None
-        for raw in body.splitlines():
-            line = strip_marker(raw).rstrip()
-            if not line.strip():
-                # blank entry separator — flush
-                if current and "id" in current:
+        for line in block.group("body").splitlines():
+            line = line.rstrip()
+            mid = id_re.match(line)
+            if mid:
+                if current is not None:
                     entries.append(current)
-                    current = None
+                current = {"id": mid.group("id")}
                 continue
-            if ":" not in line:
+            if current is None:
                 continue
-            key, _, value = line.partition(":")
-            key = key.strip()
-            value = value.strip()
-            if not key:
-                continue
-            if key == "id":
-                if current and "id" in current:
-                    entries.append(current)
-                current = {"id": value}
-            else:
-                if current is None:
-                    # field before id — skip (invalid)
-                    continue
-                current[key] = value
-        if current and "id" in current:
+            mf = field_re.match(line)
+            if mf:
+                current[mf.group("key")] = mf.group("val")
+        if current is not None:
             entries.append(current)
     return entries
+
+
+def parse_file(path: Path, block_name: str) -> list[dict]:
+    """Parse a single file. Returns [] if the file's extension has no
+    known comment marker or if the file can't be read."""
+    marker = marker_for(path)
+    if marker is None:
+        return []
+    try:
+        return parse_text(path.read_text(encoding="utf-8"), block_name, marker)
+    except (OSError, UnicodeDecodeError):
+        return []
+
+
+def walk_tree(
+    root: Path,
+    block_name: str,
+    *,
+    skip: Iterable[str] | None = None,
+    extensions: Iterable[str] | None = None,
+) -> tuple[list[tuple[Path, list[dict]]], list[Path]]:
+    """Walk ``root`` and partition source files into (annotated, untested).
+
+    ``annotated`` is a list of ``(path, entries)`` for every file that
+    contains at least one entry of ``block_name``. ``untested`` is every
+    other source file (still filtered by extension and skip-dirs) so
+    coverage gaps remain observable.
+    """
+    skip_set = set(skip) if skip is not None else set(_DEFAULT_SKIP)
+    ext_set = (
+        set(e.lower() if e.startswith(".") else "." + e.lower() for e in extensions)
+        if extensions is not None
+        else set(_MARKERS.keys())
+    )
+
+    def iter_source_files(path: Path) -> Iterable[Path]:
+        if path.name in skip_set:
+            return
+        try:
+            children = sorted(path.iterdir())
+        except OSError:
+            return
+        for child in children:
+            if child.is_dir():
+                if child.name in skip_set:
+                    continue
+                yield from iter_source_files(child)
+            elif child.is_file() and child.suffix.lower() in ext_set:
+                yield child
+
+    annotated: list[tuple[Path, list[dict]]] = []
+    untested: list[Path] = []
+    for path in iter_source_files(root):
+        entries = parse_file(path, block_name)
+        if entries:
+            annotated.append((path, entries))
+        else:
+            untested.append(path)
+    return annotated, untested
+
+
+# Back-compat aliases for callers that used the previous API
+parse = parse_text
+
+
+def walk(root: Path, block_name: str, exts: tuple[str, ...] = (".py",)):
+    """Back-compat iterator API. Prefer walk_tree()."""
+    annotated, untested = walk_tree(root, block_name, extensions=exts)
+    for p, entries in annotated:
+        yield p, entries
+    for p in untested:
+        yield p, []

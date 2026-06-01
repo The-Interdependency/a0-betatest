@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: pcna_zeta
+#   module_name: zeta
+#   module_kind: engine
 #   summary: zeta-injection ring — harmonic LT/ST/SUB memory mix + alpha-echo resonance
-#   exposes: zeta_inject, harmonic_resonance, echo
-#   stability: experimental
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: zeta_inject, harmonic_resonance, echo
+#   internal_surface: _harmonic_weight
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """Zeta-function injection ring — frequency-domain harmonic memory mix.
 
 Memory layers per spec:

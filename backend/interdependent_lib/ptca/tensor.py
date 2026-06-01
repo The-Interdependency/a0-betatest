@@ -1,10 +1,21 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: ptca_tensor
-#   summary: prime-indexed nested-list tensor — current shape [N,4,7,7] (spec-target [N,9,7,7]+4 sentinels pending)
-#   exposes: PrimeTensor
-#   stability: experimental
-# === END CAPABILITIES ===
-
+#   module_name: tensor
+#   module_kind: engine
+#   summary: prime-indexed nested-list tensor — current shape [N,4,7,7]; canon prime_core target [157,7,7,53] pending stratified rebuild
+#   owner: a0p maintainer
+#   public_surface: PrimeTensor
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+#   unresolved: shape and stratification both pending canon prime_core rebuild
+# === END MODULE_BUILD ===
 """PrimeTensor — pure-Python nested-list tensor [N, 4, 7, 7] indexed by prime nodes."""
 from __future__ import annotations
 from .primes import first_n_primes

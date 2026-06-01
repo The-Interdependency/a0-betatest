@@ -1,144 +1,138 @@
-# a0p — Product Requirements Doc (PRD)
+# a0p — Product Requirements Doc
 
-> **a0p** — a research instrument: a multi-model, BYOK AI workspace with an inference-engine
-> inspector built from spec (`The-Interdependency/interdependent-lib` and `The-Interdependency/a0`).
-> Monetization (currently): donation-based. Future (3-5 months): premium / paid detachable agents.
-
----
-
-## Original Problem Statement (verbatim, condensed)
-
-> "BYOK agent wrapper for GPT, Claude, xAI, Gemini. Must provide entire active model
-> inventory per key, track compute/tokens/cache, expose all contexts for editing per new
-> session, hold per-site multi-account .env keys (GitHub, Gmail, …), provide AIMMH support,
-> multi-model chat (fan-out + synthesize, daisy-chain N rounds), wholly mobile.
-> Build full PTCA / PCNA / PCEA / PCTA / ap(zfae) inference engine — three 157-seed PTCA cores
-> phi / psi / omega / theta / sigma / epsilon. REBUILD FROM SPEC, do not copy files.
-> Finished looks like: nested code modules in compliance with skill-lib, chat interface with
-> .md + arxiv formatting, write-to-database prompt drafts, carousel for multi-response
-> comparison, detachable portable agents (phone / app-store style).
-> Monetization: donations now; future monetization via detachable agents."
-
-## User Choices Captured
-
-| # | Question | Answer |
-|---|---|---|
-| 1 | Reference repos | (a) Use public `interdependent-lib` + `a0` |
-| 2 | Spec interpretation | Modules `/ptca /aimmh /pcna /pcta /pcea` from `interdependent-lib` |
-| 3 | Session scope | **(a + b + d + f)** — BYOK + multi-model + drafts/context + PTCA inference scaffolding |
-| 4 | Tech stack | React + FastAPI + MongoDB (web-first responsive PWA) |
-| 5 | Emergent LLM key for testing | **Yes** (OpenAI / Anthropic / Gemini). xAI remains true BYOK. |
-
----
+> **a0p** — donation-funded research instrument: BYOK multi-model AI workspace +
+> PTCA / PCNA / PCEA inference engine built (rebuilt-from-spec) against
+> The-Interdependency canon. Skill-lib compliant: every module declares its
+> own `MODULE_BUILD` manifest and (where applicable) `CONTRACTS` block.
 
 ## Architecture
 
 ```
 /app
-├── backend/                    FastAPI + Motor (Mongo) + httpx providers
-│   ├── server.py               Router + AIMMH plumbing + ZFAEAgent singleton
-│   ├── models.py               Pydantic surface (BYOK, sessions, drafts, …)
-│   ├── db.py                   Motor client + collection indices
-│   ├── crypto_vault.py         Fernet encrypt/decrypt + mask
-│   ├── providers/              BYOK adapters
-│   │   ├── openai_provider.py     OpenAI /v1
-│   │   ├── anthropic_provider.py  Anthropic /v1
-│   │   ├── gemini_provider.py     Google generative-language v1beta
-│   │   ├── xai_provider.py        xAI Grok (OpenAI-compatible)
-│   │   └── emergent_provider.py   Emergent Universal Key (emergentintegrations)
-│   └── interdependent_lib/     The 5 spec modules — built from spec, NOT copied
-│       ├── pcea/    Prime-Circular Encryption Algorithm (53-prime ring, bijective base-p)
-│       ├── ptca/    Prime Tensor Circular Architecture ([N, 4, 7, 7] tensor + sentinels + provenance)
-│       ├── pcna/    Six-ring inference engine (Φ Ψ Ω Θ Σ Ε) + EDCM + memory + zeta/sigma/theta
-│       ├── aimmh/   Async multi-model patterns (fan_out, daisy_chain, room_*, council)
-│       └── zfae/    Zeta-Function Alpha-Echo persistent agent identity
+├── backend/                            FastAPI + Motor (Mongo) + httpx
+│   ├── server.py                       /api/* routes
+│   ├── crypto_vault.py                 Fernet at-rest encryption
+│   ├── db.py                           Motor + collection indices
+│   ├── models.py                       Pydantic surface
+│   ├── providers/                      BYOK adapters (openai, anthropic, gemini, xai, emergent)
+│   ├── a0p_skills/                     project's skill-lib runners
+│   │   ├── test_build_runner.py        imports CONTRACTS `call:` paths and runs them
+│   │   ├── module_build_runner.py      validates MODULE_BUILD schema
+│   │   ├── contracts.py                actual test functions
+│   │   └── SKILL.md                    canonical doc
+│   └── interdependent_lib/
+│       ├── _msdmd/parser.py            canon parser (synced from skill-lib)
+│       ├── pcea/  ptca/  pcna/  aimmh/  zfae/
 │
-└── frontend/                   React + Tailwind + react-markdown + KaTeX
-    └── src/
-        ├── components/   Shell, Panel, MarkdownView (markdown + LaTeX/arxiv)
-        ├── lib/api.js    Axios client
-        └── pages/        Workspace · Inventory · KeyVault · Vault · Drafts · Inspector · Agents
+└── frontend/                           React + Tailwind + react-markdown + KaTeX
+    ├── public/manifest.json            PWA manifest (Bubblewrap-ready)
+    ├── ANDROID_APK.md                  Bubblewrap TWA build steps
+    └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
-### Key design choices
-- Per-call BYOK pass-through. Keys encrypted at rest (Fernet AES-128-CBC + HMAC).
-- Per-session editable system context + persona.
-- All endpoints prefixed `/api`. CORS open (single-user research mode, `user_id='local'`).
-- Three 157-seed PTCA cores (`phi`, `psi`, `omega`) drive the six ring signals.
-- ZFAEAgent is a process-wide singleton; receives each user prompt → heartbeat → absorb response.
-- Prompt drafts autosave debounced (1.2s).
+## msdmd / skill-lib compliance — 2026-05-31
 
----
+| Skill | Block | Coverage | Status |
+|---|---|---|---|
+| `msdmd` (parser) | — | canonical `parser.py` synced line-for-line from skill-lib | ✅ |
+| `meta-module-build` | `MODULE_BUILD` | 42 / 42 covered · 42 valid · 0 invalid | ✅ |
+| `test-build` | `CONTRACTS` | 4 contracts: 4 PASS · 0 FAIL · 0 ERROR | ✅ |
 
-## What's Implemented — 2026-05-31
+Boundary risk surface (non-`none` declared):
+- `user_data_boundary=read`: 11 modules · `network_boundary=external`: 8 ·
+  `storage_boundary=read`: 7 · `storage_boundary=write`: 2 ·
+  `user_data_boundary=write`: 2 · `network_boundary=internal`: 1
 
-### Backend (all routes prefixed `/api`)
-- ✅ `/health` — service status + provider list + agent card
-- ✅ `/keys` — GET/PUT/DELETE — BYOK key vault (Fernet encryption, mask)
-- ✅ `/vault` — GET/PUT/DELETE + `/vault/reveal` — per-site multi-account .env (keys-only listing, reveal on demand)
-- ✅ `/models/inventory` — aggregate active models across all stored keys + Emergent
-- ✅ `/sessions` — full CRUD + editable context (system, persona, selected_models, transcript)
-- ✅ `/drafts` — full CRUD; autosaved from Workspace
-- ✅ `/chat/single` — single-model BYOK or Emergent
-- ✅ `/chat/fanout` — N models, same prompt, parallel via AIMMH `fan_out`
-- ✅ `/chat/daisychain` — N models × R rounds via AIMMH `daisy_chain`
-- ✅ `/chat/synthesize` — synth chosen responses via a chosen model
-- ✅ `/inspector/heartbeat` + `/inspector/snapshot` — PCNAEngine tick + state
-- ✅ `/agents` — list/create/delete + `/agents/{slug}/manifest` exportable JSON
-- ✅ `/usage` — token records + aggregate by provider / model
-- ✅ Starter agents seeded: research-council, daisy-prover, zfae-classic, premium-symphony
+The `test-build` runner ALREADY caught one real bug it would have
+otherwise hidden: PCEA `to_bijective(0, p)` was returning `[1]` instead
+of `[]`, breaking the bijective round-trip for state-element zero.
+Fixed in `codec.py`; the contract now passes.
 
-### Interdependent-lib modules (built from spec)
-- ✅ **PCEA** — 53-prime bijective base-p cipher + stateful instance
-- ✅ **PTCA** — [N,4,7,7] tensor, sentinel channels, provenance hashing, exchange protocol
-- ✅ **PCNA** — six-ring engine (Φ Ψ Ω Θ Σ Ε), 3× PTCA(157) cores, EDCM (CM/DA/DRIFT/DVG/INT/TBF),
-  MemoryCore (LT N=19, ST N=17), zeta injection, sigma encoding, theta modulation
-- ✅ **AIMMH** — fan_out, daisy_chain, room_all, room_synthesized, council patterns (pure async)
-- ✅ **ZFAE** — persistent agent identity wrapping PCNAEngine
+## Backend feature inventory
 
-### Frontend
-- ✅ Workspace — sessions sidebar, editable context, model picker grouped by provider,
-  three modes (single / fan-out / daisy-chain), responsive carousel for fan-out responses,
-  inline synthesizer, Markdown + LaTeX (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`), draft autosave indicator
-- ✅ Inventory — live catalog + filter tabs (all / emergent / openai / anthropic / gemini / xai) + search
-- ✅ Key Vault — per-provider cards, reveal toggle, replace/remove, deep-link to issuer
-- ✅ Env Vault — multi-site multi-account env entries with reveal-on-demand
-- ✅ Drafts — list / inline-edit / delete
-- ✅ Inspector — six-ring panel, three PTCA-core summaries, EDCM grid, memory snapshot, heartbeat trigger
-- ✅ Agents — catalog cards with free/premium badges, JSON manifest export, create form
-
-### Testing status
-- **Backend**: 28/28 pytest cases — 100% (regression suite in `/app/backend/tests/backend_test.py`)
-- **Frontend**: smoke-rendered via screenshot; not yet end-to-end-tested by the testing agent
-
----
+| Route prefix | What it does |
+|---|---|
+| `/api/health` | Service status + provider list + ZFAE agent card |
+| `/api/keys` | BYOK key vault (Fernet-encrypted at rest) |
+| `/api/vault` `/api/vault/reveal` | Per-site multi-account .env vault |
+| `/api/models/inventory` | Aggregate inventory across BYOK keys + Emergent namespace |
+| `/api/sessions` | CRUD + editable system context / persona / selected_models |
+| `/api/drafts` | Autosaved prompt drafts |
+| `/api/chat/single` `/fanout` `/daisychain` `/synthesize` | AIMMH patterns |
+| `/api/inspector/heartbeat` `/snapshot` | PCNAEngine tick + state |
+| `/api/agents` `/api/agents/{slug}/manifest` | Detachable-agents catalog + export |
+| `/api/skill/capabilities/report` `/contracts/report` `/module-build/report` | Three skill coverage runners |
+| `/api/usage` | Token/cost records + aggregate |
 
 ## Personas
 
 | Persona | Goals | Pains today |
 |---|---|---|
-| AI researcher | Compare frontier models on the same prompt; daisy-chain across vendors; persist context | Each vendor's UI is siloed; no cross-vendor carousel; no portable agent manifests |
-| Independent dev | Use own keys; multiple GitHub/Gmail accounts simultaneously; export agents to phone/VM | Most tools assume one account per site; no portable agent format |
-| Math/Physics student | Markdown + arxiv `\(...\)` chat for papers + proofs | LaTeX support inconsistent across chat UIs |
+| AI researcher | Compare frontier models on the same prompt; daisy-chain; persist context | Vendor UIs siloed; no cross-vendor carousel |
+| Independent dev | Own keys, multi-account per site, export agents to phone/VM | No portable agent format elsewhere |
+| Math/physics student | Markdown + arxiv `\(...\)` chat | LaTeX inconsistent across chat UIs |
 
-## Prioritized Backlog (next session candidates)
+## hmmm — canonical open questions
+
+These are recorded per the `skill-lib/meta-module-build` doctrine: *"If a
+field is not known, write `hmmm`. Do not guess certainty into the
+manifest."* Tracked here so they stay visible.
+
+### PTCA — three-stratum rebuild
+
+- **The `9` axis** from the design conversation (`157 × 9 × 7 × 7 + 4`)
+  is not present in the upstream canon `prime_core/constants.py` (which
+  has `[SEED_COUNT=157, CIRCLES=7, TENSORS=7, TENSOR_DIM=53]`). Recorded
+  as `unresolved` on `interdependent_lib/ptca/__init__.py`. Will revisit
+  before the stratified rebuild.
+- The current `PrimeTensor` is the legacy `ptca-lib` flat `[N,4,7,7]`
+  shape, not the stratified `Fiq → Circle → Seed` model. Stratified
+  rebuild deferred to a dedicated session.
+- The `COHERENCE_FACTOR_UNIVERSE` in `ptca/constants.py` is provisional
+  per the upstream note (the defining doc is absent from any accessible
+  repo).
+
+### PCNA — canon topology rebuild
+
+- Current impl: three 157-prime cores + six scalar ring signals.
+- Canon target: 61-seed topology (1 global router + 4 sentinels + 7 meta
+  routers + 49 compute seeds), six tensor rings at canonical sizes/seeds
+  (Φ 53/53, Ψ 53/43, Ω 53/47, Θ 29/29, MemL 19/19, MemS 17/17), Σ 41
+  observer (un-weighted), heptagram propagation per ring.
+- Rebuild deferred to a dedicated session.
+
+### UCNS
+
+- `ucns==0.8.3` installed but **does not yet expose `a0_safe`** in this
+  version. The upstream `meta-module-build` doctrine wants UCNS-facing
+  code to route through `ucns.a0_safe`. Currently no binding wired;
+  `prime_core` upstream uses a deterministic local tag with a try/except
+  import. Will follow that pattern when the stratified rebuild lands.
+
+### Android APK
+
+- `ANDROID_APK.md` documents the Bubblewrap TWA build path (option B).
+- `manifest.json`, `icon-192.svg`, `icon-512.svg` are in `frontend/public/`.
+- `.well-known/assetlinks.json` must be served from the production origin
+  before Play Store submission. Not currently served. → defer.
+
+## Prioritized backlog
 
 ### P0
-- E2E frontend testing pass (testing_agent_v3)
-- Streaming responses (SSE) for chat — currently full request/response
-- Surface live token cost in transcript (calc from inventory pricing)
+- E2E frontend testing pass (testing_agent_v3) — defer until rebuilds land
+- Streaming responses (SSE) for chat
 
 ### P1
-- Council UI mode (every model sees peers, then synthesises) — already in AIMMH, missing in UI
-- Inventory: per-provider pricing column (OpenAI + Anthropic publish public JSON)
-- Inspector: live tensor heatmap (phi/psi/omega) — currently summarized only
+- Council UI mode (AIMMH `council` is implemented; UI toggle missing)
+- Per-call cost display in transcript using public provider pricing JSON
+- PTCA stratified `Fiq → Circle → Seed` rebuild against canon `prime_core`
 
-### P2 — monetization runway (3–5 mo)
-- Premium detachable agents: paid catalog, license keys, Stripe checkout
-- Phone-side runtime spec (React Native + AsyncStorage manifests)
-- Audit log + multi-user mode (currently single-user `local`)
-
----
+### P2
+- PCNA canon-topology rebuild (61-seed graph, tensor rings, heptagram propagation)
+- UCNS `a0_safe` binding when upstream `ucns` ships it
+- Premium detachable agents + Stripe checkout (3-5 mo monetization runway)
+- Termux runner + JS port of AIMMH patterns (pocket-runs-locally future)
+- Multi-user mode + audit log
 
 ## How to run
 
@@ -149,8 +143,15 @@ sudo supervisorctl restart backend     # FastAPI on :8001 (proxied via /api)
 # Frontend
 sudo supervisorctl restart frontend    # CRA dev on :3000
 
-# Tests
-cd /app/backend && PYTHONPATH=. pytest tests/backend_test.py -v
+# Skill runners (each exits non-zero on gaps/failures)
+python3 -m a0p_skills.module_build_runner /app/backend
+python3 -m a0p_skills.test_build_runner   /app/backend
+python3 -m interdependent_lib._msdmd.runner --root /app/backend   # legacy CAPABILITIES
 ```
 
-`/app/backend/.env` keys: `MONGO_URL`, `DB_NAME`, `EMERGENT_LLM_KEY`, `A0P_KEY_VAULT_SECRET`.
+## Environment
+
+`/app/backend/.env`:
+- `MONGO_URL`, `DB_NAME`
+- `EMERGENT_LLM_KEY`
+- `A0P_KEY_VAULT_SECRET` (Fernet key for BYOK at-rest encryption)

@@ -1,10 +1,22 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: a0p_server
-#   summary: FastAPI app — BYOK keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
-#   exposes: app, api, AGENT
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   module_name: server
+#   module_kind: route
+#   summary: FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   owner: a0p maintainer
+#   public_surface: app, api, AGENT
+#   internal_surface: _call_model, _split_model, _get_key, _record_usage, _utc_now_iso
+#   auth_boundary: none
+#   storage_boundary: write
+#   network_boundary: external
+#   user_data_boundary: write
+#   admin_only: false
+#   tests: a0p_skills.contracts.skill_report_visibility_holds
+#   rollout: default_enabled
+#   rollback: supervisorctl stop backend; restore previous server.py from git
+#   ui_surface: all frontend pages
+#   api_surface: /api/*
+# === END MODULE_BUILD ===
 """
 a0p — research instrument backend.
 
@@ -56,6 +68,7 @@ from providers import REGISTRY
 from interdependent_lib.aimmh import fan_out as aimmh_fan_out, daisy_chain as aimmh_daisy
 from interdependent_lib.zfae import ZFAEAgent
 from interdependent_lib._msdmd import report as msdmd_report
+from a0p_skills import test_build_runner, module_build_runner
 
 
 def _utc_now_iso() -> str:
@@ -683,13 +696,36 @@ async def list_usage(user_id: str = "local", limit: int = 100):
 # ---------- msdmd skill coverage ----------
 # === CONTRACTS ===
 # id: skill_report_visibility
-#   given: GET /api/skill/report
-#   then: returns scanned/covered/gaps_count plus per-file entries; gaps array MUST be present (the doctrine)
+#   given: GET /api/skill/<name>/report for any of capabilities|contracts|module-build
+#   then: returns scanned/covered/gaps_count plus the gaps array; gaps array MUST be present per msdmd doctrine
 #   class: observability
+#   call: a0p_skills.contracts.skill_report_visibility_holds
 # === END CONTRACTS ===
+@api.get("/skill/capabilities/report")
+async def skill_capabilities_report(block: str = "CAPABILITIES"):
+    """Legacy CAPABILITIES coverage report (deprecated; here for migration view)."""
+    from pathlib import Path
+    return msdmd_report(Path("/app/backend"), block)
+
+
+@api.get("/skill/contracts/report")
+async def skill_contracts_report():
+    """test-build runner — imports each CONTRACTS `call:` path and runs it."""
+    from pathlib import Path
+    rep = await test_build_runner.run_async(Path("/app/backend"))
+    return rep
+
+
+@api.get("/skill/module-build/report")
+async def skill_module_build_report():
+    """meta-module-build runner — validates MODULE_BUILD schema + gap list."""
+    from pathlib import Path
+    return module_build_runner.run(Path("/app/backend"))
+
+
 @api.get("/skill/report")
-async def skill_report(block: str = "CAPABILITIES"):
-    """msdmd coverage report. Gap-list MUST remain visible in normal output."""
+async def skill_report_legacy(block: str = "CAPABILITIES"):
+    """Back-compat alias for /skill/capabilities/report."""
     from pathlib import Path
     return msdmd_report(Path("/app/backend"), block)
 

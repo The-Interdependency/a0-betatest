@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: provider_gemini
+#   module_name: gemini_provider
+#   module_kind: adapter
 #   summary: Google Gemini BYOK adapter — list models, generateContent via httpx
-#   exposes: GeminiProvider
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: GeminiProvider
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove from providers.REGISTRY
+# === END MODULE_BUILD ===
 """Google Gemini adapter — generativelanguage.googleapis.com via httpx."""
 from __future__ import annotations
 import httpx

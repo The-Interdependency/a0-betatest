@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: ptca_sentinels
+#   module_name: sentinels
+#   module_kind: engine
 #   summary: tagged signal lanes with priority ordering — SentinelChannel + SentinelMessage
-#   exposes: SentinelChannel, SentinelMessage
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: SentinelChannel, SentinelMessage
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """Sentinel channels — tagged signal lanes with priority ordering."""
 from __future__ import annotations
 from dataclasses import dataclass, field

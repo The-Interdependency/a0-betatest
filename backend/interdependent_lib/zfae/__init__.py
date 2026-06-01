@@ -1,3 +1,20 @@
+# === MODULE_BUILD ===
+# id: zfae_pkg
+#   module_name: zfae
+#   module_kind: engine
+#   summary: persistent agent identity wrapping PCNA + memory
+#   owner: a0p maintainer
+#   public_surface: ZFAEAgent
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert subpackage from git
+# === END MODULE_BUILD ===
 """
 ZFAE — Zeta Function Alpha Echo.
 
@@ -5,12 +22,6 @@ The single persistent agent identity. LLMs are *energy providers*; ZFAE
 is the agent persona that wraps the PCNA engine and exposes a stable
 identity across heartbeats.
 
-# === CAPABILITIES ===
-# id: zfae_pkg
-#   summary: persistent agent identity wrapping PCNA + memory
-#   exposes: ZFAEAgent
-#   stability: experimental
-# === END CAPABILITIES ===
 """
 from __future__ import annotations
 import time

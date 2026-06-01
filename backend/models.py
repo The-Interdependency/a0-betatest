@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: a0p_models
-#   summary: Pydantic surface models for the public API (BYOK keys, vault, sessions, drafts, chat, agents)
-#   exposes: KeyUpsert, KeyPublic, SiteAccountUpsert, SiteAccountPublic, SessionUpsert, SessionPublic, ChatTurn, DraftUpsert, DraftPublic, FanOutRequest, DaisyChainRequest, SynthesizeRequest, AgentExport, PROVIDERS, new_id
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   module_name: models
+#   module_kind: schema
+#   summary: Pydantic surface for the public API (BYOK keys, vault, sessions, drafts, chat, agents)
+#   owner: a0p maintainer
+#   public_surface: KeyUpsert, KeyPublic, SiteAccountUpsert, SiteAccountPublic, SessionUpsert, SessionPublic, ChatTurn, DraftUpsert, DraftPublic, FanOutRequest, DaisyChainRequest, SynthesizeRequest, AgentExport, PROVIDERS, new_id
+#   internal_surface: _utc_now_iso, _Base
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file; consumers break at import
+# === END MODULE_BUILD ===
 """Pydantic models for the API surface."""
 from __future__ import annotations
 from datetime import datetime, timezone

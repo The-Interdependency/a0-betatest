@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: a0p_db_motor
+#   module_name: db
+#   module_kind: service
 #   summary: Motor async client + collection accessors + index ensurance
-#   exposes: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, ensure_indexes
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, ensure_indexes
+#   internal_surface: _client, _MONGO_URL, _DB_NAME
+#   auth_boundary: none
+#   storage_boundary: write
+#   network_boundary: internal
+#   user_data_boundary: write
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: drop mongo collections; revert server.py import
+# === END MODULE_BUILD ===
 """MongoDB Motor client + collection accessors."""
 import os
 from motor.motor_asyncio import AsyncIOMotorClient

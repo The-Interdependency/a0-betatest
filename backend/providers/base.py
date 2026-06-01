@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: provider_base
+#   module_name: base
+#   module_kind: adapter
 #   summary: common Protocol + TypedDict contract for BYOK LLM provider adapters
-#   exposes: ProviderAdapter, ChatResult
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: ProviderAdapter, ChatResult
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file; all provider adapters break at import
+# === END MODULE_BUILD ===
 """Common interface for BYOK LLM providers."""
 from __future__ import annotations
 from typing import Any, Protocol, TypedDict

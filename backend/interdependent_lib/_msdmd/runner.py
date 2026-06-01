@@ -1,15 +1,31 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: msdmd_runner
-#   summary: walks a source tree, parses msdmd blocks, emits coverage + gap report
-#   exposes: walk, report, main
-#   stability: stable
-# === END CAPABILITIES ===
-"""msdmd runner — walks a tree, reports per-file entries + gap list."""
+#   module_name: runner
+#   module_kind: skill
+#   summary: msdmd CAPABILITIES coverage runner (deprecated in favour of skills.module_build_runner)
+#   owner: a0p maintainer
+#   public_surface: walk, report, main
+#   internal_surface: SKIP_DIRS, _format_human
+#   auth_boundary: none
+#   storage_boundary: read
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove module and call sites
+#   deprecated: prefer skills.module_build_runner for canonical MODULE_BUILD coverage
+# === END MODULE_BUILD ===
+"""msdmd runner — walks a tree, reports per-file entries + gap list.
+
+Kept for back-compat with the earlier CAPABILITIES-block experiment.
+The canonical executors live under ``a0p_skills.test_build`` and
+``a0p_skills.meta_module_build`` and use this module's parser.
+"""
 from __future__ import annotations
 import sys
 from pathlib import Path
-from typing import Iterator
-from .parser import parse, COMMENT_MARKER_BY_EXT
+from .parser import walk_tree
 
 
 SKIP_DIRS = {
@@ -18,24 +34,13 @@ SKIP_DIRS = {
 }
 
 
-def walk(
-    root: Path,
-    block_name: str,
-    exts: tuple[str, ...] = (".py",),
-) -> Iterator[tuple[Path, list[dict]]]:
+def walk(root: Path, block_name: str, exts: tuple[str, ...] = (".py",)):
     """Yield (path, entries) for every source file under `root`."""
-    for p in sorted(root.rglob("*")):
-        if p.is_dir():
-            continue
-        if any(part in SKIP_DIRS for part in p.parts):
-            continue
-        if p.suffix not in exts:
-            continue
-        try:
-            text = p.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            continue
-        yield p, parse(text, block_name)
+    annotated, untested = walk_tree(root, block_name, extensions=exts)
+    for p, e in annotated:
+        yield p, e
+    for p in untested:
+        yield p, []
 
 
 def report(
@@ -44,15 +49,16 @@ def report(
     exts: tuple[str, ...] = (".py",),
 ) -> dict:
     """Aggregate coverage + gap list for `block_name` under `root`."""
+    annotated, untested = walk_tree(root, block_name, extensions=exts)
     by_file: dict[str, list[dict]] = {}
     gaps: list[str] = []
-    scanned = 0
-    for p, entries in walk(root, block_name, exts):
-        scanned += 1
+    for p, entries in annotated:
+        by_file[str(p.relative_to(root))] = entries
+    for p in untested:
         rel = str(p.relative_to(root))
-        by_file[rel] = entries
-        if not entries:
-            gaps.append(rel)
+        by_file[rel] = []
+        gaps.append(rel)
+    scanned = len(annotated) + len(untested)
     return {
         "block_name": block_name,
         "root": str(root),

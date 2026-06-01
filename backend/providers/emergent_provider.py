@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: provider_emergent
+#   module_name: emergent_provider
+#   module_kind: adapter
 #   summary: Emergent universal-key adapter via emergentintegrations.LlmChat (openai/anthropic/gemini sub-providers)
-#   exposes: EmergentProvider
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: EmergentProvider
+#   internal_surface: _INVENTORY
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove from providers.REGISTRY
+# === END MODULE_BUILD ===
 """Emergent Universal Key adapter — uses emergentintegrations.LlmChat.
 
 Used for testing/dev when the user has not yet plugged in their own keys.

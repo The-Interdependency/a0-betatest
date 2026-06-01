@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: provider_openai
+#   module_name: openai_provider
+#   module_kind: adapter
 #   summary: OpenAI BYOK adapter — list models, chat completion via httpx
-#   exposes: OpenAIProvider
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: OpenAIProvider
+#   internal_surface: base, name
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove from providers.REGISTRY
+# === END MODULE_BUILD ===
 """OpenAI adapter — /v1/models + /v1/chat/completions via httpx."""
 from __future__ import annotations
 import httpx

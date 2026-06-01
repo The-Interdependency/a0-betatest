@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: pcea_cipher
+#   module_name: cipher
+#   module_kind: engine
 #   summary: prime-circular bijective encrypt/decrypt over a previous-state key
-#   exposes: encrypt_state, decrypt_state
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: encrypt_state, decrypt_state
+#   internal_surface: _shift
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: a0p_skills.contracts.pcea_round_trip_53
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """PCEA core cipher."""
 from .primes import PRIME_CIRCLE
 from .codec import to_bijective, from_bijective, key_digits

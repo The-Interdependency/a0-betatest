@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: aimmh_patterns_impl
+#   module_name: patterns
+#   module_kind: engine
 #   summary: pure-async multi-model orchestration patterns over call_fn(model_id, messages)
-#   exposes: ModelResult, fan_out, daisy_chain, room_all, room_synthesized, council
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: ModelResult, fan_out, daisy_chain, room_all, room_synthesized, council
+#   internal_surface: _invoke, CallFn
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: a0p_skills.contracts.aimmh_invoke_propagates_error
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """AIMMH interaction patterns — pure async, no external deps."""
 from __future__ import annotations
 import asyncio
@@ -46,6 +56,7 @@ async def _invoke(call_fn: CallFn, model_id: str, messages: list[dict]) -> Model
 #   given: N model_ids and one prompt
 #   then:  all models called concurrently; one ModelResult per model returned in order
 #   class: orchestration
+#   call: a0p_skills.contracts.aimmh_invoke_propagates_error
 # === END CONTRACTS ===
 async def fan_out(
     call_fn: CallFn,

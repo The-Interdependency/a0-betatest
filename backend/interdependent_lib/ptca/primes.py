@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: ptca_primes
+#   module_name: primes
+#   module_kind: schema
 #   summary: prime generator + first-N prime cache (default capacity 200, supports PTCA N=157)
-#   exposes: first_n_primes, PRIMES_FIRST_N
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: first_n_primes, PRIMES_FIRST_N
+#   internal_surface: _is_prime
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """Prime generator and the first-N prime cache used by PTCA."""
 
 

@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: providers_pkg
+#   module_name: providers
+#   module_kind: adapter
 #   summary: BYOK adapter registry — openai, anthropic, gemini, xai, emergent
-#   exposes: REGISTRY, ProviderAdapter, ChatResult
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: REGISTRY, ProviderAdapter, ChatResult
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove provider imports from server.py
+# === END MODULE_BUILD ===
 """LLM provider adapters — BYOK pass-through via httpx.
 
 Each adapter exposes:

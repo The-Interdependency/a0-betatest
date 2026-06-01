@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: pcna_sigma
-#   summary: substrate signature encoder — deterministic blake2b digest + band mapping
-#   exposes: sigma_encode, sigma_band
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   module_name: sigma
+#   module_kind: engine
+#   summary: substrate signature encoder — deterministic blake2b digest + band mapping (canon Σ is N=41 observer ring; current impl is scalar shim)
+#   owner: a0p maintainer
+#   public_surface: sigma_encode, sigma_band
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """Sigma — filesystem substrate encoder, companion to the Ψ ring.
 
 Encodes any path-like string into a deterministic 32-byte signature

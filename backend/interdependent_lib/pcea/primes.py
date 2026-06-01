@@ -1,9 +1,21 @@
+# === MODULE_BUILD ===
+# id: pcea_primes
+#   module_name: primes
+#   module_kind: schema
+#   summary: first 53 primes — the prime circle used by PCEA
+#   owner: a0p maintainer
+#   public_surface: PRIME_CIRCLE
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: constant table; no runtime effect to roll back
+# === END MODULE_BUILD ===
 """First 53 primes — the prime circle used by PCEA."""
-# === CAPABILITIES ===
-# id: prime_circle_53
-#   summary: first 53 primes from 2..241 for circular indexing
-# === END CAPABILITIES ===
-
 PRIME_CIRCLE = [
     2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
     31, 37, 41, 43, 47, 53, 59, 61, 67, 71,

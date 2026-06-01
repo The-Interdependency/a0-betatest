@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: interdependent_lib_pkg
-#   summary: meta-package — pcea, ptca, pcna, aimmh, zfae submodules built from spec
-#   exposes: pcea, ptca, pcna, zfae, aimmh, available, __version__
-#   stability: experimental
-# === END CAPABILITIES ===
-
+#   module_name: interdependent_lib
+#   module_kind: skill
+#   summary: meta-package exposing pcea, ptca, pcna, aimmh, zfae submodules
+#   owner: a0p maintainer
+#   public_surface: pcea, ptca, pcna, zfae, aimmh, available, __version__
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove import from server.py
+# === END MODULE_BUILD ===
 """
 interdependent_lib — convergence of four/five-letter acronym modules.
 

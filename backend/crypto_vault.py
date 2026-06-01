@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: a0p_crypto_vault
+#   module_name: crypto_vault
+#   module_kind: service
 #   summary: Fernet encrypt/decrypt + mask for at-rest BYOK credentials
-#   exposes: encrypt, decrypt, mask
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: encrypt, decrypt, mask
+#   internal_surface: _fernet, _SECRET
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove imports from server.py; user re-enters BYOK keys
+# === END MODULE_BUILD ===
 """Fernet-encrypted at-rest storage for BYOK keys."""
 import os
 from cryptography.fernet import Fernet, InvalidToken

@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: pcna_edcm
-#   summary: Energy Dissonance Circuit Model — CM/DA/DRIFT/DVG/INT/TBF per-tick scoring
-#   exposes: EDCM, EDCMScores
-#   stability: experimental
-# === END CAPABILITIES ===
-
+#   module_name: edcm
+#   module_kind: engine
+#   summary: Energy Dissonance Circuit Model — CM/DA/DRIFT/DVG/INT/TBF per-tick scoring (canon directives pending wiring)
+#   owner: a0p maintainer
+#   public_surface: EDCM, EDCMScores
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """EDCM — Energy Dissonance Circuit Model.
 
 Behavioral-directive scoring: tracks six per-tick metrics:

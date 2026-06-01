@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: provider_xai
+#   module_name: xai_provider
+#   module_kind: adapter
 #   summary: xAI Grok BYOK adapter — OpenAI-compatible /v1 via httpx
-#   exposes: XAIProvider
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: XAIProvider
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove from providers.REGISTRY
+# === END MODULE_BUILD ===
 """xAI Grok adapter — OpenAI-compatible at https://api.x.ai/v1."""
 from __future__ import annotations
 import httpx

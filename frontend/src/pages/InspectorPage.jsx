@@ -13,16 +13,70 @@ const RING_NAMES = {
   epsilon: "Ε · epsilon (dissonance)",
 };
 
+
+function SkillTile({ scanned, covered, gapsCount, gaps, extra = [], extraSection = null, testid }) {
+  const hasGaps = (gapsCount ?? 0) > 0;
+  return (
+    <div data-testid={testid}>
+      <div className="grid grid-cols-3 gap-2 font-mono text-xs">
+        <div className="border border-white/10 bg-bg-deep p-3">
+          <div className="section-overline">scanned</div>
+          <div className="text-2xl text-white">{scanned ?? "—"}</div>
+        </div>
+        <div className="border border-white/10 bg-bg-deep p-3">
+          <div className="section-overline">covered</div>
+          <div className="text-2xl text-accent-emerald">{covered ?? "—"}</div>
+        </div>
+        <div className="border border-white/10 bg-bg-deep p-3">
+          <div className="section-overline">gaps</div>
+          <div className={"text-2xl " + (hasGaps ? "text-accent-rose" : "text-accent-emerald")}>
+            {gapsCount ?? "—"}
+          </div>
+        </div>
+      </div>
+      {extra.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {extra.map(([label, value, tone]) => (
+            <Pill key={label} tone={tone}>{label}: {value}</Pill>
+          ))}
+        </div>
+      )}
+      {hasGaps ? (
+        <div className="mt-3 border border-accent-rose/40 bg-rose-500/5 p-3 text-xs font-mono">
+          <div className="text-accent-rose mb-2">{gaps.length} file(s) without the block:</div>
+          <ul className="space-y-0.5 max-h-[160px] overflow-auto">
+            {gaps.slice(0, 30).map(g => <li key={g} className="text-neutral-300">· {g}</li>)}
+            {gaps.length > 30 && <li className="text-neutral-500">… {gaps.length - 30} more</li>}
+          </ul>
+        </div>
+      ) : scanned ? (
+        <div className="mt-3 text-xs font-mono text-accent-emerald">✓ no gaps · 100% compliance</div>
+      ) : null}
+      {extraSection}
+    </div>
+  );
+}
+
 export default function InspectorPage() {
   const [snap, setSnap] = useState(null);
   const [intent, setIntent] = useState("");
   const [busy, setBusy] = useState(false);
-  const [skill, setSkill] = useState(null);
+  const [caps, setCaps] = useState(null);
+  const [contracts, setContracts] = useState(null);
+  const [modBuild, setModBuild] = useState(null);
+  const [skillTab, setSkillTab] = useState("module-build");
 
   async function load() {
-    const [r, s] = await Promise.all([api.inspectorSnap(), api.skillReport("CAPABILITIES")]);
+    const [r, cap, con, mb] = await Promise.all([
+      api.inspectorSnap(),
+      api.skillCapabilities().catch(() => null),
+      api.skillContracts().catch(() => null),
+      api.skillModuleBuild().catch(() => null),
+    ]);
     setSnap(r.agent_card?.snapshot || null);
-    setSkill(s);
+    setCaps(cap);
+    setContracts(con);
+    setModBuild(mb);
   }
   useEffect(() => { load(); }, []);
 
@@ -114,62 +168,110 @@ export default function InspectorPage() {
         </div>
       </Panel>
 
-      <Panel title="msdmd · skill coverage"
-        right={skill ? <Pill tone={skill.gaps_count ? "rose" : "emerald"} testid="skill-status">
-          {skill.gaps_count ? `${skill.gaps_count} gap(s)` : "100% covered"}
-        </Pill> : <Pill>loading</Pill>}>
+      <Panel title="skill-lib coverage · msdmd / test-build / meta-module-build"
+        right={<div className="flex gap-1.5">
+          {["module-build", "contracts", "capabilities"].map(t => (
+            <button key={t}
+              className={"btn-ghost py-1 px-2 text-[0.65rem] " + (skillTab === t ? "active" : "")}
+              onClick={() => setSkillTab(t)}
+              data-testid={`skill-tab-${t}`}>
+              {t}
+            </button>
+          ))}
+        </div>}>
         <div className="p-4 space-y-3" data-testid="skill-panel">
           <div className="text-xs text-neutral-400 font-sans leading-relaxed max-w-3xl">
-            Every <span className="text-accent-cyan font-mono">.py</span> file under <span className="font-mono">/app/backend</span> must
-            declare a <span className="text-accent-cyan font-mono">CAPABILITIES</span> block. The runner walks the tree, parses every block,
-            and reports per-file entries plus a gap list. Gaps must stay visible (the doctrine — see <span className="font-mono">interdependent_lib/_msdmd/SKILL.md</span>).
+            Three msdmd-derived skills from <span className="font-mono text-accent-cyan">The-Interdependency/skill-lib</span>.
+            Every module declares its <span className="font-mono">MODULE_BUILD</span> manifest and (where applicable) its <span className="font-mono">CONTRACTS</span> block.
+            The runners enforce coverage; gap lists stay visible per doctrine.
           </div>
-          <div className="grid grid-cols-3 gap-2 font-mono text-xs">
-            <div className="border border-white/10 bg-bg-deep p-3">
-              <div className="section-overline">scanned</div>
-              <div className="text-2xl text-white" data-testid="skill-scanned">{skill?.scanned ?? "—"}</div>
-            </div>
-            <div className="border border-white/10 bg-bg-deep p-3">
-              <div className="section-overline">covered</div>
-              <div className="text-2xl text-accent-emerald" data-testid="skill-covered">{skill?.covered ?? "—"}</div>
-            </div>
-            <div className="border border-white/10 bg-bg-deep p-3">
-              <div className="section-overline">gaps</div>
-              <div className={"text-2xl " + ((skill?.gaps_count ?? 0) > 0 ? "text-accent-rose" : "text-accent-emerald")}
-                data-testid="skill-gaps-count">{skill?.gaps_count ?? "—"}</div>
-            </div>
-          </div>
-          {(skill?.gaps || []).length > 0 ? (
-            <div className="border border-accent-rose/40 bg-rose-500/5 p-3 text-xs font-mono">
-              <div className="text-accent-rose mb-2">{skill.gaps.length} module(s) missing the CAPABILITIES block:</div>
-              <ul className="space-y-0.5">
-                {skill.gaps.map(g => <li key={g} className="text-neutral-300">· {g}</li>)}
-              </ul>
-            </div>
-          ) : (
-            <div className="text-xs font-mono text-accent-emerald">
-              ✓ no gaps · 100 % module compliance
-            </div>
-          )}
-          <details className="text-xs font-mono">
-            <summary className="cursor-pointer text-neutral-400 hover:text-white">
-              show all {skill ? Object.values(skill.by_file).flat().length : 0} entries
-            </summary>
-            <div className="mt-2 max-h-[300px] overflow-auto border border-white/5 bg-bg-deep p-2 space-y-1">
-              {skill && Object.entries(skill.by_file).map(([f, entries]) => (
-                entries.length > 0 && (
-                  <div key={f}>
-                    <div className="text-accent-cyan">{f}</div>
-                    {entries.map(e => (
-                      <div key={e.id} className="pl-4 text-neutral-400">
-                        · <span className="text-white">{e.id}</span>{e.summary ? ` — ${e.summary}` : ""}
+
+          {skillTab === "module-build" && (
+            <SkillTile
+              testid="skill-mb"
+              scanned={modBuild?.scanned}
+              covered={modBuild?.covered}
+              gapsCount={modBuild?.gaps_count}
+              extra={modBuild ? [
+                ["valid", modBuild.valid_count, "emerald"],
+                ["invalid", modBuild.invalid_count, modBuild.invalid_count ? "rose" : "emerald"],
+              ] : []}
+              gaps={modBuild?.gaps || []}
+              extraSection={modBuild && (
+                <div className="mt-3 grid md:grid-cols-2 gap-3 text-xs font-mono">
+                  <div>
+                    <div className="section-overline mb-1">by kind</div>
+                    {Object.entries(modBuild.by_kind || {}).sort().map(([k, n]) => (
+                      <div key={k} className="flex justify-between border-b border-white/5 py-1">
+                        <span className="text-neutral-400">{k}</span>
+                        <span className="text-accent-cyan">{n}</span>
                       </div>
                     ))}
                   </div>
-                )
-              ))}
-            </div>
-          </details>
+                  <div>
+                    <div className="section-overline mb-1">boundary risk (non-none)</div>
+                    {Object.entries(modBuild.boundary_risk || {}).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+                      <div key={k} className="flex justify-between border-b border-white/5 py-1">
+                        <span className="text-neutral-400">{k}</span>
+                        <span className="text-accent-amber">{n}</span>
+                      </div>
+                    ))}
+                    {!Object.keys(modBuild.boundary_risk || {}).length && <div className="text-neutral-600">no non-none surfaces</div>}
+                  </div>
+                </div>
+              )}
+            />
+          )}
+
+          {skillTab === "contracts" && (
+            <SkillTile
+              testid="skill-contracts"
+              scanned={(contracts?.results?.length || 0) + (contracts?.untested_count || 0)}
+              covered={contracts?.results?.length || 0}
+              gapsCount={contracts?.untested_count || 0}
+              extra={contracts ? [
+                ["pass", contracts.counts?.PASS || 0, "emerald"],
+                ["fail", contracts.counts?.FAIL || 0, (contracts.counts?.FAIL || 0) ? "rose" : "emerald"],
+                ["error", contracts.counts?.ERROR || 0, (contracts.counts?.ERROR || 0) ? "rose" : "emerald"],
+              ] : []}
+              gaps={contracts?.untested || []}
+              extraSection={contracts && contracts.results?.length > 0 && (
+                <div className="mt-3 space-y-1 font-mono text-xs">
+                  <div className="section-overline mb-1">contract results</div>
+                  {contracts.results.map(r => {
+                    const tone = r.status === "PASS" ? "emerald" : r.status === "FAIL" ? "rose" : r.status === "ERROR" ? "rose" : "amber";
+                    const sym = { PASS: "✓", FAIL: "✗", ERROR: "!", SKIP: "-" }[r.status] || "?";
+                    return (
+                      <div key={r.id + (r._file || "")} className="flex items-start gap-2 border-b border-white/5 py-1">
+                        <Pill tone={tone}>{sym} {r.status}</Pill>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white truncate">{r.id}</div>
+                          <div className="text-neutral-500 text-[0.65rem] truncate">{r._file}</div>
+                          {r.error && <div className="text-accent-rose text-[0.7rem] mt-1">{r.error}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            />
+          )}
+
+          {skillTab === "capabilities" && (
+            <SkillTile
+              testid="skill-caps"
+              scanned={caps?.scanned}
+              covered={caps?.covered}
+              gapsCount={caps?.gaps_count}
+              gaps={caps?.gaps || []}
+              extra={[["legacy", "deprecated", "amber"]]}
+              extraSection={(
+                <div className="mt-2 text-[0.7rem] font-mono text-neutral-500">
+                  Legacy CAPABILITIES block coverage. The canonical executors are <span className="text-accent-cyan">module-build</span> and <span className="text-accent-cyan">contracts</span>. Kept as a migration view.
+                </div>
+              )}
+            />
+          )}
         </div>
       </Panel>
 

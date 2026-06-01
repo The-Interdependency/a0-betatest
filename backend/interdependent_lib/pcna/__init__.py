@@ -1,3 +1,21 @@
+# === MODULE_BUILD ===
+# id: pcna_pkg
+#   module_name: pcna
+#   module_kind: engine
+#   summary: six-ring inference engine (Φ Ψ Ω Θ Σ Ε) — current impl is simplified; canon topology (61 seeds, six scored rings + Σ observer) rebuild pending
+#   owner: a0p maintainer
+#   public_surface: PCNAEngine, EDCM, EDCMScores, MemoryCore, zeta_inject, sigma_encode, theta_modulate
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: revert subpackage from git
+#   unresolved: canon PCNA topology rebuild pending
+# === END MODULE_BUILD ===
 """
 PCNA — Prime Circled Neural Architecture.
 
@@ -12,13 +30,6 @@ Modular inference engine — six rings:
 Three 157-seed PTCA cores (phi, psi, omega) drive the principal rings;
 theta / sigma / epsilon are supporting modulators wired to the cores.
 
-# === CAPABILITIES ===
-# id: pcna_pkg
-#   summary: six-ring inference engine (Φ Ψ Ω Θ Σ Ε) driven by three PTCA(157) cores
-#   exposes: PCNAEngine, EDCM, EDCMScores, MemoryCore, zeta_inject, sigma_encode, theta_modulate
-#   tick: phi -> psi -> omega -> theta -> mem_l -> mem_s
-#   stability: experimental
-# === END CAPABILITIES ===
 """
 from .pcna import PCNAEngine
 from .edcm import EDCM, EDCMScores

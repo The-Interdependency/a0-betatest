@@ -1,3 +1,20 @@
+# === MODULE_BUILD ===
+# id: msdmd_pkg
+#   module_name: _msdmd
+#   module_kind: skill
+#   summary: this project's msdmd application — parser + back-compat runner (canonical executors live in a0p_skills)
+#   owner: a0p maintainer
+#   public_surface: parse, walk, report, walk_tree, parse_text, parse_file
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: read
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: hmmm
+#   rollout: default_enabled
+#   rollback: remove imports from server.py and a0p_skills
+# === END MODULE_BUILD ===
 # === CAPABILITIES ===
 # id: msdmd_pkg
 #   summary: this project's msdmd application — parser, runner, coverage report

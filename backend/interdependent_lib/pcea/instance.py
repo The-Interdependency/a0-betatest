@@ -1,10 +1,20 @@
-# === CAPABILITIES ===
+# === MODULE_BUILD ===
 # id: pcea_instance
+#   module_name: instance
+#   module_kind: engine
 #   summary: stateful PCEA instance — auto-advances last_state per call
-#   exposes: PCEAInstance
-#   stability: stable
-# === END CAPABILITIES ===
-
+#   owner: a0p maintainer
+#   public_surface: PCEAInstance
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   tests: a0p_skills.contracts.pcea_round_trip_53
+#   rollout: default_enabled
+#   rollback: revert file from git
+# === END MODULE_BUILD ===
 """Stateful PCEA instance — advances last_state automatically after each call."""
 from .cipher import encrypt_state, decrypt_state
 
