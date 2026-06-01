@@ -30,13 +30,32 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
-## msdmd / skill-lib compliance — 2026-05-31
+## msdmd / skill-lib compliance — 2026-06-02
 
 | Skill | Block | Coverage | Status |
 |---|---|---|---|
-| `msdmd` (parser) | — | canonical `parser.py` synced line-for-line from skill-lib | ✅ |
-| `meta-module-build` | `MODULE_BUILD` | 42 / 42 covered · 42 valid · 0 invalid | ✅ |
+| `msdmd` (parser) | — | canonical `parser.py` synced from skill-lib | ✅ |
+| `meta-module-build` | `MODULE_BUILD` | 41 / 41 covered · 41 valid · 0 invalid | ✅ |
 | `test-build` | `CONTRACTS` | 4 contracts: 4 PASS · 0 FAIL · 0 ERROR | ✅ |
+
+PR-template at `/app/.github/PULL_REQUEST_TEMPLATE.md` enforces the
+*intent → manifest → file plan → tests → scaffold* doctrine on every
+future change.
+
+## Platform independence — 2026-06-02
+
+- `emergentintegrations` dependency removed from `requirements.txt`.
+- `EmergentProvider` deleted from `/app/backend/providers/`.
+- `EMERGENT_LLM_KEY` removed from `/app/backend/.env`.
+- "Emergent routing" toggles removed from the frontend Workspace.
+- Inventory "emergent" tab and Key-Vault Emergent section removed.
+- Starter agents reseeded with BYOK model IDs (`openai:gpt-4o`,
+  `anthropic:claude-sonnet-4-5-20250929`, `gemini:gemini-2.5-flash`).
+- Chat without a key now returns a clear *"no api key for provider …;
+  add one in the Key Vault. This build is BYOK-only"* error.
+- This build has **zero runtime dependencies on Emergent software**.
+  The Emergent hosting URL is still used during preview, but the
+  application code is portable.
 
 Boundary risk surface (non-`none` declared):
 - `user_data_boundary=read`: 11 modules · `network_boundary=external`: 8 ·

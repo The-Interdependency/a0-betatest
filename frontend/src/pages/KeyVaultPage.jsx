@@ -120,14 +120,10 @@ export default function KeyVaultPage() {
         })}
       </div>
 
-      <Panel title="Emergent Universal Key">
+      <Panel title="BYOK · OpenAI / Anthropic / Google / xAI">
         <div className="p-4 text-xs text-neutral-400 leading-relaxed font-sans">
-          A dev/test universal key is pre-configured on the backend. It can route
-          to <span className="text-accent-cyan font-mono">openai</span>, <span className="text-accent-cyan font-mono">anthropic</span>,
-          and <span className="text-accent-cyan font-mono">gemini</span> namespaces without you plugging in your own keys.
-          <br />
-          When you toggle <Pill tone="amber">Use Emergent</Pill> on a model in the Workspace, the request is routed through
-          this key — useful while you're collecting your own keys but not for production.
+          This build is fully BYOK — your own provider keys, encrypted at rest, used per request.
+          There is no platform fallback. Add a key above to populate the inventory and unlock that provider for chat.
         </div>
       </Panel>
 

@@ -244,21 +244,14 @@ async def delete_vault(vault_id: str, user_id: str = "local"):
 # ---------- Model inventory ----------
 @api.get("/models/inventory")
 async def model_inventory(user_id: str = "local"):
-    """Aggregate model inventory across all providers the user has keys for, plus Emergent."""
+    """Aggregate live model inventory across BYOK providers the user has keys for."""
     inv: list[dict] = []
     errors: dict[str, str] = {}
 
-    # Always include emergent inventory (uses server env key)
-    try:
-        inv.extend(await REGISTRY["emergent"].list_models(None))
-    except Exception as e:
-        errors["emergent"] = str(e)
-
-    # For each provider the user has a key for, fetch live inventory
+    # For each provider the user has a key for, fetch live inventory.
+    # No platform-bundled inventory — this build is BYOK-only.
     async for doc in keys_col.find({"user_id": user_id}):
         prov = doc["provider"]
-        if prov == "emergent":
-            continue
         try:
             plain = cv.decrypt(doc["enc_api_key"])
         except Exception:
@@ -408,34 +401,27 @@ async def _call_model(
     model_id: str,
     messages: list[dict],
     system: str | None,
-    use_emergent: set[str],
 ) -> dict:
     prov, name = _split_model(model_id)
 
-    # Forced re-route to emergent for testing
-    if prov in use_emergent and prov != "emergent":
-        # emergent uses "openai:gpt-..." style; build that
-        em_model = f"{prov}:{name}"
-        adapter = REGISTRY["emergent"]
-        result = await adapter.chat(None, em_model, messages, system=system)
-        return {**result, "routed_via": "emergent"}
-
-    if prov == "emergent":
-        adapter = REGISTRY["emergent"]
-        result = await adapter.chat(None, name, messages, system=system)
-        return {**result, "routed_via": "emergent"}
-
     if prov not in REGISTRY:
-        return {"content": "", "error": f"unknown provider {prov}", "model_id": model_id, "provider": prov}
+        return {"content": "", "error": f"unknown provider {prov!r}",
+                "model_id": model_id, "provider": prov}
 
     key = await _get_key(user_id, prov)
     if not key:
-        return {"content": "", "error": f"no api key for provider {prov!r}; either add one in the Key Vault or enable Emergent routing",
-                "model_id": model_id, "provider": prov}
+        return {
+            "content": "",
+            "error": (
+                f"no api key for provider {prov!r}; add one in the Key Vault. "
+                f"This build is BYOK-only — no platform fallback."
+            ),
+            "model_id": model_id,
+            "provider": prov,
+        }
 
     adapter = REGISTRY[prov]
     result = await adapter.chat(key, name, messages, system=system)
-    # bump last_used_at
     await keys_col.update_one({"user_id": user_id, "provider": prov},
                               {"$set": {"last_used_at": _utc_now_iso()}})
     return {**result, "routed_via": prov}
@@ -459,7 +445,6 @@ class SingleChatRequest(BaseModel):
     messages: list[dict]
     system: Optional[str] = ""
     session_id: Optional[str] = None
-    use_emergent_for: List[str] = []
 
 
 @api.post("/chat/single")
@@ -470,7 +455,6 @@ async def chat_single(body: SingleChatRequest):
         model_id=body.model_id,
         messages=body.messages,
         system=body.system or None,
-        use_emergent=set(body.use_emergent_for),
     )
     AGENT.absorb(body.model_id, r.get("content", ""), r.get("usage"))
     await _record_usage(body.user_id, body.model_id, r.get("usage", {}), "single")
@@ -493,10 +477,9 @@ async def chat_fanout(body: FanOutRequest):
     AGENT.receive(body.prompt)
     messages = [{"role": "user", "content": body.prompt}]
     system = body.system_context or None
-    use_emergent = set(body.use_emergent_for)
 
     async def call_fn(model_id: str, msgs: list[dict]):
-        return await _call_model(body.user_id, model_id, msgs, system, use_emergent)
+        return await _call_model(body.user_id, model_id, msgs, system)
 
     results = await aimmh_fan_out(call_fn, body.model_ids, messages)
 
@@ -546,11 +529,10 @@ async def chat_daisychain(body: DaisyChainRequest):
     AGENT.receive(body.prompt)
     messages = [{"role": "user", "content": body.prompt}]
     system = body.system_context or None
-    use_emergent = set(body.use_emergent_for)
     rounds = max(1, min(body.rounds, 6))
 
     async def call_fn(model_id: str, msgs: list[dict]):
-        return await _call_model(body.user_id, model_id, msgs, system, use_emergent)
+        return await _call_model(body.user_id, model_id, msgs, system)
 
     results = await aimmh_daisy(call_fn, body.model_ids, messages, rounds=rounds)
 
@@ -607,7 +589,6 @@ async def chat_synthesize(body: SynthesizeRequest):
         model_id=body.synth_model,
         messages=[{"role": "user", "content": synth_prompt}],
         system=None,
-        use_emergent=set(body.use_emergent_for),
     )
     AGENT.absorb(body.synth_model, r.get("content", ""), r.get("usage"))
     await _record_usage(body.user_id, body.synth_model, r.get("usage", {}), "synthesis")
@@ -742,21 +723,21 @@ async def _on_startup():
     if n == 0:
         starters: list[AgentExport] = [
             AgentExport(slug="research-council", name="Research Council",
-                        description="Three frontier models confer on a question, then each synthesizes the panel's view.",
+                        description="Three frontier models confer on a question, then each synthesizes the panel's view. BYOK: add keys for OpenAI / Anthropic / Google.",
                         system_context="You are a careful, source-aware research assistant. Cite reasoning steps explicitly.",
-                        default_models=["emergent:openai:gpt-5", "emergent:anthropic:claude-sonnet-4-5", "emergent:gemini:gemini-2.5-flash"],
+                        default_models=["openai:gpt-4o", "anthropic:claude-sonnet-4-5-20250929", "gemini:gemini-2.5-flash"],
                         capabilities=["math", "literature", "synthesis"],
                         aimmh_pattern="council", rounds=1, is_premium=False),
             AgentExport(slug="daisy-prover", name="Daisy Prover",
-                        description="Two models pass a proof attempt back and forth, refining each round.",
+                        description="Two models pass a proof attempt back and forth, refining each round. BYOK: OpenAI + Anthropic.",
                         system_context="You are a rigorous mathematical prover. Critique the prior step before extending it.",
-                        default_models=["emergent:openai:gpt-5", "emergent:anthropic:claude-sonnet-4-5"],
+                        default_models=["openai:gpt-4o", "anthropic:claude-sonnet-4-5-20250929"],
                         capabilities=["proofs", "critique"],
                         aimmh_pattern="daisy_chain", rounds=3, is_premium=False),
             AgentExport(slug="zfae-classic", name="ZFAE Classic (Φ Ψ Ω)",
-                        description="Single persistent agent over the PTCA(157) phi/psi/omega cores.",
+                        description="Single persistent agent over the PTCA(157) phi/psi/omega cores. BYOK: OpenAI.",
                         system_context="You are ZFAE — the zeta-function alpha-echo agent. Be exploratory and link concepts.",
-                        default_models=["emergent:openai:gpt-5-mini"],
+                        default_models=["openai:gpt-4o-mini"],
                         capabilities=["exploration", "linking"],
                         aimmh_pattern="fan_out", rounds=1, is_premium=False),
             AgentExport(slug="premium-symphony", name="Premium · Symphony",

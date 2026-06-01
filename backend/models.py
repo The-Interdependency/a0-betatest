@@ -31,7 +31,7 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-PROVIDERS = ("openai", "anthropic", "gemini", "xai", "emergent")
+PROVIDERS = ("openai", "anthropic", "gemini", "xai")
 
 
 class KeyUpsert(BaseModel):
@@ -122,7 +122,6 @@ class FanOutRequest(BaseModel):
     system_context: str = ""
     model_ids: List[str]               # ["openai:gpt-4o-mini", "anthropic:claude-...", ...]
     session_id: Optional[str] = None
-    use_emergent_for: List[str] = Field(default_factory=list)  # providers to route via emergent
 
 
 class DaisyChainRequest(BaseModel):
@@ -132,7 +131,6 @@ class DaisyChainRequest(BaseModel):
     model_ids: List[str]
     rounds: int = 1
     session_id: Optional[str] = None
-    use_emergent_for: List[str] = Field(default_factory=list)
 
 
 class SynthesizeRequest(BaseModel):
@@ -140,7 +138,6 @@ class SynthesizeRequest(BaseModel):
     prompt: str
     responses: List[dict]              # [{model_id, content}]
     synth_model: str
-    use_emergent_for: List[str] = Field(default_factory=list)
 
 
 class AgentExport(BaseModel):

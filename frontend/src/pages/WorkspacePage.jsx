@@ -20,7 +20,6 @@ export default function WorkspacePage() {
   // models
   const [inventory, setInventory] = useState([]);
   const [selectedModels, setSelectedModels] = useState([]);
-  const [useEmergentFor, setUseEmergentFor] = useState({ openai: true, anthropic: true, gemini: true, xai: false });
 
   // chat
   const [mode, setMode] = useState("fanout");
@@ -41,11 +40,11 @@ export default function WorkspacePage() {
       const [inv, sess] = await Promise.all([api.inventory(), api.listSessions()]);
       setInventory(inv.models || []);
       setSessions(sess.sessions || []);
-      // pick three sane defaults via emergent
+      // pick three sane BYOK defaults (will only run when matching keys exist)
       const defaults = [
-        "emergent:openai:gpt-5-mini",
-        "emergent:anthropic:claude-sonnet-4-5",
-        "emergent:gemini:gemini-2.5-flash",
+        "openai:gpt-4o-mini",
+        "anthropic:claude-sonnet-4-5-20250929",
+        "gemini:gemini-2.5-flash",
       ];
       setSelectedModels(defaults);
       setSynthModel(defaults[0]);
@@ -53,14 +52,11 @@ export default function WorkspacePage() {
   }, []);
 
   function toModelId(m) {
-    return m.provider === "emergent" ? `emergent:${m.id}` : `${m.provider}:${m.id}`;
+    return `${m.provider}:${m.id}`;
   }
   function providerOf(modelId) {
-    const [head, sub] = modelId.split(":");
-    if (head === "emergent" && sub) return sub; // routing target
-    return head;
+    return modelId.split(":")[0];
   }
-  const emergentList = Object.entries(useEmergentFor).filter(([, v]) => v).map(([k]) => k);
 
   // ---- new session
   async function newSession() {
@@ -145,7 +141,6 @@ export default function WorkspacePage() {
           messages: [{ role: "user", content: prompt }],
           system: systemContext,
           session_id: curSession.id,
-          use_emergent_for: emergentList,
         });
         setTranscript(t => [...t, { role: "assistant", panels: [{ model_id: r.result.model_id, content: r.result.content, usage: r.result.usage, error: r.result.error }], ts: new Date().toISOString() }]);
       } else if (mode === "fanout") {
@@ -155,7 +150,6 @@ export default function WorkspacePage() {
           prompt, system_context: systemContext,
           model_ids: selectedModels,
           session_id: curSession.id,
-          use_emergent_for: emergentList,
         });
         setTranscript(t => [...t, { role: "assistant", panels: r.results, ts: new Date().toISOString(), kind: "fanout" }]);
         setCarouselIdx(0);
@@ -167,7 +161,6 @@ export default function WorkspacePage() {
           model_ids: selectedModels,
           rounds,
           session_id: curSession.id,
-          use_emergent_for: emergentList,
         });
         setTranscript(t => [...t, { role: "assistant", panels: r.steps, ts: new Date().toISOString(), kind: "daisy" }]);
       }
@@ -191,7 +184,6 @@ export default function WorkspacePage() {
         prompt: [...transcript].reverse().find(t => t.role === "user")?.content || "",
         responses: last.panels,
         synth_model: synthModel,
-        use_emergent_for: emergentList,
       });
       setTranscript(t => [...t, { role: "assistant", panels: [{ model_id: `synth(${synthModel})`, content: r.synthesis.content, usage: r.synthesis.usage, error: r.synthesis.error }], ts: new Date().toISOString(), kind: "synthesis" }]);
     } catch (e) {
@@ -289,23 +281,9 @@ export default function WorkspacePage() {
             </div>
           </Panel>
 
-          <Panel title="emergent routing">
-            <div className="p-3 space-y-1 text-xs font-mono">
-              {["openai","anthropic","gemini","xai"].map(p => (
-                <label key={p} className="flex items-center justify-between gap-2 cursor-pointer">
-                  <span className="text-neutral-400">{p}</span>
-                  <input
-                    type="checkbox"
-                    checked={!!useEmergentFor[p]}
-                    onChange={e => setUseEmergentFor(s => ({...s, [p]: e.target.checked}))}
-                    data-testid={`ws-em-toggle-${p}`}
-                  />
-                </label>
-              ))}
-              <div className="text-[0.65rem] text-neutral-500 mt-2 font-sans leading-tight">
-                checked = route requests to that provider through the Emergent universal key (testing / no-BYOK).
-                xAI is not supported by Emergent — add a BYOK key.
-              </div>
+          <Panel title="byok status">
+            <div className="p-3 text-[0.7rem] text-neutral-400 font-sans leading-relaxed">
+              All chat runs against your own provider keys. Add OpenAI / Anthropic / Gemini / xAI keys in the <span className="text-accent-cyan font-mono">Key Vault</span>. Without keys, models in the inventory will return a clear "no api key" message — no platform fallback in this build.
             </div>
           </Panel>
         </aside>

@@ -2,7 +2,7 @@
 # id: providers_pkg
 #   module_name: providers
 #   module_kind: adapter
-#   summary: BYOK adapter registry — openai, anthropic, gemini, xai, emergent
+#   summary: BYOK adapter registry — openai, anthropic, gemini, xai (Emergent removed; build is platform-free)
 #   owner: a0p maintainer
 #   public_surface: REGISTRY, ProviderAdapter, ChatResult
 #   internal_surface: none
@@ -19,21 +19,22 @@
 
 Each adapter exposes:
     list_models(api_key) -> list[dict]
-    chat(api_key, model, messages, **opts) -> {"content": str, "usage": dict, "raw": ...}
+    chat(api_key, model, messages, **opts) -> {"content": str, "usage": dict, ...}
+
+No platform-specific runtime dependencies. Every call uses the user's
+own provider API key, decrypted from the BYOK vault per request.
 """
 from .base import ProviderAdapter, ChatResult
 from .openai_provider import OpenAIProvider
 from .anthropic_provider import AnthropicProvider
 from .gemini_provider import GeminiProvider
 from .xai_provider import XAIProvider
-from .emergent_provider import EmergentProvider
 
 REGISTRY: dict[str, ProviderAdapter] = {
     "openai":    OpenAIProvider(),
     "anthropic": AnthropicProvider(),
     "gemini":    GeminiProvider(),
     "xai":       XAIProvider(),
-    "emergent":  EmergentProvider(),
 }
 
 __all__ = ["REGISTRY", "ProviderAdapter", "ChatResult"]

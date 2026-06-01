@@ -63,6 +63,12 @@ export default function InventoryPage() {
           />
         </div>
 
+        {data.count === 0 && !loading && (
+          <div className="p-6 text-xs text-neutral-400 font-sans">
+            No models in the inventory yet. This build is BYOK — open the <span className="font-mono text-accent-cyan">Key Vault</span> and add an OpenAI / Anthropic / Google / xAI key. Live models will appear here as soon as a valid key is saved.
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-xs font-mono">
             <thead className="bg-bg-deep border-b border-white/10 text-neutral-500">
@@ -77,10 +83,10 @@ export default function InventoryPage() {
             <tbody>
               {filtered.map((m, i) => (
                 <tr key={(m.provider || "?") + ":" + (m.id || i)} className="border-b border-white/5 hover:bg-bg-surface">
-                  <td className="p-3 text-white">{m.provider === "emergent" ? `emergent:${m.id}` : `${m.provider}:${m.id}`}</td>
+                  <td className="p-3 text-white">{`${m.provider}:${m.id}`}</td>
                   <td className="p-3 text-neutral-300">{m.label || m.id}</td>
                   <td className="p-3">
-                    <Pill tone={m.provider === "emergent" ? "amber" : "cyan"}>{m.provider}{m.via ? ` → ${m.via}` : ""}</Pill>
+                    <Pill tone="cyan">{m.provider}</Pill>
                   </td>
                   <td className="p-3 text-neutral-400">{m.context_window || "—"}</td>
                   <td className="p-3 text-neutral-400">{m.modality || "text"}</td>
