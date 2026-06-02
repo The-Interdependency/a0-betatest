@@ -145,3 +145,86 @@ def ucns_bridge_unit_holds() -> None:
     # describe must be safe to call on UNIT
     s = ub.describe(ub.UNIT)
     assert isinstance(s, str)
+
+
+# ---------- Step 2 — PCTA Circle layer ---------------------------------
+
+def pcta_circle_holds_seven_holds() -> None:
+    """Contract: Circle holds exactly 7 Tensors; heptagram visits every position once."""
+    from interdependent_lib.pcna.tensor import Tensor
+    from interdependent_lib.pcta import Circle, CIRCLE_SIZE, heptagram_walk
+
+    ts = [Tensor.from_seed(157 * 7 + i, f"phi::pos{i}") for i in range(CIRCLE_SIZE)]
+    circle = Circle(ts)
+
+    assert len(circle.tensors) == CIRCLE_SIZE
+    assert circle.step == 2  # default {7/2}
+
+    # heptagram order visits every index exactly once
+    walk = heptagram_walk(0, 2, 7)
+    assert sorted(walk) == [0, 1, 2, 3, 4, 5, 6], f"walk missed indices: {walk}"
+    # exact {7/2} sequence
+    assert walk == (0, 2, 4, 6, 1, 3, 5), f"{{7/2}} order mismatch: {walk}"
+
+
+def pcta_circle_aggregate_is_tensor_holds() -> None:
+    """Contract: circle.aggregate() returns a Tensor of width 53 (the 8th referent)."""
+    from interdependent_lib.pcna.tensor import Tensor, TENSOR_DIM
+    from interdependent_lib.pcta import Circle
+
+    circle = Circle.from_seed(42, "test")
+    agg = circle.aggregate()
+
+    assert isinstance(agg, Tensor), "aggregate must be a Tensor"
+    assert len(agg.payload) == TENSOR_DIM, f"width {len(agg.payload)} != {TENSOR_DIM}"
+    # Aggregate is cached — second call returns the same instance
+    assert circle.aggregate() is agg, "aggregate must be cached"
+    # And reproducible across separate Circles built from the same seed
+    other = Circle.from_seed(42, "test")
+    assert circle.aggregate() == other.aggregate()
+
+
+def pcta_circle_heptagram_routing_holds() -> None:
+    """Contract: heptagram_walk(0, 2, 7) yields the canonical {7/2} permutation."""
+    from interdependent_lib.pcta import heptagram_walk, heptagram_walk_7_2, heptagram_walk_7_3
+
+    assert heptagram_walk(0, 2, 7) == (0, 2, 4, 6, 1, 3, 5), "{7/2} order"
+    assert heptagram_walk(0, 3, 7) == (0, 3, 6, 2, 5, 1, 4), "{7/3} order"
+    assert heptagram_walk_7_2() == (0, 2, 4, 6, 1, 3, 5)
+    assert heptagram_walk_7_3() == (0, 3, 6, 2, 5, 1, 4)
+
+    # starting from a non-zero index still visits all positions
+    walk = heptagram_walk(3, 2, 7)
+    assert sorted(walk) == [0, 1, 2, 3, 4, 5, 6]
+    assert walk[0] == 3
+
+
+def pcta_circle_ucns_shape_holds() -> None:
+    """Contract: circle.ucns_shape() returns a valid UCNSObject (opaque host).
+
+    Per upstream PTCA spec the UCNS object is an opaque carrier. The 7-cell
+    PCTA structure lives in circle.tensors, not in UCNS A_plus. What this
+    contract demands: the shape IS a UCNSObject, and identical circles
+    produce identical UCNS shapes (stable identity).
+    """
+    import ucns
+    from interdependent_lib.pcta import Circle
+
+    circle_a = Circle.from_seed(7, "shape-check")
+    circle_b = Circle.from_seed(7, "shape-check")  # identical inputs
+    circle_c = Circle.from_seed(8, "shape-check")  # different seed
+
+    shape_a = circle_a.ucns_shape()
+    shape_b = circle_b.ucns_shape()
+    shape_c = circle_c.ucns_shape()
+
+    assert isinstance(shape_a, ucns.UCNSObject), "shape must be a UCNSObject"
+    # Caching — same circle instance returns same object
+    assert circle_a.ucns_shape() is shape_a
+    # Identical circles produce structurally identical UCNS shapes
+    assert shape_a == shape_b, "identical circles must have equal UCNS shapes"
+    # Different circles MAY produce different shapes (not required but desirable);
+    # we don't assert inequality strictly — UCNS face_bit collisions are 50/50.
+    # We assert the shapes are well-formed.
+    assert shape_a.n_dec == 2 and shape_c.n_dec == 2
+    assert len(shape_a.A_plus) == 2 and len(shape_c.A_plus) == 2
