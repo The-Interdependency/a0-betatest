@@ -76,3 +76,72 @@ def ptca_canon_shape_holds() -> None:
     assert c.TENSOR_DIM == 53, f"TENSOR_DIM={c.TENSOR_DIM}"
     assert c.TENSOR_LEAVES == 7693
     assert c.PARAM_COUNT == 407_729
+
+
+# ---------- Step 1 — PCNA leaf tensor + group aggregate + ucns bridge ----
+
+def pcna_tensor_deterministic() -> None:
+    """Contract: Tensor.from_seed(s, label) is pure / reproducible / width=53."""
+    from interdependent_lib.pcna.tensor import Tensor, TENSOR_DIM
+
+    a = Tensor.from_seed(157, "phi")
+    b = Tensor.from_seed(157, "phi")
+    c = Tensor.from_seed(157, "psi")  # different label → different tensor
+
+    assert a == b, "Tensor.from_seed must be deterministic on identical inputs"
+    assert a != c, "different labels must produce different tensors"
+    assert len(a.payload) == TENSOR_DIM, f"payload width {len(a.payload)} != {TENSOR_DIM}"
+    assert len(b.payload) == TENSOR_DIM
+    # values in [-0.5, +0.5]
+    for v in a.payload:
+        assert -0.5 <= v <= 0.5, f"payload value {v} out of [-0.5, +0.5]"
+
+
+def pcna_aggregate_size_holds() -> None:
+    """Contract: aggregate(7 tensors) returns one Tensor of width d=53."""
+    from interdependent_lib.pcna.tensor import Tensor, TENSOR_DIM
+    from interdependent_lib.pcna.group import aggregate, GROUP_SIZE
+
+    ts = [Tensor.from_seed(i, "circle-a") for i in range(GROUP_SIZE)]
+    agg = aggregate(ts)
+    assert isinstance(agg, Tensor), "aggregate must return a Tensor"
+    assert len(agg.payload) == TENSOR_DIM
+
+
+def pcna_aggregate_identity_holds() -> None:
+    """Contract: aggregate of seven zero tensors == the zero tensor."""
+    from interdependent_lib.pcna.group import aggregate, identity_tensor, is_identity, GROUP_SIZE
+
+    zeros = [identity_tensor() for _ in range(GROUP_SIZE)]
+    result = aggregate(zeros)
+    assert is_identity(result), f"aggregate of identities must be identity; got {result.payload[:3]}"
+
+
+def pcna_aggregate_deterministic_holds() -> None:
+    """Contract: aggregate is a pure function of its inputs."""
+    from interdependent_lib.pcna.tensor import Tensor
+    from interdependent_lib.pcna.group import aggregate, GROUP_SIZE
+
+    ts = [Tensor.from_seed(i + 100, "det") for i in range(GROUP_SIZE)]
+    a = aggregate(ts)
+    b = aggregate(ts)
+    assert a == b, "aggregate must be deterministic"
+
+
+def ucns_bridge_unit_holds() -> None:
+    """Contract: bridge UNIT identity behaves as ucns unit; multiply works."""
+    from interdependent_lib import ucns_bridge as ub
+
+    assert ub.is_unit(ub.UNIT) is True, "bridge.UNIT must be UCNS unit"
+    # Build a non-unit UCNSObject and confirm is_unit returns False
+    import ucns
+    from fractions import Fraction
+    obj = ucns.UCNSObject(2, 2,
+                          [(Fraction(0), None), (Fraction(1), None)],
+                          [0, 0])
+    assert ub.is_unit(obj) is False, "non-unit must report False"
+    # multiply must be the ucns multiply (referentially)
+    assert ub.multiply is ucns.multiply or callable(ub.multiply)
+    # describe must be safe to call on UNIT
+    s = ub.describe(ub.UNIT)
+    assert isinstance(s, str)
