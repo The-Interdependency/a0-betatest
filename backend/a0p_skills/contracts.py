@@ -228,3 +228,108 @@ def pcta_circle_ucns_shape_holds() -> None:
     # We assert the shapes are well-formed.
     assert shape_a.n_dec == 2 and shape_c.n_dec == 2
     assert len(shape_a.A_plus) == 2 and len(shape_c.A_plus) == 2
+
+
+# ---------- Step 3 — PTCA Seed + Core (top layer) ----------------------
+
+def ptca_seed_holds_seven_holds() -> None:
+    """Contract: Seed holds exactly 7 Circles; {7/3} heptagram visits every index once."""
+    from interdependent_lib.pcta import Circle
+    from interdependent_lib.ptca.seed import Seed, SEED_CIRCLES
+    from interdependent_lib.pcta.circle import heptagram_walk
+
+    seed = Seed.from_seed(42, "phi::seed42")
+
+    assert len(seed.circles) == SEED_CIRCLES
+    assert seed.step == 3  # default {7/3}
+    for c in seed.circles:
+        assert isinstance(c, Circle)
+
+    walk = heptagram_walk(0, 3, 7)
+    assert sorted(walk) == [0, 1, 2, 3, 4, 5, 6], f"walk missed indices: {walk}"
+    assert walk == (0, 3, 6, 2, 5, 1, 4), f"{{7/3}} order mismatch: {walk}"
+
+
+def ptca_seed_aggregate_is_tensor_holds() -> None:
+    """Contract: seed.aggregate() returns a Tensor of width 53 (the seed-level 8th referent)."""
+    from interdependent_lib.pcna.tensor import Tensor, TENSOR_DIM
+    from interdependent_lib.ptca.seed import Seed
+
+    seed_a = Seed.from_seed(7, "agg-check")
+    seed_b = Seed.from_seed(7, "agg-check")
+    seed_c = Seed.from_seed(8, "agg-check")
+
+    agg_a = seed_a.aggregate()
+    agg_b = seed_b.aggregate()
+    agg_c = seed_c.aggregate()
+
+    assert isinstance(agg_a, Tensor)
+    assert len(agg_a.payload) == TENSOR_DIM
+    # Deterministic across separate instances built from same (seed, label)
+    assert agg_a == agg_b, "seed aggregate must be deterministic"
+    # Different seeds → different aggregates
+    assert agg_a != agg_c, "different seeds must produce different aggregates"
+    # Cached on the instance
+    assert seed_a.aggregate() is agg_a
+
+
+def ptca_seed_heptagram_routing_holds() -> None:
+    """Contract: seed-level heptagram is {7/3}."""
+    from interdependent_lib.pcta.circle import heptagram_walk
+    from interdependent_lib.ptca.seed import HEPTAGRAM_STEP_SEED
+
+    assert HEPTAGRAM_STEP_SEED == 3
+    assert heptagram_walk(0, HEPTAGRAM_STEP_SEED, 7) == (0, 3, 6, 2, 5, 1, 4)
+
+
+def ptca_core_assembles_157_holds() -> None:
+    """Contract: Core.with_n(157) builds 157 seeds and matches canon param count."""
+    from interdependent_lib.ptca.core import Core, DEFAULT_N
+    from interdependent_lib.ptca.seed import Seed, SEED_CIRCLES
+    from interdependent_lib.pcta.circle import CIRCLE_SIZE
+    from interdependent_lib.pcna.tensor import TENSOR_DIM
+
+    assert DEFAULT_N == 157
+
+    core = Core.with_n(157, label="phi")
+    assert core.n == 157
+    assert len(core.seeds) == 157
+    for s in core.seeds:
+        assert isinstance(s, Seed)
+        assert len(s.circles) == SEED_CIRCLES
+
+    expected = 157 * SEED_CIRCLES * CIRCLE_SIZE * TENSOR_DIM
+    assert expected == 407_729
+    assert core.param_count() == expected, f"param_count={core.param_count()} != {expected}"
+
+
+def ptca_core_aggregate_is_tensor_holds() -> None:
+    """Contract: core.aggregate() returns a Tensor of width 53 (the top-level 8th referent)."""
+    from interdependent_lib.pcna.tensor import Tensor, TENSOR_DIM
+    from interdependent_lib.ptca.core import Core
+
+    # Small core for speed — N=7 is fine for shape/identity contracts.
+    core_a = Core.with_n(7, label="phi")
+    core_b = Core.with_n(7, label="phi")
+    core_c = Core.with_n(7, label="psi")  # different label → different aggregate
+
+    agg_a = core_a.aggregate()
+    agg_b = core_b.aggregate()
+    agg_c = core_c.aggregate()
+
+    assert isinstance(agg_a, Tensor)
+    assert len(agg_a.payload) == TENSOR_DIM
+    assert agg_a == agg_b, "core aggregate must be deterministic across same inputs"
+    assert agg_a != agg_c, "core aggregate must vary with label"
+    assert core_a.aggregate() is agg_a, "core aggregate must be cached"
+
+
+def ptca_core_param_count_matches_canon_holds() -> None:
+    """Contract: param count for N=157 matches PTCA prime_core PARAM_COUNT = 407_729."""
+    from interdependent_lib.ptca import constants as c
+    from interdependent_lib.ptca.core import Core
+
+    core = Core.with_n(157, label="phi")
+    assert core.param_count() == c.PARAM_COUNT == 407_729, (
+        f"core.param_count={core.param_count()} canon={c.PARAM_COUNT}"
+    )
