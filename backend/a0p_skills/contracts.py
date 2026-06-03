@@ -333,3 +333,93 @@ def ptca_core_param_count_matches_canon_holds() -> None:
     assert core.param_count() == c.PARAM_COUNT == 407_729, (
         f"core.param_count={core.param_count()} canon={c.PARAM_COUNT}"
     )
+
+
+# ---------- Step 4 — PCEA kernel cross-cut -----------------------------
+
+def pcea_kernel_round_trip_holds() -> None:
+    """Contract: kernel_invert(kernel_step(t, prev), prev) == grid_project(t)."""
+    from interdependent_lib.pcna.tensor import Tensor
+    from interdependent_lib.pcea.kernel import kernel_step, kernel_invert, grid_project
+
+    t = Tensor.from_seed(2026, "kernel::plain")
+    prev = Tensor.from_seed(2025, "kernel::prev")
+
+    enc = kernel_step(t, prev)
+    rec = kernel_invert(enc, prev)
+    projected = grid_project(t)
+
+    # grid_project is idempotent
+    assert grid_project(projected) == projected, "grid_project must be idempotent"
+
+    # Round-trip recovers the grid projection of the original (bit-exact)
+    assert rec == projected, "kernel_step/kernel_invert must round-trip grid-projected Tensors exactly"
+
+    # And the encrypted Tensor is not equal to the original (real encryption happened)
+    assert enc != t, "encrypted Tensor must differ from plaintext"
+    assert enc != projected, "encrypted Tensor must differ from grid-projected plaintext"
+
+
+def pcea_kernel_advances_state_holds() -> None:
+    """Contract: encryption depends on last_state — different prev produces different ciphertext."""
+    from interdependent_lib.pcna.tensor import Tensor
+    from interdependent_lib.pcea.kernel import kernel_step, kernel_invert, grid_project
+
+    t = Tensor.from_seed(1, "fixed")
+    prev_a = Tensor.from_seed(10, "prev-a")
+    prev_b = Tensor.from_seed(11, "prev-b")
+
+    enc_a = kernel_step(t, prev_a)
+    enc_b = kernel_step(t, prev_b)
+
+    assert enc_a != enc_b, "different prev must produce different ciphertext"
+    # And using wrong prev for decryption gives wrong recovery (compared against grid projection)
+    bad = kernel_invert(enc_a, prev_b)
+    assert bad != grid_project(t), "decryption with wrong key must NOT recover the plaintext"
+
+
+def pcea_kernel_layer_cross_cut_holds() -> None:
+    """Contract: kernel_step round-trips on any layer's aggregate (against grid_project)."""
+    from interdependent_lib.pcna.tensor import Tensor
+    from interdependent_lib.pcta import Circle
+    from interdependent_lib.ptca.seed import Seed
+    from interdependent_lib.ptca.core import Core
+    from interdependent_lib.pcea.kernel import kernel_step, kernel_invert, grid_project
+
+    prev = Tensor.from_seed(0, "kernel::prev")
+
+    circle = Circle.from_seed(1, "cross-cut::circle")
+    seed = Seed.from_seed(2, "cross-cut::seed")
+    core = Core.with_n(7, label="cross-cut::core")
+
+    for label, agg in [
+        ("circle", circle.aggregate()),
+        ("seed", seed.aggregate()),
+        ("core", core.aggregate()),
+    ]:
+        enc = kernel_step(agg, prev)
+        rec = kernel_invert(enc, prev)
+        assert rec == grid_project(agg), (
+            f"{label} aggregate failed round-trip through PCEA kernel"
+        )
+
+
+def pcea_kernel_chain_holds() -> None:
+    """Contract: kernel_chain encrypts a sequence with each step keyed against prior plaintext."""
+    from interdependent_lib.pcna.tensor import Tensor
+    from interdependent_lib.pcea.kernel import kernel_chain, kernel_invert
+
+    initial = Tensor.from_seed(0, "init")
+    plaintexts = [Tensor.from_seed(i, f"chain::{i}") for i in range(1, 4)]
+
+    ciphertexts = kernel_chain(plaintexts, initial)
+    assert len(ciphertexts) == len(plaintexts)
+
+    # Reverse-decrypt — each step inverts against the immediately-prior plaintext
+    recovered: list[Tensor] = []
+    last = initial
+    for ct, pt in zip(ciphertexts, plaintexts):
+        rec = kernel_invert(ct, last)
+        recovered.append(rec)
+        last = pt  # next inversion uses the original plaintext as the key
+    assert recovered == list(plaintexts), "kernel_chain must round-trip with the original keys"
