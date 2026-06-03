@@ -404,6 +404,138 @@ def pcea_kernel_layer_cross_cut_holds() -> None:
         )
 
 
+# ---------- Step 5 — Network engine ----------------------------------------
+
+def network_topology_canonical_holds() -> None:
+    """Contract: RING_TOPOLOGY matches the user's pinned spec exactly."""
+    from interdependent_lib.network.topology import (
+        RING_TOPOLOGY, RING_WEIGHTS, SCORED_RING_NAMES, MEMORY_RING_NAMES,
+        unique_heptagram_slots,
+    )
+
+    # Per-ring N — user override
+    assert RING_TOPOLOGY["phi"].n_seeds == 157
+    assert RING_TOPOLOGY["psi"].n_seeds == 157
+    assert RING_TOPOLOGY["omega"].n_seeds == 157
+    assert RING_TOPOLOGY["theta"].n_seeds == 29
+    assert RING_TOPOLOGY["sigma"].n_seeds == 53
+    assert RING_TOPOLOGY["mem_l"].n_seeds == 19
+    assert RING_TOPOLOGY["mem_s"].n_seeds == 17
+
+    # Sigma is the observer (un-scored)
+    assert RING_TOPOLOGY["sigma"].scored is False
+    assert RING_TOPOLOGY["sigma"].weight == 0.0
+    assert "sigma" not in SCORED_RING_NAMES
+
+    # Memory rings are linear
+    for n in MEMORY_RING_NAMES:
+        assert RING_TOPOLOGY[n].step == 0
+
+    # Lock-step avoidance — every non-memory ring has a unique (step, direction)
+    assert unique_heptagram_slots(), "non-memory rings must have unique heptagram slots"
+
+    # Scored weights sum to 1.0 (Φ 0.30 + Θ 0.20 + Ψ 0.15 + Ω 0.15 + MemL 0.12 + MemS 0.08)
+    scored_total = sum(RING_WEIGHTS[n] for n in SCORED_RING_NAMES)
+    assert abs(scored_total - 1.0) < 1e-9, f"scored weights sum {scored_total}, expected 1.0"
+
+
+def sigma_host_digest_stable_holds() -> None:
+    """Contract: Σ host digest is deterministic across two immediate calls."""
+    from interdependent_lib.network.sigma_source import gather_host_digest
+
+    a = gather_host_digest()
+    b = gather_host_digest()
+    assert a.digest == b.digest, "host digest must be deterministic across immediate calls"
+    assert len(a.digest) == 32
+    assert a.paths_scanned > 0, "expected to scan at least one watched path"
+
+
+def network_rings_match_topology_holds() -> None:
+    """Contract: build_all_rings produces every named ring with the right N and step."""
+    from interdependent_lib.network.topology import RING_TOPOLOGY
+    from interdependent_lib.network.rings import build_all_rings
+
+    # Use small overrides for the big rings so the test runs quickly
+    overrides = {"phi": 5, "psi": 5, "omega": 5, "theta": 5, "sigma": 5,
+                 "mem_l": 5, "mem_s": 5}
+    rings = build_all_rings(overrides)
+
+    for name, spec in RING_TOPOLOGY.items():
+        assert name in rings, f"missing ring {name}"
+        r = rings[name]
+        assert r.spec.name == name
+        # n should be the override value
+        assert r.n == 5, f"ring {name} n={r.n} expected 5 from override"
+        # The aggregate must be a Tensor
+        from interdependent_lib.pcna.tensor import Tensor, TENSOR_DIM
+        assert isinstance(r.aggregate(), Tensor)
+        assert len(r.aggregate().payload) == TENSOR_DIM
+
+
+def network_tick_is_deterministic_holds() -> None:
+    """Contract: a tick produces a TickResult with one entry per ring and PCEA-encrypted state."""
+    from interdependent_lib.network.engine import NetworkEngine
+    from interdependent_lib.network.topology import RING_ORDER
+    from interdependent_lib.pcna.tensor import Tensor
+
+    eng = NetworkEngine(n_override={n: 5 for n in RING_ORDER})
+    state = eng.heartbeat()
+
+    assert state.tick.tick_number == 1
+    assert set(state.tick.rings.keys()) == set(RING_ORDER)
+    for name, rt in state.tick.rings.items():
+        assert isinstance(rt.plaintext_aggregate, Tensor)
+        assert isinstance(rt.ciphertext_aggregate, Tensor)
+        # Encryption actually happened
+        assert rt.plaintext_aggregate != rt.ciphertext_aggregate
+
+
+def network_coherence_weights_sum_holds() -> None:
+    """Contract: coherence.total == sum(contributions); Σ goes to observer_signal not contributions."""
+    from interdependent_lib.network.engine import NetworkEngine
+    from interdependent_lib.network.topology import RING_ORDER
+
+    eng = NetworkEngine(n_override={n: 5 for n in RING_ORDER})
+    state = eng.heartbeat()
+
+    # Total == sum of contributions
+    assert abs(state.coherence.total - sum(state.coherence.contributions.values())) < 1e-9
+
+    # Σ is in observer_signal, not contributions
+    assert "sigma" in state.coherence.observer_signal
+    assert "sigma" not in state.coherence.contributions
+
+    # Every scored ring contributes
+    from interdependent_lib.network.topology import SCORED_RING_NAMES
+    for name in SCORED_RING_NAMES:
+        assert name in state.coherence.contributions
+
+
+def network_engine_heartbeat_holds() -> None:
+    """Contract: heartbeat advances tick_count; Σ baseline pinned; tamper.drifted False on first tick."""
+    from interdependent_lib.network.engine import NetworkEngine
+    from interdependent_lib.network.topology import RING_ORDER
+
+    eng = NetworkEngine(n_override={n: 5 for n in RING_ORDER})
+    assert eng.tick_count == 0
+    baseline = eng.baseline_digest_hex
+    assert isinstance(baseline, str) and len(baseline) == 64  # 32-byte blake2b hex
+
+    state1 = eng.heartbeat()
+    assert eng.tick_count == 1
+    assert state1.tamper.drifted is False, "no drift expected on first tick (same host state)"
+    assert state1.tamper.baseline_hex == baseline
+
+    _state2 = eng.heartbeat()
+    assert eng.tick_count == 2
+
+    # snapshot is JSON-shaped
+    snap = eng.snapshot()
+    assert snap["tick_count"] == 2
+    assert snap["baseline_digest"] == baseline
+    assert set(snap["rings"].keys()) == set(RING_ORDER)
+
+
 def pcea_kernel_chain_holds() -> None:
     """Contract: kernel_chain encrypts a sequence with each step keyed against prior plaintext."""
     from interdependent_lib.pcna.tensor import Tensor
