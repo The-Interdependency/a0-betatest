@@ -536,6 +536,185 @@ def network_engine_heartbeat_holds() -> None:
     assert set(snap["rings"].keys()) == set(RING_ORDER)
 
 
+# ---------- a0(ZFAE) native inference engine ----------------------------
+
+def zfae_parser_deterministic_holds() -> None:
+    """Contract: parse_semantic is a pure function (same input → same output)."""
+    from interdependent_lib.zfae._parser import parse_semantic
+
+    a = parse_semantic("Why is Σ a host-integrity observer?")
+    b = parse_semantic("Why is Σ a host-integrity observer?")
+    assert a == b, "parse_semantic must be deterministic"
+    assert a.question is True
+    assert "why" in a.question_words
+    # Whitespace-only / empty
+    empty = parse_semantic("")
+    assert empty.token_count == 0 and empty.first_word == ""
+
+
+def zfae_intent_dispatch_holds() -> None:
+    """Contract: intent selection covers every label and respects priority."""
+    from interdependent_lib.zfae._parser import parse_semantic
+    from interdependent_lib.zfae._intent import select_intent, INTENT_LABELS
+
+    cases = [
+        ("", "low_signal"),
+        ("Hi.", "acknowledge"),
+        ("Show me current Φ energy.", "describe_state"),
+        ("Why does Θ have N=29?", "answer_question"),
+        ("?", "ask_clarification"),
+        ("Recall the prior turn in memory.", "reflect_memory"),
+        ("No.", "negation_received"),
+        ("the substrate now binds seven tensors as a circle aggregate", "echo_with_analysis"),
+    ]
+    seen = set()
+    for prompt, expected in cases:
+        feats = parse_semantic(prompt)
+        intent = select_intent(feats)
+        assert intent == expected, f"prompt {prompt!r}: expected {expected}, got {intent}"
+        seen.add(intent)
+    # Every dispatched intent must be in the canonical label set
+    assert seen.issubset(set(INTENT_LABELS))
+
+
+def zfae_decoder_native_only_holds() -> None:
+    """Contract: decoder produces text ONLY via the template grammar; no LLM module imported."""
+    import sys
+    from interdependent_lib.zfae._decoder import TemplateGrammarDecoder, render
+    from interdependent_lib.zfae._intent import INTENT_LABELS
+    from interdependent_lib.zfae._parser import parse_semantic
+
+    # Render every intent — none should raise, and each output must be non-empty.
+    decoder = TemplateGrammarDecoder()
+    feats = parse_semantic("show me Σ status")
+    state = {
+        "tick_number": 7, "phi_energy": 0.1, "psi_energy": 0.2, "omega_energy": 0.3,
+        "theta_energy": 0.4, "sigma_energy": 0.5, "coherence_total": 0.6,
+        "memory_l_count": 0, "memory_s_count": 0, "last_intent_hash": "abcd",
+    }
+    for intent in INTENT_LABELS:
+        text = decoder.decode(intent, feats, state)
+        assert isinstance(text, str) and len(text) > 0
+    # The decoder module must not import any provider / LLM SDK
+    blacklist = (
+        "openai", "anthropic", "google.generativeai", "ucns",
+        "emergentintegrations", "interdependent_lib.providers",
+        "providers.openai_provider", "providers.anthropic_provider",
+        "providers.gemini_provider", "providers.xai_provider",
+    )
+    decoder_module = sys.modules["interdependent_lib.zfae._decoder"]
+    for name in blacklist:
+        # We're allowed to have the name as a substring (e.g. "openai" in docs)
+        # but the module must not have imported the SDK.
+        attr = getattr(decoder_module, name.split(".")[0], None)
+        if attr is None:
+            continue
+        # if the attribute is a module, fail
+        assert not getattr(attr, "__file__", "").endswith(".py") or "interdependent_lib" in getattr(attr, "__file__", ""), (
+            f"decoder must not import LLM module {name!r}"
+        )
+
+
+def zfae_transition_deterministic_holds() -> None:
+    """Contract: bind_features_to_rings is a pure function of features+intent+priors."""
+    from interdependent_lib.zfae._parser import parse_semantic
+    from interdependent_lib.zfae._intent import select_intent
+    from interdependent_lib.zfae._transition import bind_features_to_rings, advance_zfae_state, ZFAE_RING_NAMES
+
+    feats = parse_semantic("explain the tamper signal in Σ")
+    intent = select_intent(feats)
+
+    a = bind_features_to_rings(feats, intent)
+    b = bind_features_to_rings(feats, intent)
+    for role in ZFAE_RING_NAMES:
+        assert a[role] == b[role], f"binding for {role} not deterministic"
+    # Ciphertexts also deterministic
+    cipher_a = advance_zfae_state(a)
+    cipher_b = advance_zfae_state(b)
+    for role in ZFAE_RING_NAMES:
+        assert cipher_a[role] == cipher_b[role], f"cipher for {role} not deterministic"
+
+
+def zfae_engine_native_only_holds() -> None:
+    """Contract: A0ZFAEInferenceEngine.infer() is deterministic + has no LLM dependency.
+
+    Verifies:
+      • returns the required keys (assistantText, nextSnapshot, trace)
+      • assistantText is generated natively (template grammar)
+      • the engine module's `__file__` is in interdependent_lib (no provider import)
+      • two identical calls produce identical outputs
+      • the trace records uses_llm=False
+    """
+    import sys
+    from interdependent_lib.zfae.inference import A0ZFAEInferenceEngine, MISSING_NATIVE_MESSAGE
+
+    engine = A0ZFAEInferenceEngine()
+    r1 = engine.infer(rawPrompt="hi there, show me the state.")
+    r2 = engine.infer(rawPrompt="hi there, show me the state.")
+
+    # Required keys
+    for key in ("assistantText", "nextSnapshot", "trace"):
+        assert key in r1, f"missing key {key}"
+        assert key in r2, f"missing key {key}"
+
+    # Deterministic
+    assert r1["assistantText"] == r2["assistantText"], "engine must be deterministic"
+    assert r1["nextSnapshot"] == r2["nextSnapshot"]
+
+    # Native — text is non-empty and is the template render (not the missing message
+    # since we DO have a decoder)
+    assert isinstance(r1["assistantText"], str) and len(r1["assistantText"]) > 0
+    assert r1["assistantText"] != MISSING_NATIVE_MESSAGE
+
+    # Trace says no LLM
+    assert r1["trace"]["uses_llm"] is False
+    assert r1["trace"]["engine"] == "a0(zfae)"
+
+    # Module-level: the inference module did not import any provider package.
+    forbidden = (
+        "providers", "providers.openai_provider", "providers.anthropic_provider",
+        "providers.gemini_provider", "providers.xai_provider", "emergentintegrations",
+    )
+    inference_module = sys.modules["interdependent_lib.zfae.inference"]
+    module_globals = vars(inference_module)
+    for name in forbidden:
+        head = name.split(".")[0]
+        attr = module_globals.get(head)
+        if attr is None:
+            continue
+        path = getattr(attr, "__file__", "") or ""
+        # Allow names that resolve into interdependent_lib only
+        assert "interdependent_lib" in path, f"engine imports forbidden module {name!r} ({path})"
+
+
+def chat_zfae_route_native_only_holds() -> None:
+    """Contract: /api/chat/zfae's handler calls ONLY A0ZFAEInferenceEngine.
+
+    Validated by inspecting the server module: the `chat_zfae` coroutine
+    must NOT reference any provider or LLM-call helper.
+    """
+    import inspect
+    import server  # type: ignore
+
+    fn = getattr(server, "chat_zfae", None)
+    assert fn is not None, "server.chat_zfae not defined"
+    src = inspect.getsource(fn)
+    forbidden_tokens = (
+        "REGISTRY[",
+        "_call_model(",
+        "aimmh_fan_out(",
+        "aimmh_daisy(",
+        "EmergentProvider",
+        "OpenAIProvider", "AnthropicProvider", "GeminiProvider", "XAIProvider",
+    )
+    for tok in forbidden_tokens:
+        assert tok not in src, f"chat_zfae must not contain {tok!r}"
+    # It must reference the engine.
+    assert "A0_ZFAE_ENGINE" in src or "A0ZFAEInferenceEngine" in src, (
+        "chat_zfae must invoke the a0(zfae) engine"
+    )
+
+
 def pcea_kernel_chain_holds() -> None:
     """Contract: kernel_chain encrypts a sequence with each step keyed against prior plaintext."""
     from interdependent_lib.pcna.tensor import Tensor

@@ -2,35 +2,52 @@
 # id: zfae_pkg
 #   module_name: zfae
 #   module_kind: engine
-#   summary: persistent agent identity wrapping PCNA + memory
+#   summary: a0(ZFAE) — the inference provider, not an agent label. Exposes A0ZFAEInferenceEngine (native deterministic), plus the legacy ZFAEAgent persona for backward-compat with prior PCNAEngine wiring
 #   owner: a0p maintainer
-#   public_surface: ZFAEAgent
+#   public_surface: A0ZFAEInferenceEngine, ENGINE, infer, InferenceResult, MISSING_NATIVE_MESSAGE, ZFAEAgent
 #   internal_surface: none
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: none
 #   user_data_boundary: read
 #   admin_only: false
-#   tests: hmmm
+#   tests: a0p_skills.contracts.zfae_engine_native_only_holds
 #   rollout: default_enabled
-#   rollback: revert subpackage from git
+#   rollback: remove imports from server.py /api/chat/zfae route
 # === END MODULE_BUILD ===
-"""
-ZFAE — Zeta Function Alpha Echo.
+"""a0(ZFAE) — inference provider.
 
-The single persistent agent identity. LLMs are *energy providers*; ZFAE
-is the agent persona that wraps the PCNA engine and exposes a stable
-identity across heartbeats.
+Per user spec 2026-06-02:
+  • a0(zfae) is the inference PROVIDER, not an agent label.
+  • A0ZFAEInferenceEngine produces all runtime replies natively, with
+    no LLM dependency. If the native decoder is absent it returns the
+    canonical missing-native message — never another model's output.
 
+This package also retains the small ``ZFAEAgent`` persona class for
+back-compat with the existing PCNA scaffold. The persona's job is
+identity continuity; the engine's job is generating replies. The two
+are distinct.
 """
 from __future__ import annotations
 import time
 import uuid
+
 from ..pcna import PCNAEngine
+from .inference import (
+    A0ZFAEInferenceEngine,
+    InferenceResult,
+    MISSING_NATIVE_MESSAGE,
+    ENGINE,
+    infer,
+)
 
 
 class ZFAEAgent:
-    """Zeta-function alpha-echo persistent agent. Wraps a PCNAEngine."""
+    """Legacy persistent agent persona — wraps a PCNAEngine for the inspector.
+
+    Kept for the existing /api/inspector/* routes. New runtime replies
+    do NOT go through this class — they go through A0ZFAEInferenceEngine.
+    """
 
     def __init__(self, name: str = "a0(zfae)", base_seed: int = 1):
         self.id = str(uuid.uuid4())
@@ -52,3 +69,13 @@ class ZFAEAgent:
             "born_ms": self.born_ms,
             "snapshot": self.engine.snapshot(),
         }
+
+
+__all__ = [
+    "A0ZFAEInferenceEngine",
+    "InferenceResult",
+    "MISSING_NATIVE_MESSAGE",
+    "ENGINE",
+    "infer",
+    "ZFAEAgent",
+]

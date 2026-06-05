@@ -66,7 +66,7 @@ from models import (
 import crypto_vault as cv
 from providers import REGISTRY
 from interdependent_lib.aimmh import fan_out as aimmh_fan_out, daisy_chain as aimmh_daisy
-from interdependent_lib.zfae import ZFAEAgent
+from interdependent_lib.zfae import ZFAEAgent, A0ZFAEInferenceEngine
 from interdependent_lib._msdmd import report as msdmd_report
 from a0p_skills import test_build_runner, module_build_runner
 
@@ -91,6 +91,11 @@ api = APIRouter(prefix="/api")
 
 # ---------- shared persistent ZFAE agent ----------
 AGENT = ZFAEAgent(name="a0(zfae)", base_seed=157)
+
+# ---------- native a0(zfae) inference engine ----------
+# This engine is the ONLY source of `assistantText` for /api/chat/zfae.
+# It MUST NOT be replaced by an LLM provider. See its CONTRACTS.
+A0_ZFAE_ENGINE = A0ZFAEInferenceEngine()
 
 
 # ---------- health ----------
