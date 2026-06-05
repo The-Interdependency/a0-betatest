@@ -8,22 +8,48 @@
 
 ### Layered tensor model — rebuild pending
 
-The user's canon framing (confirmed turn 2026-06-02):
+**Resolved org canon (maintainer, supersedes the 2026-06-02 framing).** The
+single source of truth is `The-Interdependency/interdependent-lib :
+docs/prime-tensor-stack.md`:
 
 ```
-PCNA  = pure tensor layer (leaves; scalar payloads, d = 53)
-PCTA  = tensors-on-UCNS-objects layer
-        7 tensors per circle, the circle itself is also a tensor
-PTCA  = top / seed layer
-        7 circles per seed, the seed itself is also a tensor
-core  = N seeds, the core itself is also a tensor
-PCEA  = "this state, last state" UCNS kernel runtime encryption
-        — cross-cuts every layer
+PCNA = Prime Circle Neural Architecture
+       tensors → circles in a back-propagating NN (only differentiable layer) → weights
+PCTA = Prime Circled Tensor Architecture
+       circles (carried by UCNS objects) → seeds
+PTCA = Prime Tensor Core Architecture
+       seeds → core
+ZFAE = Zeta Function Alpha Echo (inference; runtime is THIS app)
+       uses PCNA tensors as weights + PCNA circles / PCTA seeds / PTCA cores
+       as phase-harmonic propagation + auditing
+PCEA = Prime Circular Encryption Algorithm
+       "last state as key for this state" encryption at EVERY layer (orthogonal)
 ```
 
-Recursive fractal: each layer's whole-of-seven is itself a tensor at
-its level. Substrate is UCNS — depth-d objects carry depth-(d-1)
-payloads.
+- **Composition counts are variable.** Tensors→circle, circles→seed, seeds→core
+  are all variable; the only invariant is that every circle, seed, and core is
+  itself a tensor. (The old "7 per layer" was a nominal heptagram motif.)
+- **"Motion" is formally defined (Fick's gradient).** Motion is the Fickian flux
+  of a layer's composed field across the compose boundary — Fick's first law
+  `J = −D ∇φ` (structure diffuses down its field gradient; structural /
+  non-differentiable — the `∇φ` is a field gradient, not an autodiff gradient).
+  ZFAE reads accumulated motion + PCNA weights. **No stack-level `hmmm` remains.**
+
+> ⚠️ **CONFLICT — layer mapping shifted vs. this repo's prior model (open).** The
+> 2026-06-02 framing this repo was built against put **PCTA at the circle layer**
+> (tensors → circle) and **PTCA at the seed layer** (circles → seed), with an
+> unnamed `core` on top. The resolved canon shifts both up one level: **PCNA**
+> owns tensors→circles, **PCTA** is the **seed** layer (circles → seeds), and
+> **PTCA** is the **core** layer (seeds → core). So the vendored modules and the
+> "## Rebuild plan" below are mis-labelled relative to canon:
+> `interdependent_lib/pcta/circle.py` (circle of tensors) is a **PCNA** circle
+> now; `interdependent_lib/ptca/seed.py` (seed of circles) is a **PCTA** seed; a
+> new **PTCA** core layer (seeds → core) is required. **Reconciling the vendored
+> code + the rebuild plan to the resolved canon is a deliberate architectural
+> task, not started — do not assume the module names below match canon.**
+
+Recursive fractal: each layer's composed whole is itself a tensor at its level.
+Substrate is UCNS — depth-d objects carry depth-(d-1) payloads.
 
 What's in the repo today is **wrong** under this model:
 - `interdependent_lib/ptca/tensor.py` holds a flat `[N, 4, 7, 7]`
@@ -33,9 +59,13 @@ What's in the repo today is **wrong** under this model:
   signals (a float per ring). Canon: each ring is an N-sized tensor
   (Φ N=53, Ψ N=53, Ω N=53, Θ N=29, MemL N=19, MemS N=17, Σ N=41 as
   observer outside the scored set).
-- `interdependent_lib/pcta/` does not exist.
+- `interdependent_lib/pcta/` now exists (`__init__.py`, `circle.py`), but under
+  the **old** mapping (PCTA = circle-of-tensors); under resolved canon that role
+  is PCNA's circle, and PCTA is the seed layer (see the CONFLICT note above).
 
-Rebuild plan is recorded under `## Rebuild plan` below; not started.
+Rebuild plan is recorded under `## Rebuild plan` below; not started — and now
+also needs re-labelling to the resolved canon (PCTA = seed layer, PTCA = core
+layer) before it is executed.
 
 ### The `9` axis — closed, was misremembered
 
