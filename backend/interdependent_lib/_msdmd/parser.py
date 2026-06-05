@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 100:75
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:5
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 34:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: msdmd_parser
 #   module_name: parser
@@ -11,11 +27,35 @@
 #   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
-#   tests: interdependent_lib._msdmd.tests.test_parser
+#   tests: hmmm
 #   rollout: default_enabled
 #   rollback: revert to mine — last working sha in git history
 #   since: 2026-05-31
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: msdmd_parser_boundaries
+#   summary: canonical msdmd parser — line-for-line sync of skill-lib/msdmd/parsers/universal.py
+#   auth_boundary: none
+#   storage_boundary: read
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: msdmd_parser
+#   summary: canonical msdmd parser — line-for-line sync of skill-lib/msdmd/parsers/universal.py
+#   exposes: parse_text, parse_file, walk_tree, marker_for
+#   boundaries: auth:none, storage:read, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: test_parser
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: hmmm
+# === END CONTRACTS ===
 """Universal msdmd parser — pure stdlib.
 
 Implements the parser contract from ``msdmd/SKILL.md``: extracts every
@@ -176,3 +216,19 @@ def walk(root: Path, block_name: str, exts: tuple[str, ...] = (".py",)):
         yield p, entries
     for p in untested:
         yield p, []
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 100:75
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:5
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 34:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

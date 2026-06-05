@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 87:42
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 26:4
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: msdmd_runner
 #   module_name: runner
@@ -16,6 +32,23 @@
 #   rollback: remove module and call sites
 #   deprecated: prefer skills.module_build_runner for canonical MODULE_BUILD coverage
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: msdmd_runner_boundaries
+#   summary: msdmd CAPABILITIES coverage runner (deprecated in favour of skills.module_build_runner)
+#   auth_boundary: none
+#   storage_boundary: read
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: msdmd_runner
+#   summary: msdmd CAPABILITIES coverage runner (deprecated in favour of skills.module_build_runner)
+#   exposes: walk, report, main
+#   boundaries: auth:none, storage:read, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """msdmd runner — walks a tree, reports per-file entries + gap list.
 
 Kept for back-compat with the earlier CAPABILITIES-block experiment.
@@ -123,3 +156,19 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 87:42
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 26:4
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

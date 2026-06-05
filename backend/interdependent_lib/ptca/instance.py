@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 30:39
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 6:5
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: ptca_instance
 #   module_name: instance
@@ -16,6 +32,23 @@
 #   rollback: revert file from git
 #   unresolved: replace with stratified Fiq→Circle→Seed model from canon prime_core
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: ptca_instance_boundaries
+#   summary: current PTCA engine — tensor + sentinel channels + lineage hashing (pre-stratified)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: ptca_instance
+#   summary: current PTCA engine — tensor + sentinel channels + lineage hashing (pre-stratified)
+#   exposes: PTCAInstance
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """PTCAInstance — the main engine class binding tensor + sentinels + provenance.
 
 The instance carries N prime nodes; the standard research seed is N=157
@@ -56,3 +89,19 @@ class PTCAInstance:
             "lineage_head": self.lineage[-1] if self.lineage else None,
             "lineage_depth": len(self.lineage),
         }
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 30:39
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 6:5
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

@@ -20,7 +20,7 @@
 | Optional extras | `dev` |
 | Keywords | a0p, ZFAE, PCNA, PTCA, PCEA, fiq, research, BYOK |
 | CI workflows | `clean-build-check.yml`, `deploy.yml` |
-| Top-level directories | `_legacy_a0/` · `_spec_reference/` · `backend/` · `frontend/` · `memory/` · `test_reports/` |
+| Top-level directories | `_legacy_a0/` · `_spec_reference/` · `backend/` · `frontend/` · `memory/` · `storage/` · `test_reports/` |
 
 Derived from `backend/pyproject.toml` + the repo tree. Unknown fields surface as `hmmm` rather than a guess.
 <!-- END GENERATED:manifest -->

@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 39:57
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 7:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: ptca_constants
 #   module_name: constants
@@ -16,6 +32,23 @@
 #   rollback: revert file from git
 #   unresolved: 9-axis from design conversation; coherence-prime universe is provisional per upstream
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: ptca_constants_boundaries
+#   summary: canon PTCA composition counts — synced from The-Interdependency/PTCA/prime_core/constants.py
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: ptca_constants
+#   summary: canon PTCA composition counts — synced from The-Interdependency/PTCA/prime_core/constants.py
+#   exposes: SEED_COUNT, CIRCLES_PER_SEED, TENSORS_PER_CIRCLE, TENSOR_DIM, TENSOR_LEAVES, PARAM_COUNT, CIRCLE_ROUTING_STEP, SEED_ROUTING_STEP, COHERENCE_FACTOR_UNIVERSE, is_coherence_prime
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Frozen composition counts and the coherence-prime guard for PTCA.
 
 Source: synced from The-Interdependency/PTCA/main/prime_core/constants.py
@@ -91,3 +124,19 @@ def is_coherence_prime(p: int) -> bool:
     if len(set(factors)) != len(factors):  # square-free
         return False
     return all(f in COHERENCE_FACTOR_UNIVERSE for f in factors)
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 39:57
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 7:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 27:48
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 0:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 7:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcea_codec
 #   module_name: codec
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcea_codec_boundaries
+#   summary: bijective base-p codec — digits in {1..p}, plus standard key-digit stream
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcea_codec
+#   summary: bijective base-p codec — digits in {1..p}, plus standard key-digit stream
+#   exposes: to_bijective, from_bijective, key_digits
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Bijective base-p codec — digits in {1..p}, not {0..p-1}."""
 
 
@@ -65,3 +98,19 @@ def key_digits(value: int, p: int, length: int) -> list[int]:
         out.append((v % p) + 1)  # shifted into {1..p} for additive use
         v //= p
     return out
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 27:48
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 0:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 7:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 45:67
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:7
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 13:6
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: ucns_bridge
 #   module_name: ucns_bridge
@@ -17,6 +33,23 @@
 #   ucns_version_pin: 0.8.3
 #   unresolved: switch to `from ucns import a0_safe` when PyPI publishes v1.0
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: ucns_bridge_boundaries
+#   summary: thin A0-safe wrapper around the ucns package — will route through ucns.a0_safe when v1.0 ships on PyPI
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: ucns_bridge
+#   summary: thin A0-safe wrapper around the ucns package — will route through ucns.a0_safe when v1.0 ships on PyPI
+#   exposes: is_unit, multiply, object_record, describe, seq_prime_safe, UNIT, has_a0_safe_facade
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """A0-safe bridge to the ucns package.
 
 The upstream `ucns` v1.0 ships an `a0_safe` submodule with the inspection
@@ -115,3 +148,19 @@ __all__ = [
     "seq_prime_safe",
     "has_a0_safe_facade",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 45:67
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:7
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 13:6
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

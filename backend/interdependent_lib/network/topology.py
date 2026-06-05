@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 46:62
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 6:2
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: network_topology
 #   module_name: topology
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: network_topology_boundaries
+#   summary: ring topology spec — names, per-ring N (Φ Ψ Ω 157, Θ 29, Σ 53, MemL 19, MemS 17), heptagram routing slots (lock-step avoidance via unique step+direction), ring weights for coherence scoring
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: network_topology
+#   summary: ring topology spec — names, per-ring N (Φ Ψ Ω 157, Θ 29, Σ 53, MemL 19, MemS 17), heptagram routing slots (lock-step avoidance via unique step+direction), ring weights for coherence scoring
+#   exposes: RingSpec, RING_TOPOLOGY, RING_WEIGHTS, RING_ORDER, SCORED_RING_NAMES, OBSERVER_RING_NAMES, MEMORY_RING_NAMES
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Network ring topology — canonical spec for the a0p inference engine.
 
 Per the user's spec (with all corrections folded in):
@@ -108,3 +141,19 @@ __all__ = [
     "MEMORY_RING_NAMES",
     "unique_heptagram_slots",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 46:62
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 6:2
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

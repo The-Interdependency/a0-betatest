@@ -1,0 +1,12 @@
+{
+  "metadata": {
+    "architecture": "a0_zfae",
+    "weight_shape": "[157, 53, 7, 7]",
+    "weight_count": "407729",
+    "training_step": "0",
+    "agent_id": "40b0a506-dac9-4c2c-af24-3f420e251024",
+    "created_from": "seed_init_then_teacher_distillation",
+    "teacher_models_seen": "[]"
+  },
+  "last_loss": Infinity
+}

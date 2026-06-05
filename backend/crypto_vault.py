@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 19:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 8:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: a0p_crypto_vault
 #   module_name: crypto_vault
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: remove imports from server.py; user re-enters BYOK keys
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: a0p_crypto_vault_boundaries
+#   summary: Fernet encrypt/decrypt + mask for at-rest BYOK credentials
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: a0p_crypto_vault
+#   summary: Fernet encrypt/decrypt + mask for at-rest BYOK credentials
+#   exposes: encrypt, decrypt, mask
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Fernet-encrypted at-rest storage for BYOK keys."""
 import os
 from cryptography.fernet import Fernet, InvalidToken
@@ -43,3 +76,19 @@ def mask(plain: str) -> str:
     if len(plain) <= 8:
         return "*" * len(plain)
     return f"{plain[:4]}...{plain[-4:]}"
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 19:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 8:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

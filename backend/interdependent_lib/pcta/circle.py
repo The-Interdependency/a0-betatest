@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 99:102
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 7:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 32:16
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcta_circle
 #   module_name: circle
@@ -16,6 +32,23 @@
 #   rollback: revert file from git
 #   heptagram_step: 2
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcta_circle_boundaries
+#   summary: PCTA Circle — 7 PCNA tensors on a {7/2} heptagram with a UCNS structural mirror and an aggregate "circle-as-tensor" projection upward
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcta_circle
+#   summary: PCTA Circle — 7 PCNA tensors on a {7/2} heptagram with a UCNS structural mirror and an aggregate "circle-as-tensor" projection upward
+#   exposes: Circle, CIRCLE_SIZE, HEPTAGRAM_STEP_CIRCLE, heptagram_walk, heptagram_walk_7_2, heptagram_walk_7_3
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """PCTA Circle — UCNS-mirrored bundle of seven leaf tensors."""
 from __future__ import annotations
 from fractions import Fraction
@@ -218,3 +251,19 @@ class Circle:
     def __repr__(self) -> str:
         agg_head = self.aggregate().payload[0]
         return f"Circle({{7/{self._step}}}, agg_head={agg_head:+.4f})"
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 99:102
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 7:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 32:16
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

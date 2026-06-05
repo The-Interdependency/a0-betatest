@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 37:56
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:2
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 7:5
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: zfae_pkg
 #   module_name: zfae
@@ -15,6 +31,30 @@
 #   rollout: default_enabled
 #   rollback: remove imports from server.py /api/chat/zfae route
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: zfae_pkg_boundaries
+#   summary: a0(ZFAE) — the inference provider, not an agent label. Exposes A0ZFAEInferenceEngine (native deterministic), plus the legacy ZFAEAgent persona for backward-compat with prior PCNAEngine wiring
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: zfae_pkg
+#   summary: a0(ZFAE) — the inference provider, not an agent label. Exposes A0ZFAEInferenceEngine (native deterministic), plus the legacy ZFAEAgent persona for backward-compat with prior PCNAEngine wiring
+#   exposes: A0ZFAEInferenceEngine, ENGINE, infer, InferenceResult, MISSING_NATIVE_MESSAGE, ZFAEAgent
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: zfae_engine_native_only
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: a0p_skills.contracts.zfae_engine_native_only_holds
+# === END CONTRACTS ===
 """a0(ZFAE) — inference provider.
 
 Per user spec 2026-06-02:
@@ -79,3 +119,19 @@ __all__ = [
     "infer",
     "ZFAEAgent",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 37:56
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:2
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 7:5
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

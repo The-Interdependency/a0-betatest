@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 104:49
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:6
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 34:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: aimmh_patterns_impl
 #   module_name: patterns
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: aimmh_patterns_impl_boundaries
+#   summary: pure-async multi-model orchestration patterns over call_fn(model_id, messages)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: aimmh_patterns_impl
+#   summary: pure-async multi-model orchestration patterns over call_fn(model_id, messages)
+#   exposes: ModelResult, fan_out, daisy_chain, room_all, room_synthesized, council
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """AIMMH interaction patterns — pure async, no external deps."""
 from __future__ import annotations
 import asyncio
@@ -150,3 +183,19 @@ async def council(
     )
     tasks = [_invoke(call_fn, mid, [{"role": "user", "content": synth_prompt}]) for mid in model_ids]
     return await asyncio.gather(*tasks)
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 104:49
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:6
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 34:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

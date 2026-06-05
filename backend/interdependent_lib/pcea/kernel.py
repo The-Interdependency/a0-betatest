@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 49:100
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:5
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 26:6
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcea_kernel
 #   module_name: kernel
@@ -16,6 +32,23 @@
 #   rollback: revert file from git
 #   boundary_contract: PCEA inverts via keys (last_state), not via UCNS inverse operations — synced from upstream PCEA repo
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcea_kernel_boundaries
+#   summary: PCEA cross-cut — "this state, last state" kernel runtime encryption operating on Tensor payloads at any layer of the layered model
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcea_kernel
+#   summary: PCEA cross-cut — "this state, last state" kernel runtime encryption operating on Tensor payloads at any layer of the layered model
+#   exposes: kernel_step, kernel_invert, kernel_chain, QUANT_SCALE, QUANT_OFFSET
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """PCEA kernel cross-cut.
 
 Per the upstream PCEA boundary contract:
@@ -159,3 +192,19 @@ __all__ = [
     "kernel_invert",
     "kernel_chain",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 49:100
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:5
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 26:6
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

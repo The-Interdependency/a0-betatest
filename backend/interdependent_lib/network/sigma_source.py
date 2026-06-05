@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 100:80
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 7:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 24:5
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: network_sigma_source
 #   module_name: sigma_source
@@ -17,6 +33,23 @@
 #   pen_test_resistance: drift in any watched file/package/binary changes the digest, advances Σ ring state, surfaces in coherence as observer signal
 #   unresolved: cadence policy (per-tick vs hourly), watched-path tuning per host, pkg-manager set per distro
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: network_sigma_source_boundaries
+#   summary: Σ ring data source — read-only host-integrity digest over OS files + installed program manifests; provides tamper-evidence baseline (pen-test resistance)
+#   auth_boundary: none
+#   storage_boundary: read
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: network_sigma_source
+#   summary: Σ ring data source — read-only host-integrity digest over OS files + installed program manifests; provides tamper-evidence baseline (pen-test resistance)
+#   exposes: gather_host_digest, sigma_tensors, SIGMA_WATCHED_PATHS, SIGMA_PKG_COMMANDS, HostDigest
+#   boundaries: auth:none, storage:read, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Σ ring data source — read-only host-integrity adapter.
 
 Σ is the observer ring (un-weighted in coherence scoring) that watches
@@ -189,3 +222,19 @@ __all__ = [
     "gather_host_digest",
     "sigma_tensors",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 100:80
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 7:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 24:5
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

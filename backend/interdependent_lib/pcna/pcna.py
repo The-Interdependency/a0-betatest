@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 73:60
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 9:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 17:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcna_engine_impl
 #   module_name: pcna
@@ -16,6 +32,23 @@
 #   rollback: revert file from git
 #   unresolved: replace with canon 61-seed topology + tensor rings + canonical seed primes
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcna_engine_impl_boundaries
+#   summary: current PCNAEngine impl — three 157-prime cores + six scalar ring signals (canon target is full 61-seed topology + tensor rings)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcna_engine_impl
+#   summary: current PCNAEngine impl — three 157-prime cores + six scalar ring signals (canon target is full 61-seed topology + tensor rings)
+#   exposes: PCNAEngine
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """
 PCNAEngine — the six-ring inference engine.
 
@@ -131,3 +164,19 @@ class PCNAEngine:
     def absorb_response(self, model_id: str, text: str, usage: dict[str, Any] | None = None) -> None:
         self.memory.push_st(f"resp:{model_id}:{text[:80]}")
         self.cores["omega"].push("response", {"model": model_id, "tokens": (usage or {}).get("total", 0)})
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 73:60
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 9:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 17:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

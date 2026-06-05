@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 40:44
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 18:4
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcna_zeta
 #   module_name: zeta
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcna_zeta_boundaries
+#   summary: zeta-injection ring — harmonic LT/ST/SUB memory mix + alpha-echo resonance
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcna_zeta
+#   summary: zeta-injection ring — harmonic LT/ST/SUB memory mix + alpha-echo resonance
+#   exposes: zeta_inject, harmonic_resonance, echo
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Zeta-function injection ring — frequency-domain harmonic memory mix.
 
 Memory layers per spec:
@@ -79,3 +112,19 @@ def echo(value: float, decay: float = 0.85, steps: int = 6) -> list[float]:
         out.append(round(v, 6))
         v = v * decay * math.cos(0.7)
     return out
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 40:44
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 18:4
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

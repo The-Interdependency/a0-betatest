@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 43:43
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:2
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 13:6
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcna_edcm
 #   module_name: edcm
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcna_edcm_boundaries
+#   summary: Energy Dissonance Circuit Model — CM/DA/DRIFT/DVG/INT/TBF per-tick scoring (canon directives pending wiring)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcna_edcm
+#   summary: Energy Dissonance Circuit Model — CM/DA/DRIFT/DVG/INT/TBF per-tick scoring (canon directives pending wiring)
+#   exposes: EDCM, EDCMScores
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """EDCM — Energy Dissonance Circuit Model.
 
 Behavioral-directive scoring: tracks six per-tick metrics:
@@ -75,3 +108,19 @@ class EDCM:
 
     def latest(self) -> EDCMScores | None:
         return self.history[-1] if self.history else None
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 43:43
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:2
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 13:6
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

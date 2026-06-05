@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 107:50
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 38:4
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: module_build_runner
 #   module_name: module_build_runner
@@ -11,10 +27,34 @@
 #   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
-#   tests: a0p_skills.tests.test_module_build_runner
+#   tests: hmmm
 #   rollout: default_enabled
 #   rollback: remove /api/skill/module-build route and this module
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: module_build_runner_boundaries
+#   summary: meta-module-build skill executor — validates MODULE_BUILD schema + gap report
+#   auth_boundary: none
+#   storage_boundary: read
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: module_build_runner
+#   summary: meta-module-build skill executor — validates MODULE_BUILD schema + gap report
+#   exposes: run, validate_entry, REQUIRED_FIELDS, BOUNDARY_FIELDS, summary
+#   boundaries: auth:none, storage:read, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: test_module_build_runner
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: hmmm
+# === END CONTRACTS ===
 """meta-module-build skill executor.
 
 Reads every `# === MODULE_BUILD ===` block, validates the required schema,
@@ -149,3 +189,19 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 107:50
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 38:4
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

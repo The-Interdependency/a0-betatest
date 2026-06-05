@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 87:47
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 8:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 40:6
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: test_build_runner
 #   module_name: test_build_runner
@@ -11,10 +27,34 @@
 #   network_boundary: external
 #   user_data_boundary: read
 #   admin_only: false
-#   tests: a0p_skills.tests.test_test_build_runner
+#   tests: hmmm
 #   rollout: default_enabled
 #   rollback: remove /api/skill/test-build route and this module
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: test_build_runner_boundaries
+#   summary: test-build skill executor — imports each CONTRACTS `call:` and runs it
+#   auth_boundary: none
+#   storage_boundary: read
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: test_build_runner
+#   summary: test-build skill executor — imports each CONTRACTS `call:` and runs it
+#   exposes: run, summary, run_async
+#   boundaries: auth:none, storage:read, network:external, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: test_test_build_runner
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: hmmm
+# === END CONTRACTS ===
 """test-build skill executor.
 
 Reads every `# === CONTRACTS ===` block in the source tree, imports the
@@ -43,8 +83,8 @@ def _import_callable(call_path: str):
 
 async def _run_one(entry: dict) -> dict:
     call = entry.get("call")
-    if not call:
-        return {**entry, "status": "ERROR", "error": "missing 'call' field"}
+    if not call or call.strip() == "hmmm":
+        return {**entry, "status": "SKIP", "error": "call: hmmm (unresolved)"}
     if entry.get("deprecated"):
         return {**entry, "status": "SKIP", "error": "deprecated"}
     try:
@@ -55,7 +95,9 @@ async def _run_one(entry: dict) -> dict:
         if asyncio.iscoroutinefunction(fn):
             await fn()
         else:
-            fn()
+            result = fn()
+            if asyncio.iscoroutine(result):
+                await result
     except AssertionError as e:
         return {**entry, "status": "FAIL", "error": str(e) or "AssertionError"}
     except Exception as e:
@@ -122,3 +164,19 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 87:47
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 8:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 40:6
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

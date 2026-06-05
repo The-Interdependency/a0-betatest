@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 15:47
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 6:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 0:0
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcna_pkg
 #   module_name: pcna
@@ -16,6 +32,23 @@
 #   rollback: revert subpackage from git
 #   unresolved: canon PCNA topology rebuild pending
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcna_pkg_boundaries
+#   summary: six-ring inference engine (Φ Ψ Ω Θ Σ Ε) — current impl is simplified; canon topology (61 seeds, six scored rings + Σ observer) rebuild pending
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcna_pkg
+#   summary: six-ring inference engine (Φ Ψ Ω Θ Σ Ε) — current impl is simplified; canon topology (61 seeds, six scored rings + Σ observer) rebuild pending
+#   exposes: PCNAEngine, EDCM, EDCMScores, MemoryCore, zeta_inject, sigma_encode, theta_modulate
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """
 PCNA — Prime Circled Neural Architecture.
 
@@ -47,3 +80,19 @@ __all__ = [
     "theta_modulate",
     "MemoryCore",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 15:47
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 6:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 0:0
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

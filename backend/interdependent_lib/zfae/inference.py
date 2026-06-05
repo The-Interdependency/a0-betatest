@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 177:85
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 10:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 41:11
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: zfae_inference_engine
 #   module_name: inference
@@ -16,6 +32,30 @@
 #   rollback: detach chat route from engine and revert
 #   no_llm_assertion: this module MUST NOT import from interdependent_lib.providers or any LLM SDK; CONTRACTS pin the assertion
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: zfae_inference_engine_boundaries
+#   summary: a0(ZFAE) inference engine — native deterministic symbolic/state engine; no LLM dependency; returns {assistantText, nextSnapshot, trace}
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: zfae_inference_engine
+#   summary: a0(ZFAE) inference engine — native deterministic symbolic/state engine; no LLM dependency; returns {assistantText, nextSnapshot, trace}
+#   exposes: A0ZFAEInferenceEngine, InferenceResult, MISSING_NATIVE_MESSAGE
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: zfae_engine_native_only
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: a0p_skills.contracts.zfae_engine_native_only_holds
+# === END CONTRACTS ===
 """a0(ZFAE) — native inference engine. Deterministic symbolic/state pipeline.
 
 Pipeline (all pure functions, no external calls):
@@ -278,3 +318,19 @@ __all__ = [
     "ENGINE",
     "infer",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 177:85
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 10:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 41:11
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 59:54
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 8:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 14:8
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: network_engine
 #   module_name: engine
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: detach ZFAEAgent from NetworkEngine; revert file
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: network_engine_boundaries
+#   summary: NetworkEngine — top-level binder for the canonical PCNA inference engine; holds rings, tick state, tamper watcher; supports per-ring N override for tests
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: network_engine
+#   summary: NetworkEngine — top-level binder for the canonical PCNA inference engine; holds rings, tick state, tamper watcher; supports per-ring N override for tests
+#   exposes: NetworkEngine, EngineState
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """NetworkEngine — binds rings + tick + coherence + tamper into one façade.
 
 Public usage:
@@ -110,3 +143,19 @@ class NetworkEngine:
 
 
 __all__ = ["NetworkEngine", "EngineState"]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 59:54
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 8:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 14:8
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
