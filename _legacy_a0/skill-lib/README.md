@@ -4,7 +4,7 @@ A portable library of agent skills built on **msdmd** — Module Self-
 Declared Metadata Markdown — a language-agnostic convention where each
 module declares its own structured metadata in a fenced comment block.
 
-Licensed under Apache 2.0. Drop the directory into any repo's `.skills/`,
+Licensed under MIT. Drop the directory into any repo's `.skills/`,
 `.local/skills/`, or wherever your agent looks for skills, and the
 contents work as-is.
 

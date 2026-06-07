@@ -145,7 +145,7 @@ ADMIN_USER_ID           # User ID allowed to write prompt contexts
 - Feature branches: `feat/<description>`, `fix/<description>`, `docs/<description>`, `chore/<description>` (e.g., `feat/add-feature-abc`)
 - Commit style: Conventional Commits (`feat(console):`, `fix(pcna):`, etc.)
 - Author: Erin Patrick Spencer (wayseer@interdependentway.org)
-- License: Apache 2.0
+- License: MIT
 
 ## Agent module-build doctrine
 
