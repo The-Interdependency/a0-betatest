@@ -32,7 +32,7 @@ PCEA = Prime Circular Encryption Algorithm
   of a layer's composed field across the compose boundary — Fick's first law
   `J = −D ∇φ` (structure diffuses down its field gradient; structural /
   non-differentiable — the `∇φ` is a field gradient, not an autodiff gradient).
-  ZFAE reads accumulated motion + PCNA weights. **No stack-level `hmmm` remains.**
+  ZFAE reads accumulated motion + PCNA weights.
 
 > ⚠️ **CONFLICT — layer mapping shifted vs. this repo's prior model (open).** The
 > 2026-06-02 framing this repo was built against put **PCTA at the circle layer**
