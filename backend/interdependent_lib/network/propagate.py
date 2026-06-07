@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 53:58
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 6:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 11:8
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: network_propagate
 #   module_name: propagate
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: network_propagate_boundaries
+#   summary: tick advancement — runs one heartbeat across all rings, applies PCEA `kernel_step` cross-cut between ticks, holds last-state keys
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: network_propagate
+#   summary: tick advancement — runs one heartbeat across all rings, applies PCEA `kernel_step` cross-cut between ticks, holds last-state keys
+#   exposes: Tick, TickResult, RingTickResult
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Tick propagation — one heartbeat advances every ring once.
 
 Per tick:
@@ -116,3 +149,19 @@ class Tick:
 
 
 __all__ = ["Tick", "TickResult", "RingTickResult"]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 53:58
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 6:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 11:8
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

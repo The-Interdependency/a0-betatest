@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 77:45
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 26:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: zfae_semantic_parser
 #   module_name: _parser
@@ -15,6 +31,30 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: zfae_semantic_parser_boundaries
+#   summary: deterministic prompt parser — token stats, intent surfaces (question, greeting, command, reflection), semantic load
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: zfae_semantic_parser
+#   summary: deterministic prompt parser — token stats, intent surfaces (question, greeting, command, reflection), semantic load
+#   exposes: parse_semantic, SemanticFeatures
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: zfae_parser_deterministic
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: a0p_skills.contracts.zfae_parser_deterministic_holds
+# === END CONTRACTS ===
 """Deterministic semantic parser for a0(zfae) — no NLP libraries, stdlib only."""
 from __future__ import annotations
 import re
@@ -110,3 +150,19 @@ def parse_semantic(raw_prompt: str) -> SemanticFeatures:
 
 
 __all__ = ["SemanticFeatures", "parse_semantic"]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 77:45
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 26:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

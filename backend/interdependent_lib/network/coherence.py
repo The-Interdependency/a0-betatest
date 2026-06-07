@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 99:50
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 7:7
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 15:10
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: network_coherence
 #   module_name: coherence
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: network_coherence_boundaries
+#   summary: EDCM-style coherence scoring — weights each scored ring's aggregate energy, sums to a total; tracks Σ digest drift as tamper signal (pen-test resistance)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: network_coherence
+#   summary: EDCM-style coherence scoring — weights each scored ring's aggregate energy, sums to a total; tracks Σ digest drift as tamper signal (pen-test resistance)
+#   exposes: CoherenceScore, TamperReport, score_tick, evaluate_tamper, ring_energy
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Coherence scoring + Σ drift / tamper evidence."""
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -156,3 +189,19 @@ __all__ = [
     "score_tick",
     "evaluate_tamper",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 99:50
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 7:7
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 15:10
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

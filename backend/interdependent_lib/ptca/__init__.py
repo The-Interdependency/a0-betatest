@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 15:47
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 6:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 0:0
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: ptca_pkg
 #   module_name: ptca
@@ -16,6 +32,30 @@
 #   rollback: revert subpackage from git
 #   unresolved: 9-axis from design conversation not present in upstream prime_core; awaiting clarification
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: ptca_pkg_boundaries
+#   summary: seeds-layer wrapper — re-exports current PTCAInstance plus prime utilities (canon stratified prime_core rebuild pending)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: ptca_pkg
+#   summary: seeds-layer wrapper — re-exports current PTCAInstance plus prime utilities (canon stratified prime_core rebuild pending)
+#   exposes: PTCAInstance, PrimeTensor, SentinelChannel, hash_state, exchange, first_n_primes, PRIMES_FIRST_N
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: ptca_canon_shape
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: a0p_skills.contracts.ptca_canon_shape_holds
+# === END CONTRACTS ===
 """
 PTCA — Prime Tensor Circular Architecture.
 
@@ -39,3 +79,19 @@ __all__ = [
     "exchange",
     "PTCAInstance",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 15:47
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 6:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 0:0
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

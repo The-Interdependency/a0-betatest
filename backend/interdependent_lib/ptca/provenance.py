@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 10:36
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 2:1
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: ptca_provenance
 #   module_name: provenance
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: ptca_provenance_boundaries
+#   summary: deterministic SHA-256 provenance hashing for tensor ops + lineage chains
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: ptca_provenance
+#   summary: deterministic SHA-256 provenance hashing for tensor ops + lineage chains
+#   exposes: hash_state
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Provenance hashing — deterministic SHA-256 over tensor state + op metadata."""
 import hashlib
 import json
@@ -29,3 +62,19 @@ def hash_state(state, op: str = "", parents: list[str] | None = None) -> str:
     }
     blob = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 10:36
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 2:1
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 80:37
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 16:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: provider_gemini
 #   module_name: gemini_provider
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: remove from providers.REGISTRY
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: provider_gemini_boundaries
+#   summary: Google Gemini BYOK adapter — list models, generateContent via httpx
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: provider_gemini
+#   summary: Google Gemini BYOK adapter — list models, generateContent via httpx
+#   exposes: GeminiProvider
+#   boundaries: auth:none, storage:none, network:external, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Google Gemini adapter — generativelanguage.googleapis.com via httpx."""
 from __future__ import annotations
 import httpx
@@ -104,3 +137,19 @@ class GeminiProvider:
                 model_id=model,
                 provider="gemini",
             )
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 80:37
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 16:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

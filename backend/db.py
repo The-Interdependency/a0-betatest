@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 29:36
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 14:1
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: a0p_db_motor
 #   module_name: db
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: drop mongo collections; revert server.py import
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: a0p_db_motor_boundaries
+#   summary: Motor async client + collection accessors + index ensurance
+#   auth_boundary: none
+#   storage_boundary: write
+#   network_boundary: internal
+#   user_data_boundary: write
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: a0p_db_motor
+#   summary: Motor async client + collection accessors + index ensurance
+#   exposes: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, ensure_indexes
+#   boundaries: auth:none, storage:write, network:internal, user_data:write
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """MongoDB Motor client + collection accessors."""
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -28,14 +61,16 @@ _client = AsyncIOMotorClient(_MONGO_URL)
 db = _client[_DB_NAME]
 
 # Collections
-keys_col       = db["byok_keys"]         # one per provider per user
-vault_col      = db["site_vault"]        # multi-account .env per site
-sessions_col   = db["chat_sessions"]     # editable context + transcript
-drafts_col     = db["prompt_drafts"]     # autosaved user drafts
-fanout_col     = db["fanout_runs"]       # multi-model run outputs
-chain_col      = db["daisy_chain_runs"]  # daisy-chain run outputs
-agents_col     = db["detachable_agents"] # exportable agent manifests
-usage_col      = db["usage_records"]     # token / compute records
+keys_col       = db["byok_keys"]
+vault_col      = db["site_vault"]
+sessions_col   = db["chat_sessions"]
+drafts_col     = db["prompt_drafts"]
+fanout_col     = db["fanout_runs"]
+chain_col      = db["daisy_chain_runs"]
+agents_col     = db["detachable_agents"]
+agent_instances_col = db["agent_instances"]
+usage_col      = db["usage_records"]
+fiq_audit_col  = db["fiq_audit_log"]
 
 
 async def ensure_indexes():
@@ -46,4 +81,22 @@ async def ensure_indexes():
     await fanout_col.create_index([("user_id", 1), ("created_at", -1)])
     await chain_col.create_index([("user_id", 1), ("created_at", -1)])
     await agents_col.create_index([("slug", 1)])
+    await agent_instances_col.create_index([("user_id", 1), ("updated_at", -1)])
     await usage_col.create_index([("user_id", 1), ("created_at", -1)])
+    await fiq_audit_col.create_index([("timestamp_ms", -1)])
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 29:36
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 14:1
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 103:64
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 10:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 27:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: zfae_state_transition
 #   module_name: _transition
@@ -15,6 +31,30 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: zfae_state_transition_boundaries
+#   summary: ZFAE transition rules — folds semantic features into Φ/Ψ/Ω ring snapshots via PCEA kernel cross-cut; produces nextSnapshot
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: zfae_state_transition
+#   summary: ZFAE transition rules — folds semantic features into Φ/Ψ/Ω ring snapshots via PCEA kernel cross-cut; produces nextSnapshot
+#   exposes: bind_features_to_rings, advance_zfae_state, snapshot_after, ZFAE_RING_NAMES
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: zfae_transition_deterministic
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: a0p_skills.contracts.zfae_transition_deterministic_holds
+# === END CONTRACTS ===
 """ZFAE state transition — the math of "this state, last state" for the agent.
 
 Inputs:  the parsed semantic features + the prior ring/memory snapshot.
@@ -165,3 +205,19 @@ __all__ = [
     "advance_zfae_state",
     "snapshot_after",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 103:64
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 10:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 27:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

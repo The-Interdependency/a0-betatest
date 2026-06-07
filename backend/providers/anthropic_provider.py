@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 81:37
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 14:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: provider_anthropic
 #   module_name: anthropic_provider
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: remove from providers.REGISTRY
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: provider_anthropic_boundaries
+#   summary: Anthropic BYOK adapter — list models, messages via httpx
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: provider_anthropic
+#   summary: Anthropic BYOK adapter — list models, messages via httpx
+#   exposes: AnthropicProvider
+#   boundaries: auth:none, storage:none, network:external, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Anthropic adapter — /v1/models + /v1/messages via httpx."""
 from __future__ import annotations
 import httpx
@@ -103,3 +136,19 @@ class AnthropicProvider:
                 model_id=model,
                 provider="anthropic",
             )
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 81:37
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 14:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

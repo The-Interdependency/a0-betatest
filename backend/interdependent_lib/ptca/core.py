@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 101:91
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 8:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 29:15
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: ptca_core
 #   module_name: core
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: ptca_core_boundaries
+#   summary: PTCA Core — N PTCA Seeds (N=157 canon for Φ/Ψ/Ω; tunable for Θ/Σ) plus aggregate-as-tensor projection upward; param count is N × 7 × 7 × 53
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: ptca_core
+#   summary: PTCA Core — N PTCA Seeds (N=157 canon for Φ/Ψ/Ω; tunable for Θ/Σ) plus aggregate-as-tensor projection upward; param count is N × 7 × 7 × 53
+#   exposes: Core, DEFAULT_N, core_aggregate
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """PTCA Core — top layer of the layered model.
 
 A `Core` is the topmost wrapper:
@@ -208,3 +241,19 @@ class Core:
 
 
 __all__ = ["Core", "DEFAULT_N", "core_aggregate"]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 101:91
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 8:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 29:15
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

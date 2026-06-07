@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 601:96
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 31:39
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 201:47
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -17,6 +33,23 @@
 #   ui_surface: all frontend pages
 #   api_surface: /api/*
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: a0p_server_boundaries
+#   summary: FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   auth_boundary: none
+#   storage_boundary: write
+#   network_boundary: external
+#   user_data_boundary: write
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: a0p_server
+#   summary: FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   exposes: app, api, AGENT
+#   boundaries: auth:none, storage:write, network:external, user_data:write
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """
 a0p — research instrument backend.
 
@@ -69,6 +102,10 @@ from interdependent_lib.aimmh import fan_out as aimmh_fan_out, daisy_chain as ai
 from interdependent_lib.zfae import ZFAEAgent, A0ZFAEInferenceEngine
 from interdependent_lib._msdmd import report as msdmd_report
 from a0p_skills import test_build_runner, module_build_runner
+from a0p_skills import boundaries_runner, capabilities_runner, ratios_runner
+from agents.routes import router as agents_router, init_routes as init_agents_routes
+from interdependent_lib.zfae.runtime import ZFAERuntime
+from interdependent_lib.zfae.teacher import TeacherClient
 
 
 def _utc_now_iso() -> str:
@@ -716,7 +753,49 @@ async def skill_report_legacy(block: str = "CAPABILITIES"):
     return msdmd_report(Path("/app/backend"), block)
 
 
+# ---------- Skill coverage runners — additional (Tier 5) -----------------
+@api.get("/skill/boundaries/report")
+async def skill_boundaries_report():
+    from pathlib import Path
+    return boundaries_runner.run(Path("/app/backend"))
+
+
+@api.get("/skill/capabilities/report")
+async def skill_capabilities_report_v2():
+    from pathlib import Path
+    return capabilities_runner.run(Path("/app/backend"))
+
+
+@api.get("/skill/ratios/report")
+async def skill_ratios_report():
+    from pathlib import Path
+    return ratios_runner.run(Path("/app/backend"))
+
+
+@api.get("/skill/all/report")
+async def skill_all_report():
+    """Roll-up across all skill runners."""
+    from pathlib import Path
+    root = Path("/app/backend")
+    return {
+        "module-build": module_build_runner.run(root),
+        "boundaries": boundaries_runner.run(root),
+        "capabilities": capabilities_runner.run(root),
+        "ratios": ratios_runner.run(root),
+        "contracts": await test_build_runner.run_async(root),
+    }
+
+
 app.include_router(api)
+
+
+# ---------- Agents (Tier 3): /api/instances/* + /api/chat/instance/{id} ----
+from db import agent_instances_col
+
+_TEACHER_CLIENT = TeacherClient(REGISTRY, _get_key)
+_ZFAE_RUNTIME = ZFAERuntime(teacher_client=_TEACHER_CLIENT)
+init_agents_routes(agent_instances_col, runtime=_ZFAE_RUNTIME, get_key_fn=_get_key)
+app.include_router(agents_router, prefix="/api")
 
 
 # ---------- startup ----------
@@ -756,3 +835,19 @@ async def _on_startup():
         for a in starters:
             await agents_col.insert_one({"_id": new_id(), **a.model_dump(),
                                          "created_at": now, "updated_at": now})
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 601:96
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 31:39
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 201:47
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

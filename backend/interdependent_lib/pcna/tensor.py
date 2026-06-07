@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 72:65
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 24:15
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcna_tensor_leaf
 #   module_name: tensor
@@ -16,6 +32,23 @@
 #   rollback: revert file from git
 #   payload_width: 53
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcna_tensor_leaf_boundaries
+#   summary: leaf Tensor — d=53 scalar payload, deterministic from a (seed, label) pair; the substrate of the layered (PCNA leaf → PCTA circle → PTCA seed → core) model
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcna_tensor_leaf
+#   summary: leaf Tensor — d=53 scalar payload, deterministic from a (seed, label) pair; the substrate of the layered (PCNA leaf → PCTA circle → PTCA seed → core) model
+#   exposes: Tensor, TENSOR_DIM, zero_tensor, tensors_equal
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """PCNA leaf tensor — the bottom of the layered model.
 
 A Tensor is a fixed-width (d=53) sequence of scalar payload values. It
@@ -146,3 +179,19 @@ def tensors_equal(a: Tensor, b: Tensor, tol: float = 0.0) -> bool:
 
 
 __all__ = ["Tensor", "TENSOR_DIM", "zero_tensor", "tensors_equal"]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 72:65
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 4:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 24:15
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

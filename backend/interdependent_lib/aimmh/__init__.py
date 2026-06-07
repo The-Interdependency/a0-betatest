@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 16:41
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 1:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 0:0
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: aimmh_pkg
 #   module_name: aimmh
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: remove imports from server.py
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: aimmh_pkg_boundaries
+#   summary: async multi-model orchestration patterns over a call_fn(model_id, messages)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: aimmh_pkg
+#   summary: async multi-model orchestration patterns over a call_fn(model_id, messages)
+#   exposes: fan_out, daisy_chain, room_all, room_synthesized, council, ModelResult
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """
 AIMMH — AI Multimodel Multimodal Hub.
 
@@ -41,3 +74,19 @@ __all__ = [
     "room_synthesized",
     "council",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 16:41
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 1:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 0:0
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

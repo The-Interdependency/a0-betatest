@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 33:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 10:8
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcna_memory_core
 #   module_name: memory_core
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcna_memory_core_boundaries
+#   summary: dual prime-ring memory — LT N=19, ST N=17, plus volatile sub-agent caches
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcna_memory_core
+#   summary: dual prime-ring memory — LT N=19, ST N=17, plus volatile sub-agent caches
+#   exposes: MemoryCore
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """MemoryCore — persistent activation state, two prime rings (N=19 LT, N=17 ST)."""
 from __future__ import annotations
 from collections import deque
@@ -57,3 +90,19 @@ class MemoryCore:
             "lt_capacity": self.lt.maxlen,
             "st_capacity": self.st.maxlen,
         }
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 33:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 10:8
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

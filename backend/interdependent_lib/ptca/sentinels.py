@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 25:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:2
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 8:5
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: ptca_sentinels
 #   module_name: sentinels
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: ptca_sentinels_boundaries
+#   summary: tagged signal lanes with priority ordering — SentinelChannel + SentinelMessage
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: ptca_sentinels
+#   summary: tagged signal lanes with priority ordering — SentinelChannel + SentinelMessage
+#   exposes: SentinelChannel, SentinelMessage
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Sentinel channels — tagged signal lanes with priority ordering."""
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -48,3 +81,19 @@ class SentinelChannel:
 
     def __len__(self) -> int:
         return len(self.queue)
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 25:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:2
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 8:5
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

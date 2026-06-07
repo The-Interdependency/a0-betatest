@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 74:36
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 17:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: provider_openai
 #   module_name: openai_provider
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: remove from providers.REGISTRY
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: provider_openai_boundaries
+#   summary: OpenAI BYOK adapter — list models, chat completion via httpx
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: provider_openai
+#   summary: OpenAI BYOK adapter — list models, chat completion via httpx
+#   exposes: OpenAIProvider
+#   boundaries: auth:none, storage:none, network:external, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """OpenAI adapter — /v1/models + /v1/chat/completions via httpx."""
 from __future__ import annotations
 import httpx
@@ -95,3 +128,19 @@ class OpenAIProvider:
                 model_id=model,
                 provider="openai",
             )
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 74:36
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 17:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

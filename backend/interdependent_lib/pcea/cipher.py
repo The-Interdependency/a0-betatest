@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 32:44
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:2
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 15:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcea_cipher
 #   module_name: cipher
@@ -15,6 +31,30 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcea_cipher_boundaries
+#   summary: prime-circular bijective encrypt/decrypt over a previous-state key
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcea_cipher
+#   summary: prime-circular bijective encrypt/decrypt over a previous-state key
+#   exposes: encrypt_state, decrypt_state
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: pcea_round_trip_53
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: a0p_skills.contracts.pcea_round_trip_53
+# === END CONTRACTS ===
 """PCEA core cipher."""
 from .primes import PRIME_CIRCLE
 from .codec import to_bijective, from_bijective, key_digits
@@ -56,3 +96,19 @@ def decrypt_state(enc: list[int], last_state: list[int]) -> list[int]:
         unshifted = _shift(digits, keys, p, sign=-1)
         out.append(from_bijective(unshifted, p))
     return out
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 32:44
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:2
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 15:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

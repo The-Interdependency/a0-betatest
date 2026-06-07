@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 42:44
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 7:8
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: ptca_tensor
 #   module_name: tensor
@@ -16,6 +32,23 @@
 #   rollback: revert file from git
 #   unresolved: shape and stratification both pending canon prime_core rebuild
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: ptca_tensor_boundaries
+#   summary: prime-indexed nested-list tensor — current shape [N,4,7,7]; canon prime_core target [157,7,7,53] pending stratified rebuild
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: ptca_tensor
+#   summary: prime-indexed nested-list tensor — current shape [N,4,7,7]; canon prime_core target [157,7,7,53] pending stratified rebuild
+#   exposes: PrimeTensor
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """PrimeTensor — pure-Python nested-list tensor [N, 4, 7, 7] indexed by prime nodes."""
 from __future__ import annotations
 from .primes import first_n_primes
@@ -78,3 +111,19 @@ class PrimeTensor:
             "primes_tail": self.primes[-3:],
             "energy": round(self.energy(), 6),
         }
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 42:44
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 2:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 7:8
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

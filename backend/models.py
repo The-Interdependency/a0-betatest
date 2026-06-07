@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 105:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:14
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 18:16
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: a0p_models
 #   module_name: models
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file; consumers break at import
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: a0p_models_boundaries
+#   summary: Pydantic surface for the public API (BYOK keys, vault, sessions, drafts, chat, agents)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: a0p_models
+#   summary: Pydantic surface for the public API (BYOK keys, vault, sessions, drafts, chat, agents)
+#   exposes: KeyUpsert, KeyPublic, SiteAccountUpsert, SiteAccountPublic, SessionUpsert, SessionPublic, ChatTurn, DraftUpsert, DraftPublic, FanOutRequest, DaisyChainRequest, SynthesizeRequest, AgentExport, PROVIDERS, new_id
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Pydantic models for the API surface."""
 from __future__ import annotations
 from datetime import datetime, timezone
@@ -155,3 +188,19 @@ class AgentExport(BaseModel):
 
 def new_id() -> str:
     return str(uuid.uuid4())
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 105:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:14
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 18:16
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

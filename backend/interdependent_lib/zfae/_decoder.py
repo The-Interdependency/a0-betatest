@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 99:51
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 6:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: zfae_template_decoder
 #   module_name: _decoder
@@ -15,6 +31,30 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: zfae_template_decoder_boundaries
+#   summary: native template/grammar decoder — emits assistantText from (intent, features, state) using a small fixed grammar; no LLM dependency
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: zfae_template_decoder
+#   summary: native template/grammar decoder — emits assistantText from (intent, features, state) using a small fixed grammar; no LLM dependency
+#   exposes: TemplateGrammarDecoder, render, MISSING_DECODER_MESSAGE
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
+# === CONTRACTS ===
+# id: zfae_decoder_native_only
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: a0p_skills.contracts.zfae_decoder_native_only_holds
+# === END CONTRACTS ===
 """Native template / grammar decoder for a0(zfae).
 
 This produces simpler text than an LLM, but the text is authentically
@@ -142,3 +182,19 @@ __all__ = [
     "render",
     "MISSING_DECODER_MESSAGE",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 99:51
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:3
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 6:7
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 12:41
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 2:0
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: providers_pkg
 #   module_name: providers
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: remove provider imports from server.py
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: providers_pkg_boundaries
+#   summary: BYOK adapter registry — openai, anthropic, gemini, xai (Emergent removed; build is platform-free)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: providers_pkg
+#   summary: BYOK adapter registry — openai, anthropic, gemini, xai (Emergent removed; build is platform-free)
+#   exposes: REGISTRY, ProviderAdapter, ChatResult
+#   boundaries: auth:none, storage:none, network:external, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """LLM provider adapters — BYOK pass-through via httpx.
 
 Each adapter exposes:
@@ -38,3 +71,19 @@ REGISTRY: dict[str, ProviderAdapter] = {
 }
 
 __all__ = ["REGISTRY", "ProviderAdapter", "ChatResult"]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 12:41
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 5:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 2:0
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

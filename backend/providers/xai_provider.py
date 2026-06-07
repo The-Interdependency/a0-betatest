@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 67:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 15:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: provider_xai
 #   module_name: xai_provider
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: remove from providers.REGISTRY
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: provider_xai_boundaries
+#   summary: xAI Grok BYOK adapter — OpenAI-compatible /v1 via httpx
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: provider_xai
+#   summary: xAI Grok BYOK adapter — OpenAI-compatible /v1 via httpx
+#   exposes: XAIProvider
+#   boundaries: auth:none, storage:none, network:external, user_data:read
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """xAI Grok adapter — OpenAI-compatible at https://api.x.ai/v1."""
 from __future__ import annotations
 import httpx
@@ -87,3 +120,19 @@ class XAIProvider:
                 model_id=model,
                 provider="xai",
             )
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 67:35
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:1
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 15:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

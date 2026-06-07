@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 90:67
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 8:5
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 23:9
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: network_rings
 #   module_name: rings
@@ -15,6 +31,23 @@
 #   rollout: default_enabled
 #   rollback: revert file from git
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: network_rings_boundaries
+#   summary: ring assembly — builds a PTCA Core per RingSpec; Σ ring uses host-integrity-derived tensors; supports per-ring N override and lazy construction
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: network_rings
+#   summary: ring assembly — builds a PTCA Core per RingSpec; Σ ring uses host-integrity-derived tensors; supports per-ring N override and lazy construction
+#   exposes: Ring, build_ring, build_all_rings, heptagram_order
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """Network ring builder — turns RingSpec entries into PTCA Cores."""
 from __future__ import annotations
 from dataclasses import dataclass
@@ -163,3 +196,19 @@ __all__ = [
     "build_all_rings",
     "heptagram_order",
 ]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 90:67
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 8:5
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 23:9
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===

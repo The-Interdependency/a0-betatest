@@ -1,3 +1,19 @@
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 21:80
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 9:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: pcna_group_aggregate
 #   module_name: group
@@ -16,6 +32,23 @@
 #   rollback: revert file from git
 #   group_size: 7
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: pcna_group_aggregate_boundaries
+#   summary: "all seven together is a tensor" — aggregate composition op that lifts 7 Tensors to 1 Tensor (the 8th referent, the projection upward into the next layer)
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: a0p maintainer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: pcna_group_aggregate
+#   summary: "all seven together is a tensor" — aggregate composition op that lifts 7 Tensors to 1 Tensor (the 8th referent, the projection upward into the next layer)
+#   exposes: GROUP_SIZE, aggregate, identity_tensor, is_identity
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: a0p maintainer
+# === END CAPABILITIES ===
 """PCNA group operator — the "seven together is one" lift.
 
 The user's framing:
@@ -99,3 +132,19 @@ def is_identity(t: Tensor) -> bool:
 
 
 __all__ = ["GROUP_SIZE", "aggregate", "identity_tensor", "is_identity"]
+# === RATIOS ===
+# id: loc_comments
+#   summary: lines of code to lines commented
+#   value: 21:80
+#   basis: ratios_runner.compute_loc_comments
+#
+# id: imports_exports
+#   summary: import statements to public exports
+#   value: 3:4
+#   basis: ratios_runner.compute_imports_exports
+#
+# id: calls_definitions
+#   summary: call sites to definitions
+#   value: 9:3
+#   basis: ratios_runner.compute_calls_definitions
+# === END RATIOS ===
