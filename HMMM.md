@@ -9,8 +9,7 @@
 ### Layered tensor model — rebuild pending
 
 **Resolved org canon (maintainer, supersedes the 2026-06-02 framing).** The
-single source of truth is `The-Interdependency/interdependent-lib :
-docs/prime-tensor-stack.md`:
+single source of truth is `The-Interdependency/interdependent-lib/docs/prime-tensor-stack.md`:
 
 ```
 PCNA = Prime Circle Neural Architecture
