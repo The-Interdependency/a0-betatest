@@ -106,7 +106,15 @@ class CreateAgentRequest(BaseModel):
 class UpdateAgentRequest(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
     user_id: str = "local"
-    patch: dict[str, Any]
+    # Either of these may be supplied; `sheet` is the preferred alias.
+    patch: Optional[dict[str, Any]] = None
+    sheet: Optional[dict[str, Any]] = None
+
+    def merged_patch(self) -> dict[str, Any]:
+        if self.sheet is not None and self.patch is not None:
+            # Merge — `sheet` wins on key conflict.
+            return {**self.patch, **self.sheet}
+        return self.sheet or self.patch or {}
 
 
 class ChatInstanceRequest(BaseModel):
@@ -160,7 +168,10 @@ async def get_instance(agent_id: str, user_id: str = "local"):
 @router.patch("/instances/{agent_id}")
 async def update_instance(agent_id: str, body: UpdateAgentRequest):
     store = get_agent_store()
-    agent = await store.update_sheet(agent_id, body.patch, user_id=body.user_id)
+    patch = body.merged_patch()
+    if not patch:
+        raise HTTPException(400, "request body must include `sheet` or `patch`")
+    agent = await store.update_sheet(agent_id, patch, user_id=body.user_id)
     if not agent:
         raise HTTPException(404, f"agent {agent_id} not found")
     return agent.model_dump()
