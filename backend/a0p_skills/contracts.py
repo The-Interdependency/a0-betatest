@@ -1060,6 +1060,17 @@ async def _zfae_fiq_emit_chains_holds_async() -> None:
     assert h1 != h2
 
 
+def frontend_module_build_runner_smoke_holds() -> None:
+    """Contract: frontend_module_build_runner scans /app/frontend/src and reports full coverage."""
+    from a0p_skills.frontend_module_build_runner import scan_frontend
+    from pathlib import Path
+    report = scan_frontend(Path("/app/frontend/src"))
+    assert report["ok"], f"frontend modules missing MODULE_BUILD: {report.get('missing_files')}"
+    assert report["total_modules"] >= 10
+    assert report["covered"] == report["total_modules"]
+
+
+
 # ---------- Tier 3 — Agent character sheet shape ---------------------------
 
 def agent_character_sheet_shape_holds() -> None:

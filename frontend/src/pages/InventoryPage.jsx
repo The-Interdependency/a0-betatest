@@ -1,3 +1,39 @@
+// === MODULE_BUILD ===
+// id: fe_page_inventory
+//   module_name: InventoryPage
+//   module_kind: ui_page
+//   summary: discovered model inventory across providers (openai, anthropic, gemini, xai, emergent) — populated from /api/models/inventory
+//   owner: Erin Spencer
+//   public_surface: InventoryPage
+//   internal_surface: none
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: read
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_page_inventory_boundaries
+//   summary: read-only inventory
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: read
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_page_inventory
+//   summary: model inventory ui
+//   exposes: InventoryPage
+//   boundaries: auth:none, storage:none, network:external, user_data:read
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
+
+
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { Panel, Pill, AsciiLoader } from "../components/Panel";

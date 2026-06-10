@@ -1,3 +1,39 @@
+// === MODULE_BUILD ===
+// id: fe_page_keyvault
+//   module_name: KeyVaultPage
+//   module_kind: ui_page
+//   summary: BYOK key vault — list, upsert (Fernet-encrypted), delete BYOK provider keys (OpenAI/Anthropic/Gemini/XAI)
+//   owner: Erin Spencer
+//   public_surface: KeyVaultPage
+//   internal_surface: none
+//   auth_boundary: none
+//   storage_boundary: write
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_page_keyvault_boundaries
+//   summary: BYOK key crud
+//   auth_boundary: none
+//   storage_boundary: write
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_page_keyvault
+//   summary: BYOK keys management ui
+//   exposes: KeyVaultPage
+//   boundaries: auth:none, storage:write, network:external, user_data:write
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
+
+
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { Panel, Pill, AsciiLoader } from "../components/Panel";

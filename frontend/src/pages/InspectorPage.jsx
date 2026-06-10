@@ -1,3 +1,39 @@
+// === MODULE_BUILD ===
+// id: fe_page_inspector
+//   module_name: InspectorPage
+//   module_kind: ui_page
+//   summary: live inspector for PCNA/PTCA/PCEA skills + msdmd compliance reports (capabilities / module-build / contracts coverage); heartbeat ping
+//   owner: Erin Spencer
+//   public_surface: InspectorPage
+//   internal_surface: none
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: read
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_page_inspector_boundaries
+//   summary: read-only inspector
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: read
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_page_inspector
+//   summary: inspector dashboard ui
+//   exposes: InspectorPage
+//   boundaries: auth:none, storage:none, network:external, user_data:read
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
+
+
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { Panel, Pill, Stat, AsciiLoader } from "../components/Panel";

@@ -1,3 +1,39 @@
+// === MODULE_BUILD ===
+// id: fe_component_panel
+//   module_name: Panel
+//   module_kind: ui_component
+//   summary: shared presentational primitives — Panel section, Pill badge, Stat metric tile, AsciiLoader progress indicator
+//   owner: Erin Spencer
+//   public_surface: Panel, Pill, Stat, AsciiLoader
+//   internal_surface: none
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: none
+//   user_data_boundary: read
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert; downstream pages lose Panel/Pill/Stat helpers
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_component_panel_boundaries
+//   summary: presentational only
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: none
+//   user_data_boundary: read
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_component_panel
+//   summary: presentational primitives for shells
+//   exposes: Panel, Pill, Stat, AsciiLoader
+//   boundaries: auth:none, storage:none, network:none, user_data:read
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
+
+
 import React from "react";
 
 export function Panel({ title, right, children, className = "", testid }) {

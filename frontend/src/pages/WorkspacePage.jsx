@@ -1,503 +1,282 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+// === MODULE_BUILD ===
+// id: fe_page_workspace
+//   module_name: WorkspacePage
+//   module_kind: ui_page
+//   summary: chat workspace bound to one agent instance; sends prompts through /api/chat/instance/{id}; renders per-turn sentinel verdict ribbon; intercepts HTTP 202 sentinel-halts and opens an OverrideModal that resumes the same prompt with override_id on approval
+//   owner: Erin Spencer
+//   public_surface: WorkspacePage
+//   internal_surface: useQueryAgentId, Turn, AgentBar, ModeBar
+//   auth_boundary: none
+//   storage_boundary: write
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert; chat requires curl
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_page_workspace_boundaries
+//   summary: page-level chat workspace bound to one agent instance
+//   auth_boundary: none
+//   storage_boundary: write
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_page_workspace
+//   summary: page-level chat workspace bound to one agent instance
+//   exposes: WorkspacePage
+//   boundaries: auth:none, storage:write, network:external, user_data:write
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { PaperPlaneTilt, Pulse, ShieldWarning, ArrowsClockwise } from "@phosphor-icons/react";
 import { api } from "../lib/api";
 import MarkdownView from "../components/MarkdownView";
-import { Panel, Pill, AsciiLoader } from "../components/Panel";
-import { PaperPlaneTilt, Plus, Sparkle, Link as LinkIcon, FloppyDisk, FloppyDiskBack, Trash, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import SentinelVerdictRibbon from "../components/SentinelVerdictRibbon";
+import OverrideModal from "../components/OverrideModal";
+import { MODE_OPTIONS } from "../lib/sentinels";
 
-const MODES = [
-  { id: "single",  label: "single" },
-  { id: "fanout",  label: "fan-out" },
-  { id: "daisy",   label: "daisy-chain" },
-];
+function Turn({ t }) {
+  const isUser = t.role === "user";
+  return (
+    <div className={`space-y-2 ${isUser ? "" : "border-l-2 border-accent-cyan/40 pl-3"}`}
+         data-testid={`turn-${t.id}-${t.role}`}>
+      <div className="flex items-center gap-2 text-[0.6rem] font-mono uppercase tracking-ultra">
+        <span className={isUser ? "text-neutral-400" : "text-accent-cyan"}>{isUser ? "user" : "agent"}</span>
+        {t.mode && <span className="text-neutral-600">· mode {t.mode}</span>}
+        {t.reply_source && <span className={`px-1 border ${t.reply_source === "zfae_halted" ? "border-rose-500/40 text-rose-300" : t.reply_source === "zfae_refused" ? "border-amber-400/40 text-amber-300" : "border-emerald-500/40 text-emerald-300"}`}>
+          {t.reply_source}
+        </span>}
+        {t.teacher_called && <span className="text-neutral-600">teacher ✓</span>}
+        {t.zfae_weights_updated && <span className="text-neutral-600">weights Δ</span>}
+      </div>
+      {isUser
+        ? <pre className="font-mono text-sm text-white whitespace-pre-wrap break-words">{t.content}</pre>
+        : <MarkdownView text={t.content} />
+      }
+      {t.sentinel_verdict && <SentinelVerdictRibbon verdict={t.sentinel_verdict} />}
+      {t.zfae_metrics && (
+        <div className="text-[0.6rem] font-mono text-neutral-600 flex flex-wrap gap-3">
+          <span>step {t.zfae_metrics.zfae_training_step ?? 0}</span>
+          <span>loss {t.zfae_metrics.zfae_last_loss == null ? "—" : Number(t.zfae_metrics.zfae_last_loss).toFixed(4)}</span>
+          {t.zfae_metrics.zfae_checkpoint_digest && <span title={t.zfae_metrics.zfae_checkpoint_digest}>digest {t.zfae_metrics.zfae_checkpoint_digest.slice(0, 10)}…</span>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function WorkspacePage() {
-  // session + context
-  const [session, setSession] = useState(null);
-  const [sessions, setSessions] = useState([]);
-  const [systemContext, setSystemContext] = useState("You are a careful, source-aware research assistant. Use Markdown. Math: $...$ and $$...$$.");
-  const [persona, setPersona] = useState("");
-
-  // models
-  const [inventory, setInventory] = useState([]);
-  const [selectedModels, setSelectedModels] = useState([]);
-
-  // chat
-  const [mode, setMode] = useState("fanout");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialAgent = searchParams.get("agent") || "";
+  const [agents, setAgents] = useState([]);
+  const [agentId, setAgentId] = useState(initialAgent);
+  const [agent, setAgent] = useState(null);
+  const [mode, setMode] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [rounds, setRounds] = useState(2);
-  const [transcript, setTranscript] = useState([]);   // list of {role, panels: [{model_id, content, usage, error}], ts}
+  const [turns, setTurns] = useState([]);
   const [busy, setBusy] = useState(false);
-  const [carouselIdx, setCarouselIdx] = useState(0);
-  const [synthModel, setSynthModel] = useState("");
+  const [err, setErr] = useState(null);
 
-  // drafts
-  const draftSaveTimer = useRef(null);
-  const [draftId, setDraftId] = useState(null);
-  const [draftStatus, setDraftStatus] = useState("idle");
+  // halt / override state
+  const [pendingOverride, setPendingOverride] = useState(null); // { id, verdict, prompt, mode }
+
+  const inputRef = useRef(null);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
-    (async () => {
-      const [inv, sess] = await Promise.all([api.inventory(), api.listSessions()]);
-      setInventory(inv.models || []);
-      setSessions(sess.sessions || []);
-      // pick three sane BYOK defaults (will only run when matching keys exist)
-      const defaults = [
-        "openai:gpt-4o-mini",
-        "anthropic:claude-sonnet-4-5-20250929",
-        "gemini:gemini-2.5-flash",
-      ];
-      setSelectedModels(defaults);
-      setSynthModel(defaults[0]);
-    })();
+    api.listInstances().then(r => {
+      setAgents(r.agents || []);
+      if (!agentId && r.agents?.length) {
+        setAgentId(r.agents[0].id);
+      }
+    }).catch(e => setErr(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function toModelId(m) {
-    return `${m.provider}:${m.id}`;
-  }
-  function providerOf(modelId) {
-    return modelId.split(":")[0];
-  }
-
-  // ---- new session
-  async function newSession() {
-    const r = await api.createSession({
-      user_id: "local",
-      title: prompt.slice(0, 40) || "untitled session",
-      system_context: systemContext,
-      persona,
-      selected_models: selectedModels,
-    });
-    setSession(r);
-    const list = await api.listSessions();
-    setSessions(list.sessions);
-  }
-
-  async function loadSession(id) {
-    const s = await api.getSession(id);
-    setSession(s);
-    setSystemContext(s.system_context || "");
-    setPersona(s.persona || "");
-    setSelectedModels(s.selected_models || []);
-    setTranscript((s.turns || []).reduce((acc, t) => {
-      if (t.role === "user") acc.push({ role: "user", content: t.content, ts: t.ts });
-      else acc.push({ role: "assistant", panels: [{ model_id: t.model_id, content: t.content, usage: t.usage }], ts: t.ts });
-      return acc;
-    }, []));
-  }
-
-  async function deleteSession(id) {
-    if (!window.confirm("delete session?")) return;
-    await api.deleteSession(id);
-    if (session?.id === id) setSession(null);
-    const list = await api.listSessions();
-    setSessions(list.sessions);
-  }
-
-  // ---- draft autosave
   useEffect(() => {
-    if (!prompt.trim()) { setDraftStatus("idle"); return; }
-    if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
-    setDraftStatus("dirty");
-    draftSaveTimer.current = setTimeout(async () => {
-      setDraftStatus("saving");
-      try {
-        if (draftId) {
-          await api.updateDraft(draftId, { user_id: "local", content: prompt, title: prompt.slice(0, 40), tags: [mode] });
-        } else {
-          const d = await api.createDraft({ user_id: "local", content: prompt, title: prompt.slice(0, 40), tags: [mode] });
-          setDraftId(d.id);
-        }
-        setDraftStatus("saved");
-      } catch { setDraftStatus("error"); }
-    }, 1200);
-    return () => clearTimeout(draftSaveTimer.current);
-  }, [prompt, mode]);  // eslint-disable-line react-hooks/exhaustive-deps
+    if (!agentId) return setAgent(null);
+    api.getInstance(agentId).then(setAgent).catch(e => setErr(e.message));
+    setSearchParams(agentId ? { agent: agentId } : {}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId]);
 
-  // ---- send
-  async function send() {
-    if (!prompt.trim() || busy) return;
-    setBusy(true);
-    const userTurn = { role: "user", content: prompt, ts: new Date().toISOString() };
-    setTranscript(t => [...t, userTurn]);
-    let curSession = session;
-    if (!curSession) {
-      const r = await api.createSession({
-        user_id: "local",
-        title: prompt.slice(0, 40),
-        system_context: systemContext,
-        persona,
-        selected_models: selectedModels,
-      });
-      curSession = r;
-      setSession(r);
-      const list = await api.listSessions(); setSessions(list.sessions);
-    }
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [turns.length, busy]);
+
+  const transcriptForApi = useMemo(() => turns.map(t => ({ role: t.role, content: t.content })), [turns]);
+
+  const send = useCallback(async (textOverride, modeOverride, overrideId) => {
+    const text = (textOverride ?? prompt).trim();
+    const m = modeOverride ?? mode ?? agent?.sheet?.mode;
+    if (!text || !agentId || busy) return;
+    const myId = Date.now();
+    setTurns(prev => [...prev, { id: myId, role: "user", content: text, mode: m }]);
+    setPrompt("");
+    setBusy(true); setErr(null);
     try {
-      if (mode === "single") {
-        if (!selectedModels.length) throw new Error("pick at least one model");
-        const r = await api.chatSingle({
-          user_id: "local",
-          model_id: selectedModels[0],
-          messages: [{ role: "user", content: prompt }],
-          system: systemContext,
-          session_id: curSession.id,
+      const { status, data } = await api.chatInstance(agentId, {
+        user_id: "local",
+        prompt: text,
+        mode: m || undefined,
+        transcript: transcriptForApi,
+        override_id: overrideId || undefined,
+      });
+      const assistantTurn = {
+        id: myId + 1,
+        role: "assistant",
+        content: data.assistantText || "(empty)",
+        mode: data.mode,
+        reply_source: data.reply_source,
+        teacher_called: data.teacher_called,
+        zfae_weights_updated: data.zfae_weights_updated,
+        sentinel_verdict: data.sentinel_verdict,
+        zfae_metrics: data.zfae_metrics,
+      };
+      setTurns(prev => [...prev, assistantTurn]);
+      if (status === 202 && data.pending_override_id) {
+        setPendingOverride({
+          id: data.pending_override_id,
+          verdict: data.sentinel_verdict,
+          prompt: text,
+          mode: m,
         });
-        setTranscript(t => [...t, { role: "assistant", panels: [{ model_id: r.result.model_id, content: r.result.content, usage: r.result.usage, error: r.result.error }], ts: new Date().toISOString() }]);
-      } else if (mode === "fanout") {
-        if (selectedModels.length < 2) throw new Error("fan-out: pick ≥ 2 models");
-        const r = await api.chatFanout({
-          user_id: "local",
-          prompt, system_context: systemContext,
-          model_ids: selectedModels,
-          session_id: curSession.id,
-        });
-        setTranscript(t => [...t, { role: "assistant", panels: r.results, ts: new Date().toISOString(), kind: "fanout" }]);
-        setCarouselIdx(0);
-      } else if (mode === "daisy") {
-        if (selectedModels.length < 2) throw new Error("daisy-chain: pick ≥ 2 models");
-        const r = await api.chatDaisy({
-          user_id: "local",
-          prompt, system_context: systemContext,
-          model_ids: selectedModels,
-          rounds,
-          session_id: curSession.id,
-        });
-        setTranscript(t => [...t, { role: "assistant", panels: r.steps, ts: new Date().toISOString(), kind: "daisy" }]);
       }
-      setPrompt("");
-      setDraftId(null);
-      setDraftStatus("idle");
     } catch (e) {
-      setTranscript(t => [...t, { role: "assistant", panels: [{ model_id: "error", content: "", error: e?.response?.data?.detail || e.message }], ts: new Date().toISOString() }]);
+      setErr(e?.response?.data?.detail || e.message);
+    } finally {
+      setBusy(false);
+      // refresh agent metrics
+      if (agentId) api.getInstance(agentId).then(setAgent).catch(() => {});
+    }
+  }, [prompt, mode, agent, agentId, busy, transcriptForApi]);
+
+  const approveAndResume = useCallback(async (reason) => {
+    if (!pendingOverride) return;
+    setBusy(true); setErr(null);
+    try {
+      await api.approveOverride(pendingOverride.id, { user_id: "local", justification: reason });
+      const { id, prompt: p, mode: m } = pendingOverride;
+      setPendingOverride(null);
+      // resume by re-sending the same prompt with the override_id
+      await send(p, m, id);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message);
     } finally {
       setBusy(false);
     }
-  }
+  }, [pendingOverride, send]);
 
-  async function synthesizeLast() {
-    const last = [...transcript].reverse().find(t => t.role === "assistant" && t.kind === "fanout");
-    if (!last) { alert("no fan-out responses to synthesize"); return; }
+  const rejectOverride = useCallback(async (reason) => {
+    if (!pendingOverride) return;
     setBusy(true);
     try {
-      const r = await api.chatSynthesize({
-        user_id: "local",
-        prompt: [...transcript].reverse().find(t => t.role === "user")?.content || "",
-        responses: last.panels,
-        synth_model: synthModel,
-      });
-      setTranscript(t => [...t, { role: "assistant", panels: [{ model_id: `synth(${synthModel})`, content: r.synthesis.content, usage: r.synthesis.usage, error: r.synthesis.error }], ts: new Date().toISOString(), kind: "synthesis" }]);
+      await api.rejectOverride(pendingOverride.id, { user_id: "local", reason });
+      setPendingOverride(null);
     } catch (e) {
-      alert("synth failed: " + e.message);
+      setErr(e?.response?.data?.detail || e.message);
     } finally { setBusy(false); }
-  }
+  }, [pendingOverride]);
 
-  function toggleModel(id) {
-    setSelectedModels(xs => xs.includes(id) ? xs.filter(x => x !== id) : [...xs, id]);
-  }
-
-  // ---- inventory grouped
-  const inventoryByProvider = useMemo(() => {
-    const g = {};
-    for (const m of inventory) {
-      const head = m.provider === "emergent" ? `emergent (→ ${m.via || "?"})` : m.provider;
-      if (!g[head]) g[head] = [];
-      g[head].push(m);
-    }
-    return g;
-  }, [inventory]);
+  const metrics = agent?.zfae_metrics || {};
 
   return (
-    <div className="space-y-4" data-testid="page-workspace">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="font-mono text-2xl tracking-tighter">Workspace</h1>
-          <p className="text-neutral-400 text-sm mt-1">
-            Multi-model chat · markdown + LaTeX/arXiv · editable context per session · prompt drafts autosaved.
-          </p>
+    <div className="space-y-4 h-full" data-testid="page-workspace">
+      <header className="border border-white/10 bg-bg-panel p-3 flex flex-wrap items-center gap-3" data-testid="ws-agent-bar">
+        <div className="flex-1 min-w-[18rem]">
+          <label className="block text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-500">agent</label>
+          <select data-testid="ws-agent-select" value={agentId} onChange={e => { setAgentId(e.target.value); setTurns([]); }}
+                  className="w-full bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-sm text-white">
+            <option value="">— select agent —</option>
+            {agents.map(a => <option key={a.id} value={a.id}>{a.sheet?.name || a.id.slice(0, 8)}</option>)}
+          </select>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          <Pill tone={draftStatus === "saved" ? "emerald" : draftStatus === "saving" ? "amber" : draftStatus === "error" ? "rose" : "default"} testid="draft-status">
-            draft :: {draftStatus}
-          </Pill>
-          <button className="btn-ghost" onClick={newSession} data-testid="ws-new-session">
-            <Plus size={14}/> new session
-          </button>
+        <div className="flex-1 min-w-[18rem]">
+          <label className="block text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-500">mode override (per turn)</label>
+          <select data-testid="ws-mode-select" value={mode} onChange={e => setMode(e.target.value)}
+                  className="w-full bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-xs text-white">
+            <option value="">— use agent default ({agent?.sheet?.mode || "—"}) —</option>
+            {MODE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.value}</option>)}
+          </select>
         </div>
+        {agent && (
+          <Link to="/agents" data-testid="ws-edit-agent-link" className="text-[0.65rem] font-mono uppercase tracking-wider text-accent-cyan/80 hover:text-accent-cyan">
+            edit sheet →
+          </Link>
+        )}
       </header>
 
-      <div className="grid lg:grid-cols-[260px_1fr] gap-4">
-        {/* Sessions sidebar */}
-        <aside className="space-y-3">
-          <Panel title="sessions">
-            <ul className="max-h-[260px] overflow-auto">
-              {sessions.map(s => (
-                <li key={s.id} className={"group flex items-center justify-between border-b border-white/5 last:border-0 hover:bg-bg-surface " + (session?.id === s.id ? "bg-bg-surface" : "")}>
-                  <button onClick={() => loadSession(s.id)} className="flex-1 text-left p-3 text-xs font-mono text-neutral-300" data-testid={`session-load-${s.id}`}>
-                    <div className="truncate">{s.title || "untitled"}</div>
-                    <div className="text-[0.65rem] text-neutral-500 mt-0.5">{s.turns_count} turns · {s.updated_at?.slice(0,16)?.replace("T", " ")}</div>
-                  </button>
-                  <button className="opacity-0 group-hover:opacity-100 p-2" onClick={() => deleteSession(s.id)} data-testid={`session-delete-${s.id}`}>
-                    <Trash size={14} className="text-accent-rose"/>
-                  </button>
-                </li>
-              ))}
-              {!sessions.length && <li className="p-3 text-xs text-neutral-500 font-mono">No sessions yet.</li>}
-            </ul>
-          </Panel>
-
-          <Panel title="context · editable">
-            <div className="p-3 space-y-2">
-              <label className="section-overline">system</label>
-              <textarea
-                className="input-term min-h-[100px] resize-y"
-                value={systemContext}
-                onChange={e => setSystemContext(e.target.value)}
-                data-testid="ws-system-input"
-              />
-              <label className="section-overline">persona (optional)</label>
-              <input
-                className="input-term"
-                placeholder="e.g. socratic tutor, sceptical reviewer"
-                value={persona}
-                onChange={e => setPersona(e.target.value)}
-                data-testid="ws-persona-input"
-              />
-              {session && (
-                <button
-                  className="btn-ghost w-full justify-center"
-                  data-testid="ws-context-save"
-                  onClick={async () => {
-                    await api.updateSession(session.id, {
-                      user_id: "local",
-                      title: session.title,
-                      system_context: systemContext,
-                      persona,
-                      selected_models: selectedModels,
-                    });
-                    setSession({...session, system_context: systemContext, persona, selected_models: selectedModels});
-                  }}
-                ><FloppyDiskBack size={14}/> save context</button>
-              )}
-            </div>
-          </Panel>
-
-          <Panel title="byok status">
-            <div className="p-3 text-[0.7rem] text-neutral-400 font-sans leading-relaxed">
-              All chat runs against your own provider keys. Add OpenAI / Anthropic / Gemini / xAI keys in the <span className="text-accent-cyan font-mono">Key Vault</span>. Without keys, models in the inventory will return a clear "no api key" message — no platform fallback in this build.
-            </div>
-          </Panel>
-        </aside>
-
-        {/* Main chat column */}
-        <div className="space-y-4">
-          {/* Mode + model picker */}
-          <Panel title="run config">
-            <div className="p-4 space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {MODES.map(m => (
-                  <button key={m.id}
-                    className={"btn-ghost " + (mode === m.id ? "active" : "")}
-                    onClick={() => setMode(m.id)}
-                    data-testid={`mode-${m.id}`}>{m.label}</button>
-                ))}
-                {mode === "daisy" && (
-                  <div className="flex items-center gap-2">
-                    <span className="section-overline">rounds</span>
-                    <input type="number" min={1} max={6} value={rounds}
-                      onChange={e => setRounds(Math.max(1, Math.min(6, parseInt(e.target.value || "1", 10))))}
-                      className="input-term w-16" data-testid="ws-rounds"/>
-                  </div>
-                )}
-              </div>
-
-              <div className="border border-white/10">
-                <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
-                  <span className="section-overline">models · {selectedModels.length} selected</span>
-                  <button className="btn-ghost py-1 px-2 text-[0.65rem]" onClick={() => setSelectedModels([])} data-testid="ws-clear-models">clear</button>
-                </div>
-                <div className="p-3 max-h-[240px] overflow-auto space-y-3">
-                  {Object.entries(inventoryByProvider).map(([prov, ms]) => (
-                    <div key={prov}>
-                      <div className="text-[0.65rem] tracking-ultra uppercase text-accent-cyan mb-1">{prov}</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {ms.map(m => {
-                          const id = toModelId(m);
-                          const sel = selectedModels.includes(id);
-                          return (
-                            <button key={id}
-                              onClick={() => toggleModel(id)}
-                              className={"text-[0.7rem] font-mono px-2 py-1 border " + (sel ? "border-accent-cyan text-accent-cyan bg-bg-deep" : "border-white/10 text-neutral-400 hover:border-white/40")}
-                              data-testid={`model-toggle-${id}`}
-                              title={id}>
-                              {sel ? "● " : "○ "}{m.id || id}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                  {!inventory.length && <div className="text-xs text-neutral-500 font-mono">No inventory loaded. Add a BYOK key or use Emergent routing.</div>}
-                </div>
-              </div>
-            </div>
-          </Panel>
-
-          {/* Transcript */}
-          <Panel title={`transcript · ${session?.title || "ephemeral"}`}
-            right={busy ? <AsciiLoader label={mode}/> : <Pill tone="default">{mode}</Pill>}>
-            <div className="p-3 space-y-3 max-h-[55vh] overflow-auto" data-testid="ws-transcript">
-              {transcript.map((t, idx) => (
-                <TranscriptRow key={idx}
-                  turn={t}
-                  carouselIdx={carouselIdx}
-                  setCarouselIdx={setCarouselIdx}/>
-              ))}
-              {!transcript.length && (
-                <div className="text-xs text-neutral-500 font-mono p-2">
-                  Empty transcript. Pick models, write a prompt, hit send.
-                </div>
-              )}
-            </div>
-          </Panel>
-
-          {/* Composer */}
-          <Panel title="compose">
-            <div className="p-3 space-y-2">
-              <textarea
-                className="input-term min-h-[100px] resize-y"
-                placeholder="Write your prompt… Markdown + LaTeX OK ($...$ inline, $$...$$ block). cmd/ctrl+enter to send."
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                onKeyDown={e => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") send();
-                }}
-                data-testid="ws-prompt-input"
-              />
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <button className="btn-primary" onClick={send} disabled={busy} data-testid="ws-send-btn">
-                    <PaperPlaneTilt size={14}/> send
-                  </button>
-                  {mode === "fanout" && (
-                    <>
-                      <button className="btn-amber" onClick={synthesizeLast} disabled={busy} data-testid="ws-synth-btn">
-                        <Sparkle size={14}/> synthesize
-                      </button>
-                      <select className="input-term w-auto" value={synthModel} onChange={e => setSynthModel(e.target.value)} data-testid="ws-synth-model">
-                        {selectedModels.map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                    </>
-                  )}
-                </div>
-                <div className="text-[0.65rem] text-neutral-500 font-mono">cmd/ctrl+enter</div>
-              </div>
-            </div>
-          </Panel>
+      {agent && (
+        <div className="border border-white/10 bg-bg-surface px-3 py-2 flex flex-wrap items-center gap-4 text-[0.65rem] font-mono text-neutral-400" data-testid="ws-metrics">
+          <Pulse size={12} className="text-accent-cyan" />
+          <span>scalars <span className="text-white">{(metrics.zfae_weight_count_total ?? metrics.zfae_weight_count ?? 0).toLocaleString()}</span></span>
+          <span>step <span className="text-white">{metrics.zfae_training_step ?? 0}</span></span>
+          <span>seeds <span className="text-white">{metrics.zfae_total_seeds_touched ?? 0} / 471</span></span>
+          <span>last loss <span className="text-white">{metrics.zfae_last_loss == null ? "—" : Number(metrics.zfae_last_loss).toFixed(4)}</span></span>
+          <span className="truncate" title={metrics.zfae_checkpoint_digest}>digest <span className="text-white">{metrics.zfae_checkpoint_digest?.slice(0, 12) || "—"}…</span></span>
         </div>
-      </div>
-    </div>
-  );
-}
+      )}
 
-function TranscriptRow({ turn, carouselIdx, setCarouselIdx }) {
-  if (turn.role === "user") {
-    return (
-      <div className="p-3 bg-bg-deep border-l-2 border-accent-amber" data-testid="turn-user">
-        <div className="section-overline">user</div>
-        <div className="mt-1 whitespace-pre-wrap text-sm">{turn.content}</div>
-      </div>
-    );
-  }
-  if (turn.kind === "fanout") {
-    return <FanoutCarousel panels={turn.panels} carouselIdx={carouselIdx} setCarouselIdx={setCarouselIdx} />;
-  }
-  if (turn.kind === "daisy") {
-    return (
-      <div className="space-y-2" data-testid="turn-daisy">
-        <div className="section-overline text-accent-cyan">daisy-chain ↓</div>
-        {turn.panels.map((p, i) => (
-          <div key={i} className="border-l-2 border-accent-cyan pl-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Pill tone="cyan">step {p.step ?? i+1}</Pill>
-              <Pill>{p.model_id}</Pill>
-              {p.usage?.total ? <Pill tone="amber">{p.usage.total} tok</Pill> : null}
-            </div>
-            {p.error ? <div className="text-xs text-accent-rose font-mono">{p.error}</div> : <MarkdownView>{p.content}</MarkdownView>}
-            {i < turn.panels.length - 1 && <div className="font-mono text-neutral-700 text-xs ml-1 my-1">│</div>}
+      {err && (
+        <div className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-rose-300 text-xs font-mono" data-testid="ws-error">{String(err)}</div>
+      )}
+
+      <div ref={scrollRef} className="border border-white/10 bg-bg-panel min-h-[20rem] max-h-[60vh] overflow-y-auto p-4 space-y-4" data-testid="ws-transcript">
+        {turns.length === 0 && (
+          <div className="text-neutral-500 text-xs font-mono" data-testid="ws-transcript-empty">
+            {agentId ? "Send a prompt to begin. Every turn is gated by the 13 sentinels." : "Select or create an agent to start."}
           </div>
-        ))}
-      </div>
-    );
-  }
-  if (turn.kind === "synthesis") {
-    const p = turn.panels[0];
-    return (
-      <div className="border border-accent-amber/40 bg-amber-500/[0.04] p-3" data-testid="turn-synthesis">
-        <div className="flex items-center gap-2 mb-1">
-          <Pill tone="amber">synthesis</Pill>
-          <Pill>{p.model_id}</Pill>
-        </div>
-        {p.error ? <div className="text-xs text-accent-rose font-mono">{p.error}</div> : <MarkdownView>{p.content}</MarkdownView>}
-      </div>
-    );
-  }
-  // single
-  const p = turn.panels[0];
-  return (
-    <div className="border-l-2 border-accent-cyan pl-3" data-testid="turn-assistant">
-      <div className="flex items-center gap-2 mb-1">
-        <Pill tone="cyan">{p.model_id}</Pill>
-        {p.usage?.total ? <Pill tone="amber">{p.usage.total} tok</Pill> : null}
-      </div>
-      {p.error ? <div className="text-xs text-accent-rose font-mono">{p.error}</div> : <MarkdownView>{p.content}</MarkdownView>}
-    </div>
-  );
-}
-
-function FanoutCarousel({ panels, carouselIdx, setCarouselIdx }) {
-  const total = panels.length;
-  const idx = Math.min(carouselIdx, total - 1);
-  const cur = panels[idx];
-  return (
-    <div data-testid="turn-fanout">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Pill tone="amber">fan-out · {total} responses</Pill>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-ghost py-1 px-2" onClick={() => setCarouselIdx(Math.max(0, idx - 1))} disabled={idx === 0} data-testid="fanout-prev">
-            <CaretLeft size={14}/>
-          </button>
-          <span className="font-mono text-xs">{idx+1}/{total}</span>
-          <button className="btn-ghost py-1 px-2" onClick={() => setCarouselIdx(Math.min(total-1, idx + 1))} disabled={idx === total - 1} data-testid="fanout-next">
-            <CaretRight size={14}/>
-          </button>
-        </div>
+        )}
+        {turns.map(t => <Turn key={t.id} t={t} />)}
+        {busy && <div className="text-[0.7rem] font-mono text-neutral-500 animate-pulse" data-testid="ws-busy">processing turn…</div>}
       </div>
 
-      {/* Mobile: stacked. Desktop: horizontal scroll-snap carousel */}
-      <div className="md:hidden border-l-2 border-accent-cyan pl-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Pill tone="cyan">{cur.model_id}</Pill>
-          {cur.usage?.total ? <Pill tone="amber">{cur.usage.total} tok</Pill> : null}
-        </div>
-        {cur.error ? <div className="text-xs text-accent-rose font-mono">{cur.error}</div> : <MarkdownView>{cur.content}</MarkdownView>}
-      </div>
+      <form
+        data-testid="ws-form"
+        onSubmit={e => { e.preventDefault(); send(); }}
+        className="flex items-end gap-2"
+      >
+        <textarea
+          ref={inputRef}
+          data-testid="ws-prompt-input"
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          onKeyDown={e => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { e.preventDefault(); send(); } }}
+          rows={3}
+          placeholder={agentId ? "Prompt the agent. ⌘/Ctrl+Enter to send." : "Pick an agent above first."}
+          disabled={!agentId || busy}
+          className="flex-1 bg-bg-surface border border-white/10 px-3 py-2 font-mono text-sm text-white disabled:opacity-40"
+        />
+        <button type="submit" disabled={!agentId || busy || !prompt.trim()} data-testid="ws-send-btn"
+                className="px-4 py-2 border border-accent-cyan/40 text-accent-cyan font-mono text-xs uppercase tracking-wider hover:bg-accent-cyan/10 disabled:opacity-40 flex items-center gap-1.5">
+          <PaperPlaneTilt size={14} /> send
+        </button>
+      </form>
 
-      <div className="hidden md:flex snap-track overflow-x-auto gap-3 pb-2" data-testid="fanout-carousel">
-        {panels.map((p, i) => (
-          <div key={i}
-               className={"snap-card min-w-[340px] max-w-[420px] flex-shrink-0 border " + (i === idx ? "border-accent-cyan" : "border-white/10") + " bg-bg-deep p-3"}>
-            <div className="flex items-center gap-2 mb-1">
-              <Pill tone={i === idx ? "cyan" : "default"}>{p.model_id}</Pill>
-              {p.usage?.total ? <Pill tone="amber">{p.usage.total} tok</Pill> : null}
-            </div>
-            {p.error
-              ? <div className="text-xs text-accent-rose font-mono">{p.error}</div>
-              : <div className="max-h-[360px] overflow-auto"><MarkdownView>{p.content}</MarkdownView></div>}
-          </div>
-        ))}
-      </div>
+      {pendingOverride && (
+        <div className="border border-rose-500/40 bg-rose-500/5 px-3 py-2 flex items-center gap-3 text-xs font-mono text-rose-200" data-testid="ws-halt-banner">
+          <ShieldWarning size={14} />
+          Sentinel halt — explicit override required to continue.
+          <Link to="/overrides" className="ml-auto underline text-rose-100">manage overrides</Link>
+          <button onClick={() => setPendingOverride(null)} className="text-rose-400 hover:text-white">dismiss</button>
+        </div>
+      )}
+
+      <OverrideModal
+        overrideId={pendingOverride?.id}
+        verdict={pendingOverride?.verdict}
+        busy={busy}
+        onApprove={approveAndResume}
+        onReject={rejectOverride}
+        onDismiss={() => setPendingOverride(null)}
+      />
     </div>
   );
 }

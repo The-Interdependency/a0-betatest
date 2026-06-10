@@ -1,3 +1,39 @@
+// === MODULE_BUILD ===
+// id: fe_page_drafts
+//   module_name: DraftsPage
+//   module_kind: ui_page
+//   summary: local prompt drafts — list / create / edit / delete; persists via /api/drafts
+//   owner: Erin Spencer
+//   public_surface: DraftsPage
+//   internal_surface: none
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_page_drafts_boundaries
+//   summary: CRUD over /api/drafts
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_page_drafts
+//   summary: drafts CRUD ui
+//   exposes: DraftsPage
+//   boundaries: auth:none, storage:none, network:external, user_data:write
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
+
+
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { Panel, Pill, AsciiLoader } from "../components/Panel";

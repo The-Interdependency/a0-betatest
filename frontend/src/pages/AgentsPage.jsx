@@ -1,169 +1,215 @@
-import React, { useEffect, useState } from "react";
-import { api } from "../lib/api";
-import { Panel, Pill, AsciiLoader } from "../components/Panel";
-import { Download, Lightning, Plus, Trash, Lock } from "@phosphor-icons/react";
+// === MODULE_BUILD ===
+// id: fe_page_agents
+//   module_name: AgentsPage
+//   module_kind: ui_page
+//   summary: agent CRUD — list every instance with zfae metrics, create via CharacterSheetForm, edit existing sheet, archive/delete
+//   owner: Erin Spencer
+//   public_surface: AgentsPage
+//   internal_surface: Row, useAgents
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert; agent CRUD requires curl
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_page_agents_boundaries
+//   summary: page-level CRUD over /api/instances
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_page_agents
+//   summary: page-level CRUD over /api/instances
+//   exposes: AgentsPage
+//   boundaries: auth:none, storage:none, network:external, user_data:write
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
 
-const EMPTY = {
-  slug: "", name: "", description: "",
-  system_context: "", persona: "",
-  default_models: "",
-  capabilities: "",
-  aimmh_pattern: "fan_out",
-  rounds: 1,
-  is_premium: false,
-};
+import React, { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Plus, Pencil, Trash, Archive, ArrowRight } from "@phosphor-icons/react";
+import { api } from "../lib/api";
+import CharacterSheetForm from "../components/CharacterSheetForm";
+import { MODE_LABELS } from "../lib/sentinels";
+
+function fmtInt(n) { return typeof n === "number" ? n.toLocaleString() : "—"; }
+
+function Row({ a, onEdit, onDelete, onArchive }) {
+  const m = a.zfae_metrics || {};
+  return (
+    <tr className="border-t border-white/5" data-testid={`agent-row-${a.id}`}>
+      <td className="px-3 py-2 font-mono text-xs text-white">{a.sheet?.name || "—"}</td>
+      <td className="px-3 py-2 font-mono text-[0.65rem] text-neutral-400">{MODE_LABELS[a.sheet?.mode] || a.sheet?.mode}</td>
+      <td className="px-3 py-2 font-mono text-[0.65rem] text-neutral-300">{fmtInt(m.zfae_weight_count_total ?? m.zfae_weight_count)}</td>
+      <td className="px-3 py-2 font-mono text-[0.65rem] text-neutral-300">{fmtInt(m.zfae_training_step)}</td>
+      <td className="px-3 py-2 font-mono text-[0.65rem] text-neutral-300">
+        {m.zfae_total_seeds_touched ?? 0} / 471
+      </td>
+      <td className="px-3 py-2 font-mono text-[0.65rem] text-neutral-500">
+        {m.zfae_last_loss == null ? "—" : Number(m.zfae_last_loss).toFixed(4)}
+      </td>
+      <td className="px-3 py-2 font-mono text-[0.65rem] text-neutral-600 truncate max-w-[12rem]" title={m.zfae_checkpoint_digest}>
+        {m.zfae_checkpoint_digest ? m.zfae_checkpoint_digest.slice(0, 12) + "…" : "—"}
+      </td>
+      <td className="px-3 py-2 text-right space-x-1">
+        <Link to={`/?agent=${a.id}`}
+              data-testid={`agent-row-open-${a.id}`}
+              className="inline-flex items-center gap-1 px-2 py-1 border border-accent-cyan/40 text-accent-cyan text-[0.6rem] font-mono uppercase tracking-wider hover:bg-accent-cyan/10">
+          chat <ArrowRight size={12} />
+        </Link>
+        <button onClick={() => onEdit(a)} data-testid={`agent-row-edit-${a.id}`}
+                className="inline-flex items-center gap-1 px-2 py-1 border border-white/10 text-neutral-300 text-[0.6rem] font-mono uppercase tracking-wider hover:bg-bg-surface">
+          <Pencil size={12} /> edit
+        </button>
+        <button onClick={() => onArchive(a)} data-testid={`agent-row-archive-${a.id}`}
+                className="inline-flex items-center gap-1 px-2 py-1 border border-white/10 text-neutral-400 text-[0.6rem] font-mono uppercase tracking-wider hover:bg-bg-surface">
+          <Archive size={12} />
+        </button>
+        <button onClick={() => onDelete(a)} data-testid={`agent-row-delete-${a.id}`}
+                className="inline-flex items-center gap-1 px-2 py-1 border border-rose-500/40 text-rose-300 text-[0.6rem] font-mono uppercase tracking-wider hover:bg-rose-500/10">
+          <Trash size={12} />
+        </button>
+      </td>
+    </tr>
+  );
+}
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [draft, setDraft] = useState(EMPTY);
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
 
-  async function load() {
-    setLoading(true);
-    const r = await api.listAgents();
-    setAgents(r.agents || []);
-    setLoading(false);
-  }
-  useEffect(() => { load(); }, []);
-
-  async function create() {
-    if (!draft.slug.trim() || !draft.name.trim()) { alert("slug + name required"); return; }
-    setBusy(true);
+  const load = useCallback(async () => {
+    setLoading(true); setErr(null);
     try {
-      const body = {
-        ...draft,
-        default_models: draft.default_models.split(",").map(s => s.trim()).filter(Boolean),
-        capabilities: draft.capabilities.split(",").map(s => s.trim()).filter(Boolean),
-        rounds: parseInt(draft.rounds || 1, 10) || 1,
-      };
-      await api.createAgent(body);
-      setDraft(EMPTY);
+      const r = await api.listInstances();
+      setAgents(r.agents || []);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message || String(e));
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleCreate(sheet) {
+    setBusy(true); setErr(null);
+    try {
+      await api.createInstance({ user_id: "local", sheet });
+      setCreating(false);
       await load();
     } catch (e) {
-      alert("create failed: " + (e?.response?.data?.detail || e.message));
+      setErr(e?.response?.data?.detail || e.message || String(e));
     } finally { setBusy(false); }
   }
 
-  async function remove(slug) {
-    if (!window.confirm(`remove agent "${slug}"?`)) return;
-    await api.deleteAgent(slug);
-    await load();
+  async function handleEdit(sheet) {
+    if (!editing) return;
+    setBusy(true); setErr(null);
+    try {
+      await api.patchInstance(editing.id, { user_id: "local", sheet });
+      setEditing(null);
+      await load();
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message || String(e));
+    } finally { setBusy(false); }
   }
 
-  async function exportAgent(slug) {
-    const m = await api.agentManifest(slug);
-    const blob = new Blob([JSON.stringify(m, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `${slug}.a0p-agent.json`; document.body.appendChild(a); a.click();
-    a.remove(); URL.revokeObjectURL(url);
+  async function handleDelete(a) {
+    if (!window.confirm(`Delete agent ${a.sheet?.name || a.id}? This removes the safetensors checkpoint.`)) return;
+    setBusy(true);
+    try { await api.deleteInstance(a.id); await load(); }
+    catch (e) { setErr(e?.response?.data?.detail || e.message || String(e)); }
+    finally { setBusy(false); }
+  }
+
+  async function handleArchive(a) {
+    setBusy(true);
+    try { await api.archiveInstance(a.id, { user_id: "local", archived: !a.archived }); await load(); }
+    catch (e) { setErr(e?.response?.data?.detail || e.message || String(e)); }
+    finally { setBusy(false); }
   }
 
   return (
     <div className="space-y-6" data-testid="page-agents">
-      <header>
-        <h1 className="font-mono text-2xl tracking-tighter flex items-center gap-2">
-          <Lightning size={22} className="text-accent-cyan"/> Detachable Agents · catalog
-        </h1>
-        <p className="text-neutral-400 text-sm mt-1 max-w-3xl">
-          Build, store, and export portable agent manifests (phone · computer · VM). Each manifest captures
-          system context, persona, default model fleet, AIMMH pattern, and capabilities — independent of the
-          backend. Future monetization sits here: free vs. premium agents. Today all built-ins are free.
-        </p>
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-mono tracking-tight text-white">Agents</h1>
+          <p className="text-xs text-neutral-400 mt-1 font-mono">
+            Each agent is a persistent character sheet + a 1,223,187-scalar three-core ZFAE weight bank.
+          </p>
+        </div>
+        <button
+          data-testid="agents-create-btn"
+          onClick={() => setCreating(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 border border-accent-cyan/40 text-accent-cyan font-mono text-xs uppercase tracking-wider hover:bg-accent-cyan/10"
+        >
+          <Plus size={14} /> new agent
+        </button>
       </header>
 
-      <Panel title="new agent">
-        <div className="p-4 grid md:grid-cols-2 gap-2">
-          <input className="input-term" placeholder="slug (kebab-case-id)" value={draft.slug}
-            onChange={e => setDraft({...draft, slug: e.target.value})} data-testid="agent-slug"/>
-          <input className="input-term" placeholder="name" value={draft.name}
-            onChange={e => setDraft({...draft, name: e.target.value})} data-testid="agent-name"/>
-          <input className="input-term md:col-span-2" placeholder="description"
-            value={draft.description} onChange={e => setDraft({...draft, description: e.target.value})}
-            data-testid="agent-desc"/>
-          <textarea className="input-term md:col-span-2 min-h-[70px]" placeholder="system_context"
-            value={draft.system_context} onChange={e => setDraft({...draft, system_context: e.target.value})}
-            data-testid="agent-system"/>
-          <input className="input-term" placeholder="persona"
-            value={draft.persona} onChange={e => setDraft({...draft, persona: e.target.value})}
-            data-testid="agent-persona"/>
-          <input className="input-term" placeholder="capabilities (comma-separated)"
-            value={draft.capabilities} onChange={e => setDraft({...draft, capabilities: e.target.value})}
-            data-testid="agent-caps"/>
-          <input className="input-term md:col-span-2"
-            placeholder="default_models — e.g. emergent:openai:gpt-5, emergent:anthropic:claude-sonnet-4-5"
-            value={draft.default_models} onChange={e => setDraft({...draft, default_models: e.target.value})}
-            data-testid="agent-models"/>
-          <select className="input-term" value={draft.aimmh_pattern}
-            onChange={e => setDraft({...draft, aimmh_pattern: e.target.value})}
-            data-testid="agent-pattern">
-            <option value="fan_out">fan_out</option>
-            <option value="daisy_chain">daisy_chain</option>
-            <option value="council">council</option>
-            <option value="room_synthesized">room_synthesized</option>
-          </select>
-          <input className="input-term" type="number" min={1} max={6}
-            value={draft.rounds} onChange={e => setDraft({...draft, rounds: e.target.value})}
-            placeholder="rounds" data-testid="agent-rounds"/>
-          <label className="flex items-center gap-2 text-xs font-mono text-neutral-400">
-            <input type="checkbox" checked={draft.is_premium}
-              onChange={e => setDraft({...draft, is_premium: e.target.checked})}
-              data-testid="agent-premium"/>
-            mark as premium (future monetization)
-          </label>
-          <div className="md:col-span-2">
-            <button className="btn-primary" onClick={create} disabled={busy} data-testid="agent-create">
-              <Plus size={14}/> create agent
-            </button>
+      {err && (
+        <div className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-rose-300 text-xs font-mono" data-testid="agents-error">
+          {String(err)}
+        </div>
+      )}
+
+      <div className="border border-white/10 overflow-x-auto" data-testid="agents-table">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-bg-surface text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-400">
+              <th className="px-3 py-2">name</th>
+              <th className="px-3 py-2">mode</th>
+              <th className="px-3 py-2">scalars</th>
+              <th className="px-3 py-2">steps</th>
+              <th className="px-3 py-2">seeds</th>
+              <th className="px-3 py-2">last loss</th>
+              <th className="px-3 py-2">digest</th>
+              <th className="px-3 py-2 text-right">actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && (<tr><td colSpan={8} className="px-3 py-4 text-neutral-500 text-xs font-mono">loading…</td></tr>)}
+            {!loading && agents.length === 0 && (
+              <tr><td colSpan={8} className="px-3 py-6 text-neutral-500 text-xs font-mono" data-testid="agents-empty">
+                No agents yet. Click <strong>new agent</strong> to create one.
+              </td></tr>
+            )}
+            {agents.map(a => (
+              <Row key={a.id} a={a} onEdit={setEditing} onDelete={handleDelete} onArchive={handleArchive} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {(creating || editing) && (
+        <div className="fixed inset-0 z-40 bg-black/70 flex items-start justify-center p-4 overflow-y-auto" data-testid="agent-form-modal">
+          <div className="w-full max-w-3xl border border-white/10 bg-bg-panel p-5 my-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-mono text-lg text-white">{creating ? "Create agent" : `Edit ${editing.sheet?.name}`}</h2>
+              <button data-testid="agent-form-close" onClick={() => { setCreating(false); setEditing(null); }}
+                      className="text-neutral-500 hover:text-white font-mono text-xs">close</button>
+            </div>
+            <CharacterSheetForm
+              initial={editing?.sheet}
+              busy={busy}
+              submitLabel={creating ? "Create agent" : "Save changes"}
+              onSubmit={creating ? handleCreate : handleEdit}
+              onCancel={() => { setCreating(false); setEditing(null); }}
+            />
           </div>
         </div>
-      </Panel>
-
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4"
-        style={{
-          backgroundImage: "linear-gradient(to bottom, rgba(34,211,238,0.04), transparent 100px)",
-        }}>
-        {agents.map(a => (
-          <div key={a.id}
-               className="border border-white/10 bg-bg-panel hover:border-accent-cyan/60 transition-colors p-4 flex flex-col gap-3"
-               data-testid={`agent-card-${a.slug}`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="font-mono text-base text-white">{a.name}</div>
-                <div className="text-[0.65rem] text-neutral-500 font-mono">{a.slug}</div>
-              </div>
-              {a.is_premium
-                ? <Pill tone="amber"><Lock size={10} className="mr-1"/> premium</Pill>
-                : <Pill tone="emerald">free</Pill>}
-            </div>
-            <p className="text-xs text-neutral-300 leading-relaxed font-sans">
-              {a.description || "—"}
-            </p>
-            <div className="flex flex-wrap gap-1">
-              <Pill tone="cyan">{a.aimmh_pattern}</Pill>
-              {a.rounds > 1 && <Pill>r×{a.rounds}</Pill>}
-              {(a.capabilities || []).slice(0, 3).map(c => <Pill key={c}>{c}</Pill>)}
-            </div>
-            <div className="text-[0.65rem] font-mono text-neutral-500">
-              fleet · {(a.default_models || []).length} models
-            </div>
-            <div className="mt-auto flex items-center gap-2">
-              <button className="btn-ghost flex-1 justify-center"
-                onClick={() => exportAgent(a.slug)} data-testid={`agent-export-${a.slug}`}>
-                <Download size={14}/> manifest
-              </button>
-              <button className="btn-danger" onClick={() => remove(a.slug)} data-testid={`agent-del-${a.slug}`}>
-                <Trash size={14}/>
-              </button>
-            </div>
-          </div>
-        ))}
-        {!agents.length && !loading && (
-          <div className="text-xs text-neutral-500 font-mono col-span-full p-6 text-center">No agents yet.</div>
-        )}
-      </div>
-      {loading && <AsciiLoader label="loading agents"/>}
+      )}
     </div>
   );
 }

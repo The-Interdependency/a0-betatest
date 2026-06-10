@@ -1,0 +1,18 @@
+{
+  "metadata": {
+    "architecture": "a0_zfae",
+    "core_names": "phi,psi,omega",
+    "weight_shape": "[157, 53, 7, 7]",
+    "weight_count_per_core": "407729",
+    "weight_count_total": "1223187",
+    "weight_count": "407729",
+    "training_step": "0",
+    "seeds_touched_phi": "0",
+    "seeds_touched_psi": "0",
+    "seeds_touched_omega": "0",
+    "agent_id": "0ae818a4-8eaa-48cc-8153-ba62992af769",
+    "created_from": "seed_init_then_teacher_distillation",
+    "teacher_models_seen": "[]"
+  },
+  "last_loss": null
+}

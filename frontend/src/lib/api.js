@@ -1,3 +1,39 @@
+// === MODULE_BUILD ===
+// id: fe_lib_api
+//   module_name: api
+//   module_kind: client
+//   summary: axios-based REST client for every /api endpoint — health, BYOK keys, env vault, inventory, sessions, drafts, skill reports, fanout/daisy/synthesize chat, inspector, agents+slugs, instances CRUD, chat/instance, sentinels canon+modes+weights, overrides queue, gonals, usage
+//   owner: Erin Spencer
+//   public_surface: api
+//   internal_surface: client
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert; every page loses its data layer
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_lib_api_boundaries
+//   summary: thin client over the REST surface; no caching, no I/O persistence
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_lib_api
+//   summary: REST client surface for every /api endpoint
+//   exposes: api
+//   boundaries: auth:none, storage:none, network:external, user_data:write
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
+
+
 import axios from "axios";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -54,11 +90,39 @@ export const api = {
   inspectorSnap:    () => client.get("/inspector/snapshot").then(r => r.data),
   inspectorBeat:    (intent) => client.post("/inspector/heartbeat", { intent }).then(r => r.data),
 
-  // Agents
+  // Agents (legacy skill manifest — kept for back-compat)
   listAgents:       () => client.get("/agents").then(r => r.data),
   createAgent:      (body) => client.post("/agents", body).then(r => r.data),
   agentManifest:    (slug) => client.get(`/agents/${slug}/manifest`).then(r => r.data),
   deleteAgent:      (slug) => client.delete(`/agents/${slug}`).then(r => r.data),
+
+  // ─── Agent instances (canonical CRUD) ───────────────────────────────────
+  listInstances:    (user_id = "local") => client.get("/instances", { params: { user_id } }).then(r => r.data),
+  createInstance:   (body) => client.post("/instances", body).then(r => r.data),
+  getInstance:      (id, user_id = "local") => client.get(`/instances/${id}`, { params: { user_id } }).then(r => r.data),
+  patchInstance:    (id, body) => client.patch(`/instances/${id}`, body).then(r => r.data),
+  deleteInstance:   (id, user_id = "local") => client.delete(`/instances/${id}`, { params: { user_id } }).then(r => r.data),
+  archiveInstance:  (id, body) => client.post(`/instances/${id}/archive`, body).then(r => r.data),
+  chatInstance:     (id, body) => client.post(`/chat/instance/${id}`, body, { timeout: 180000, validateStatus: (s) => s < 500 }).then(r => ({ status: r.status, data: r.data })),
+  teacherContextPreview: (id, body) => client.post(`/instances/${id}/teacher-context-preview`, body).then(r => r.data),
+
+  // ─── Sentinels (13-sentinel canon + per-agent modes/weights) ────────────
+  sentinelsCanon:   () => client.get("/sentinels/canon").then(r => r.data),
+  getSentinelModes: (agent_id, user_id = "local") => client.get(`/instances/${agent_id}/sentinel-modes`, { params: { user_id } }).then(r => r.data),
+  patchSentinelModes: (agent_id, body) => client.patch(`/instances/${agent_id}/sentinel-modes`, body).then(r => r.data),
+  bulkSentinelModes: (agent_id, body) => client.post(`/instances/${agent_id}/sentinel-modes/bulk`, body).then(r => r.data),
+  getSentinelWeights: (agent_id, user_id = "local") => client.get(`/instances/${agent_id}/sentinel-weights`, { params: { user_id } }).then(r => r.data),
+  patchSentinelWeights: (agent_id, body) => client.patch(`/instances/${agent_id}/sentinel-weights`, body).then(r => r.data),
+
+  // ─── Overrides (async approve/reject for sentinel halts) ────────────────
+  listOverrides:    (params = {}) => client.get("/overrides", { params }).then(r => r.data),
+  getOverride:      (id) => client.get(`/overrides/${id}`).then(r => r.data),
+  approveOverride:  (id, body) => client.post(`/overrides/${id}/approve`, body).then(r => r.data),
+  rejectOverride:   (id, body) => client.post(`/overrides/${id}/reject`, body).then(r => r.data),
+  expireOverrides:  () => client.post("/overrides/expire").then(r => r.data),
+
+  // ─── Gonals (157-gonal carriers — public/mirror/private) ────────────────
+  listGonals:       () => client.get("/gonals").then(r => r.data),
 
   // Usage
   usage:            (user_id = "local") => client.get("/usage", { params: { user_id } }).then(r => r.data),

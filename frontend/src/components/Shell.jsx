@@ -1,15 +1,53 @@
+// === MODULE_BUILD ===
+// id: fe_component_shell
+//   module_name: Shell
+//   module_kind: ui_component
+//   summary: left-rail navigation shell with 9 routes (Workspace, Agents, Sentinels, Overrides, Inspector, Inventory, Key Vault, Env Vault, Drafts) and donation CTA
+//   owner: Erin Spencer
+//   public_surface: Shell
+//   internal_surface: items
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: none
+//   user_data_boundary: read
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert; navigation disappears
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_component_shell_boundaries
+//   summary: presentational navigation only
+//   auth_boundary: none
+//   storage_boundary: none
+//   network_boundary: none
+//   user_data_boundary: read
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_component_shell
+//   summary: presentational navigation shell
+//   exposes: Shell
+//   boundaries: auth:none, storage:none, network:none, user_data:read
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
+
+
 import React from "react";
 import { NavLink, Link } from "react-router-dom";
-import { Atom, KeyReturn, Brain, Cards, Vault, FileText, Pulse, Lightning, Coin } from "@phosphor-icons/react";
+import { Atom, KeyReturn, Brain, Cards, Vault, FileText, Pulse, Lightning, Coin, ShieldCheck, ShieldWarning } from "@phosphor-icons/react";
 
 const items = [
   { to: "/", label: "Workspace",   icon: <Brain size={18} />, testid: "nav-workspace" },
+  { to: "/agents",label: "Agents",      icon: <Lightning size={18} />, testid: "nav-agents" },
+  { to: "/sentinels", label: "Sentinels", icon: <ShieldCheck size={18} />, testid: "nav-sentinels" },
+  { to: "/overrides", label: "Overrides", icon: <ShieldWarning size={18} />, testid: "nav-overrides" },
+  { to: "/inspector", label: "Inspector",icon: <Pulse size={18} />, testid: "nav-inspector" },
   { to: "/inventory", label: "Inventory", icon: <Cards size={18} />, testid: "nav-inventory" },
   { to: "/keys",  label: "Key Vault",   icon: <KeyReturn size={18} />, testid: "nav-keys" },
   { to: "/vault", label: "Env Vault",   icon: <Vault size={18} />, testid: "nav-vault" },
   { to: "/drafts",label: "Drafts",      icon: <FileText size={18} />, testid: "nav-drafts" },
-  { to: "/inspector", label: "Inspector",icon: <Pulse size={18} />, testid: "nav-inspector" },
-  { to: "/agents",label: "Agents",      icon: <Lightning size={18} />, testid: "nav-agents" },
 ];
 
 export default function Shell({ children }) {

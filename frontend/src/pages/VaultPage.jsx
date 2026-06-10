@@ -1,3 +1,39 @@
+// === MODULE_BUILD ===
+// id: fe_page_vault
+//   module_name: VaultPage
+//   module_kind: ui_page
+//   summary: per-site multi-account env vault — list, reveal (decrypts on demand), upsert, delete
+//   owner: Erin Spencer
+//   public_surface: VaultPage
+//   internal_surface: none
+//   auth_boundary: none
+//   storage_boundary: write
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   tests: manual_browser_smoke
+//   rollout: default_enabled
+//   rollback: revert
+// === END MODULE_BUILD ===
+// === BOUNDARIES ===
+// id: fe_page_vault_boundaries
+//   summary: env vault CRUD ui
+//   auth_boundary: none
+//   storage_boundary: write
+//   network_boundary: external
+//   user_data_boundary: write
+//   admin_only: false
+//   owner: Erin Spencer
+// === END BOUNDARIES ===
+// === CAPABILITIES ===
+// id: fe_page_vault
+//   summary: env vault ui
+//   exposes: VaultPage
+//   boundaries: auth:none, storage:write, network:external, user_data:write
+//   owner: Erin Spencer
+// === END CAPABILITIES ===
+
+
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { Panel, Pill, AsciiLoader } from "../components/Panel";
