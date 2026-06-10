@@ -106,6 +106,13 @@ from a0p_skills import boundaries_runner, capabilities_runner, ratios_runner
 from agents.routes import router as agents_router, init_routes as init_agents_routes
 from interdependent_lib.zfae.runtime import ZFAERuntime
 from interdependent_lib.zfae.teacher import TeacherClient
+from interdependent_lib.zfae import (
+    sentinel_modes as zfae_sentinel_modes,
+    sentinel_weights as zfae_sentinel_weights,
+    overrides as zfae_overrides,
+    SENTINELS,
+)
+from interdependent_lib.carrier import registry as gonal_registry
 
 
 def _utc_now_iso() -> str:
@@ -790,12 +797,204 @@ app.include_router(api)
 
 
 # ---------- Agents (Tier 3): /api/instances/* + /api/chat/instance/{id} ----
-from db import agent_instances_col
+from db import agent_instances_col, pending_overrides_col
 
 _TEACHER_CLIENT = TeacherClient(REGISTRY, _get_key)
 _ZFAE_RUNTIME = ZFAERuntime(teacher_client=_TEACHER_CLIENT)
 init_agents_routes(agent_instances_col, runtime=_ZFAE_RUNTIME, get_key_fn=_get_key)
 app.include_router(agents_router, prefix="/api")
+
+
+# ---------- Sentinel modes + weights endpoints ----------
+sentinels_api = APIRouter(prefix="/api")
+
+
+@sentinels_api.get("/sentinels/canon")
+async def sentinels_canon():
+    """The 13 sentinels — names, cuts, cliff flags. Read-only canon."""
+    return {
+        "count": len(SENTINELS),
+        "sentinels": [
+            {
+                "name": s.name, "title": s.title, "cut": s.cut,
+                "cliff": s.cliff, "structural": s.structural, "plane": s.plane,
+            }
+            for s in SENTINELS
+        ],
+        "defaults": {
+            "modes": {k: v.value for k, v in zfae_sentinel_modes.SENTINEL_MODES_DEFAULT.items()},
+            "weights": zfae_sentinel_weights.SENTINEL_WEIGHTS_DEFAULT,
+            "inference_channel_default": zfae_sentinel_weights.INFERENCE_CHANNEL_DEFAULT,
+        },
+    }
+
+
+@sentinels_api.get("/instances/{agent_id}/sentinel-modes")
+async def get_sentinel_modes(agent_id: str, user_id: str = "local"):
+    doc = await agent_instances_col.find_one({"_id": agent_id, "user_id": user_id})
+    if not doc:
+        raise HTTPException(404, f"agent {agent_id} not found")
+    overrides = (doc.get("sheet") or {}).get("sentinel_modes") or {}
+    resolved = zfae_sentinel_modes.resolve_modes(overrides)
+    return {
+        "agent_id": agent_id,
+        "modes": {k: v.value for k, v in resolved.items()},
+        "overrides": overrides,
+    }
+
+
+class SentinelModesPatch(BaseModel):
+    user_id: str = "local"
+    modes: dict[str, str] = {}
+
+
+@sentinels_api.patch("/instances/{agent_id}/sentinel-modes")
+async def patch_sentinel_modes(agent_id: str, body: SentinelModesPatch):
+    try:
+        zfae_sentinel_modes.validate_modes(body.modes)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    r = await agent_instances_col.update_one(
+        {"_id": agent_id, "user_id": body.user_id},
+        {"$set": {"sheet.sentinel_modes": body.modes, "updated_at": _utc_now_iso()}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(404, f"agent {agent_id} not found")
+    return {"ok": True, "modes": body.modes}
+
+
+class SentinelBulkMode(BaseModel):
+    user_id: str = "local"
+    mode: str = "observe"
+
+
+@sentinels_api.post("/instances/{agent_id}/sentinel-modes/bulk")
+async def bulk_sentinel_modes(agent_id: str, body: SentinelBulkMode):
+    try:
+        bulk = zfae_sentinel_modes.bulk_set(body.mode)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    modes = {k: v.value for k, v in bulk.items()}
+    r = await agent_instances_col.update_one(
+        {"_id": agent_id, "user_id": body.user_id},
+        {"$set": {"sheet.sentinel_modes": modes, "updated_at": _utc_now_iso()}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(404, f"agent {agent_id} not found")
+    return {"ok": True, "applied": body.mode, "modes": modes}
+
+
+@sentinels_api.get("/instances/{agent_id}/sentinel-weights")
+async def get_sentinel_weights(agent_id: str, user_id: str = "local"):
+    doc = await agent_instances_col.find_one({"_id": agent_id, "user_id": user_id})
+    if not doc:
+        raise HTTPException(404, f"agent {agent_id} not found")
+    overrides = (doc.get("sheet") or {}).get("sentinel_weights") or {}
+    mode_overrides = (doc.get("sheet") or {}).get("sentinel_modes") or {}
+    resolved_weights = zfae_sentinel_weights.resolve_weights(overrides)
+    resolved_modes = zfae_sentinel_modes.resolve_modes(mode_overrides)
+    ic = zfae_sentinel_weights.inference_channel(resolved_weights, resolved_modes)
+    return {
+        "agent_id": agent_id,
+        "weights": resolved_weights,
+        "overrides": overrides,
+        "inference_channel": ic,
+    }
+
+
+class SentinelWeightsPatch(BaseModel):
+    user_id: str = "local"
+    weights: dict[str, float] = {}
+
+
+@sentinels_api.patch("/instances/{agent_id}/sentinel-weights")
+async def patch_sentinel_weights(agent_id: str, body: SentinelWeightsPatch):
+    try:
+        zfae_sentinel_weights.validate_weights(body.weights)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    r = await agent_instances_col.update_one(
+        {"_id": agent_id, "user_id": body.user_id},
+        {"$set": {"sheet.sentinel_weights": body.weights, "updated_at": _utc_now_iso()}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(404, f"agent {agent_id} not found")
+    return {"ok": True, "weights": body.weights}
+
+
+# ---------- Pending overrides endpoints ----------
+@sentinels_api.get("/overrides")
+async def list_overrides(user_id: str = "local", status: str = "pending", limit: int = 100):
+    if status == "pending":
+        records = await zfae_overrides.list_pending(pending_overrides_col, user_id=user_id, limit=limit)
+        return {"overrides": [r.__dict__ for r in records], "count": len(records)}
+    out = []
+    async for doc in pending_overrides_col.find(
+        {"user_id": user_id, "status": status}
+    ).sort("created_ms", -1).limit(limit):
+        doc.setdefault("id", doc.pop("_id", None))
+        out.append(doc)
+    return {"overrides": out, "count": len(out)}
+
+
+@sentinels_api.get("/overrides/{override_id}")
+async def get_override(override_id: str):
+    rec = await zfae_overrides.get(pending_overrides_col, override_id)
+    if rec is None:
+        raise HTTPException(404, f"override {override_id} not found")
+    return rec.__dict__
+
+
+class OverrideApprove(BaseModel):
+    user_id: str = "local"
+    justification: str = ""
+
+
+@sentinels_api.post("/overrides/{override_id}/approve")
+async def approve_override(override_id: str, body: OverrideApprove):
+    rec = await zfae_overrides.approve(pending_overrides_col, override_id, body.user_id, body.justification)
+    if rec is None:
+        raise HTTPException(404, f"override {override_id} not found or not pending")
+    return {"ok": True, "status": rec.status, "id": rec.id, "resolved_ms": rec.resolved_ms}
+
+
+class OverrideReject(BaseModel):
+    user_id: str = "local"
+    reason: str = ""
+
+
+@sentinels_api.post("/overrides/{override_id}/reject")
+async def reject_override(override_id: str, body: OverrideReject):
+    rec = await zfae_overrides.reject(pending_overrides_col, override_id, body.user_id, body.reason)
+    if rec is None:
+        raise HTTPException(404, f"override {override_id} not found or not pending")
+    return {"ok": True, "status": rec.status, "id": rec.id, "resolved_ms": rec.resolved_ms}
+
+
+@sentinels_api.post("/overrides/expire")
+async def expire_overrides():
+    n = await zfae_overrides.expire(pending_overrides_col)
+    return {"expired": n}
+
+
+# ---------- Gonal registry endpoint (public counts only) ----------
+@sentinels_api.get("/gonals")
+async def list_gonals():
+    """Three named gonals. Default+mirror are public; private is per-agent and not enumerated here."""
+    from interdependent_lib.carrier.gonal import validate_gonal, GonalSpec
+    default = gonal_registry.get_default()
+    mirror = gonal_registry.get_mirror()
+    spec = GonalSpec()
+    return {
+        "gonals": [
+            {"name": "default", "n": len(default), "counts": validate_gonal(default, spec)["counts"], "is_public": True},
+            {"name": "mirror",  "n": len(mirror),  "counts": validate_gonal(mirror, spec)["counts"],  "is_public": True},
+            {"name": "private", "n": "hmmm",        "counts": "hmmm",                                   "is_public": False},
+        ],
+    }
+
+
+app.include_router(sentinels_api)
 
 
 # ---------- startup ----------

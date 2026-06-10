@@ -55,18 +55,17 @@
 #   class: correctness
 #   call: a0p_skills.contracts.zfae_engine_native_only_holds
 # === END CONTRACTS ===
-"""a0(ZFAE) — inference provider.
+"""ZFAE — the inference provider canon.
 
-Per user spec 2026-06-02:
+Per user spec 2026-06-02 onward:
   • a0(zfae) is the inference PROVIDER, not an agent label.
-  • A0ZFAEInferenceEngine produces all runtime replies natively, with
-    no LLM dependency. If the native decoder is absent it returns the
-    canonical missing-native message — never another model's output.
-
-This package also retains the small ``ZFAEAgent`` persona class for
-back-compat with the existing PCNA scaffold. The persona's job is
-identity continuity; the engine's job is generating replies. The two
-are distinct.
+  • A0ZFAEInferenceEngine produces runtime replies via deterministic
+    template grammar; never via LLM.
+  • Three cores per agent (phi/psi/omega), each on its own gonal
+    (default/mirror/private); each core shape [157, 53, 7, 7]
+    = 407,729 trainable scalars; agent total 1,223,187.
+  • 13 sentinels (S1-S13) gate every state-mutating event with mode
+    observe/flag/off + per-agent editable weights.
 """
 from __future__ import annotations
 import time
@@ -80,14 +79,26 @@ from .inference import (
     ENGINE,
     infer,
 )
+from .sentinels import (
+    Sentinel, SENTINELS, SentinelMode, SentinelVerdict, Verdict13,
+    MODE_OBSERVE, MODE_FLAG, MODE_OFF,
+    all_names, is_cliff, is_structural, is_slope,
+)
+from .sentinel_modes import SENTINEL_MODES_DEFAULT, resolve_modes, validate_modes, bulk_set
+from .sentinel_weights import (
+    SENTINEL_WEIGHTS_DEFAULT, INFERENCE_CHANNEL_DEFAULT,
+    resolve_weights, validate_weights, inference_channel,
+)
+from .overrides import (
+    PendingOverride, OVERRIDE_DEFAULT_TIMEOUT_MS,
+    create_override, approve as approve_override,
+    reject as reject_override, expire as expire_overrides,
+    get as get_override, list_pending as list_pending_overrides,
+)
 
 
 class ZFAEAgent:
-    """Legacy persistent agent persona — wraps a PCNAEngine for the inspector.
-
-    Kept for the existing /api/inspector/* routes. New runtime replies
-    do NOT go through this class — they go through A0ZFAEInferenceEngine.
-    """
+    """Legacy persistent agent persona — wraps a PCNAEngine for the inspector."""
 
     def __init__(self, name: str = "a0(zfae)", base_seed: int = 1):
         self.id = str(uuid.uuid4())
@@ -112,12 +123,17 @@ class ZFAEAgent:
 
 
 __all__ = [
-    "A0ZFAEInferenceEngine",
-    "InferenceResult",
-    "MISSING_NATIVE_MESSAGE",
-    "ENGINE",
-    "infer",
-    "ZFAEAgent",
+    "A0ZFAEInferenceEngine", "InferenceResult", "MISSING_NATIVE_MESSAGE",
+    "ENGINE", "infer", "ZFAEAgent",
+    "Sentinel", "SENTINELS", "SentinelMode", "SentinelVerdict", "Verdict13",
+    "MODE_OBSERVE", "MODE_FLAG", "MODE_OFF",
+    "all_names", "is_cliff", "is_structural", "is_slope",
+    "SENTINEL_MODES_DEFAULT", "resolve_modes", "validate_modes", "bulk_set",
+    "SENTINEL_WEIGHTS_DEFAULT", "INFERENCE_CHANNEL_DEFAULT",
+    "resolve_weights", "validate_weights", "inference_channel",
+    "PendingOverride", "OVERRIDE_DEFAULT_TIMEOUT_MS",
+    "create_override", "approve_override", "reject_override",
+    "expire_overrides", "get_override", "list_pending_overrides",
 ]
 # === RATIOS ===
 # id: loc_comments

@@ -71,6 +71,7 @@ agents_col     = db["detachable_agents"]
 agent_instances_col = db["agent_instances"]
 usage_col      = db["usage_records"]
 fiq_audit_col  = db["fiq_audit_log"]
+pending_overrides_col = db["pending_overrides"]
 
 
 async def ensure_indexes():

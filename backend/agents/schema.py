@@ -153,6 +153,19 @@ class CharacterSheet(BaseModel):
     min_steps_for_native: int = 16
     max_loss_for_native: float = 0.1
 
+    # 13-sentinel mode + weight overrides (partial; missing = canonical defaults)
+    sentinel_modes: dict[str, str] = Field(default_factory=dict)
+    sentinel_weights: dict[str, float] = Field(default_factory=dict)
+
+    # Three-gonal binding per core (locked: phi=default, psi=mirror, omega=private)
+    # Encoded explicitly here for visibility; agents are not free to remap.
+    gonal_assignment: dict[str, str] = Field(
+        default_factory=lambda: {"phi": "default", "psi": "mirror", "omega": "private"}
+    )
+
+    # If gonal_assignment includes 'private', this path provides the spec
+    private_gonal_spec_path: Optional[str] = None
+
     tags: list[str] = Field(default_factory=list)
 
 
