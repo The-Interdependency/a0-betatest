@@ -144,15 +144,36 @@ manifest."* Tracked here so they stay visible.
 - ~~FIQ provenance emitters (hash-chained zfae_* events)~~ ✅ 2026-06-10
 - ~~Rename interdependent_lib/carrier/ → gonal/~~ ✅ 2026-06-10
 - ~~Fix /api/instances 500 (float inf in zfae_last_loss)~~ ✅ 2026-06-10
-- E2E frontend testing pass (testing_agent_v3) — defer until UI overhaul lands
+- ~~Frontend overhaul: Agent CRUD + character sheets + 5 lattice modes + Sentinel override UI~~ ✅ 2026-06-10
+- ~~Frontend msdmd compliance (// === MODULE_BUILD === on every .js/.jsx)~~ ✅ 2026-06-10
+- E2E frontend testing pass ✅ 2026-06-10 (iteration_4 + iteration_5)
 - Streaming responses (SSE) for chat
 
 ### P1
 - BYOK SDK migration: httpx → official openai>=1.x / anthropic / google-generativeai
-- Frontend UI overhaul: Agent CRUD, character sheets, 5 lattice modes, Sentinel override UI
 - Council UI mode (AIMMH `council` is implemented; UI toggle missing)
 - Per-call cost display in transcript using public provider pricing JSON
 - PTCA stratified `Fiq → Circle → Seed` rebuild against canon `prime_core`
+
+### P2
+- Reproducibility receipt appended to every chat reply
+- Detachable agent export: GET /api/instances/{id}/export → safetensors .zip
+- PCNA canon-topology rebuild (61-seed graph, tensor rings, heptagram propagation)
+- UCNS `a0_safe` binding when upstream `ucns` ships it
+- Premium detachable agents + Stripe checkout (3-5 mo monetization runway)
+- Termux runner + JS port of AIMMH patterns (pocket-runs-locally future)
+- Multi-user mode + audit log
+
+## Changelog — 2026-06-10 (P1 frontend overhaul)
+
+- **9 routes** wired in `App.js`: Workspace / Agents / Sentinels / Overrides / Inspector / Inventory / Key Vault / Env Vault / Drafts. Shell nav updated with `data-testid` per item.
+- **API client** (`lib/api.js`): added `listInstances`, `createInstance`, `getInstance`, `patchInstance`, `deleteInstance`, `archiveInstance`, `chatInstance`, `teacherContextPreview`, `sentinelsCanon`, `getSentinelModes`, `patchSentinelModes`, `bulkSentinelModes`, `getSentinelWeights`, `patchSentinelWeights`, `listOverrides`, `getOverride`, `approveOverride`, `rejectOverride`, `expireOverrides`, `listGonals`.
+- **New pages**: `AgentsPage` (CRUD table + modal), `SentinelsPage` (13-row mode/weight editor + bulk toggle), `OverridesPage` (pending queue + history).
+- **Overhauled** `WorkspacePage`: agent picker, mode override (5-lattice), three-core metrics ribbon, per-turn `SentinelVerdictRibbon`, halt-banner, `OverrideModal` with cliff confirmation, approve-and-resume cycle.
+- **New components**: `CharacterSheetForm`, `SentinelVerdictRibbon`, `OverrideModal`.
+- **Backend** — `UpdateAgentRequest` now accepts `{sheet:{...}}` OR `{patch:{...}}` (back-compat); empty body → 400.
+- **Documentation-as-Code** for frontend: every `.js/.jsx` module under `/app/frontend/src` now has a `// === MODULE_BUILD ===` block. New runner `a0p_skills.frontend_module_build_runner` validates coverage (18/18 covered, 0 missing). New contract `frontend_module_build_runner_smoke_holds` runs under `test_build_runner`.
+- **Verification**: iteration_4 11/13, iteration_5 retest 2/2 — overall 13/13 frontend tests PASS. 73/73 active contracts, 8/8 backend pytest.
 
 ### P2
 - Reproducibility receipt appended to every chat reply
