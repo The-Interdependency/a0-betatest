@@ -138,20 +138,46 @@ manifest."* Tracked here so they stay visible.
 ## Prioritized backlog
 
 ### P0
-- E2E frontend testing pass (testing_agent_v3) — defer until rebuilds land
+- ~~Sentinel halt-and-override pipeline~~ ✅ 2026-06-10
+- ~~Three-Core (Phi/Psi/Omega) weight bank refactor (1,223,187 scalars)~~ ✅ 2026-06-10
+- ~~Trainer round-robin across 471 seeds; native readiness requires all touched~~ ✅ 2026-06-10
+- ~~FIQ provenance emitters (hash-chained zfae_* events)~~ ✅ 2026-06-10
+- ~~Rename interdependent_lib/carrier/ → gonal/~~ ✅ 2026-06-10
+- ~~Fix /api/instances 500 (float inf in zfae_last_loss)~~ ✅ 2026-06-10
+- E2E frontend testing pass (testing_agent_v3) — defer until UI overhaul lands
 - Streaming responses (SSE) for chat
 
 ### P1
+- BYOK SDK migration: httpx → official openai>=1.x / anthropic / google-generativeai
+- Frontend UI overhaul: Agent CRUD, character sheets, 5 lattice modes, Sentinel override UI
 - Council UI mode (AIMMH `council` is implemented; UI toggle missing)
 - Per-call cost display in transcript using public provider pricing JSON
 - PTCA stratified `Fiq → Circle → Seed` rebuild against canon `prime_core`
 
 ### P2
+- Reproducibility receipt appended to every chat reply
+- Detachable agent export: GET /api/instances/{id}/export → safetensors .zip
 - PCNA canon-topology rebuild (61-seed graph, tensor rings, heptagram propagation)
 - UCNS `a0_safe` binding when upstream `ucns` ships it
 - Premium detachable agents + Stripe checkout (3-5 mo monetization runway)
 - Termux runner + JS port of AIMMH patterns (pocket-runs-locally future)
 - Multi-user mode + audit log
+
+## Changelog — 2026-06-10
+
+- **Renamed** `interdependent_lib/carrier/` → `interdependent_lib/gonal/`; updated all imports in `server.py`, `a0p_skills/contracts.py`, `interdependent_lib/network/*`.
+- **Three-Core weight bank** (`zfae/weights.py`, `zfae/weight_init.py`): `A0ZFAEWeightBank` now holds `{phi, psi, omega}` each `(157, 53, 7, 7)`. New constants `CORE_NAMES`, `WEIGHT_COUNT_PER_CORE=407_729`, `WEIGHT_COUNT_TOTAL=1_223_187`. Safetensors save/load three tensors; legacy single-tensor checkpoints auto-reseed psi/omega.
+- **Sentinel halt-and-override pipeline**:
+  - `zfae/sentinel_eval.py` — pure evaluator returns `Verdict13` (13 signals + cliff flags).
+  - `zfae/overrides.py` — `PendingOverride` lifecycle (create/approve/reject/expire).
+  - `runtime.reply()` now evaluates sentinels on every turn; flagged turns return `reply_source='zfae_halted'` and HTTP `202` with `pending_override_id`. Resume by passing `override_id` from an approved override.
+  - 7 new API endpoints under `/api/overrides/*` and `/api/sentinels/*`.
+- **Round-robin trainer** (`zfae/trainer.py`): `training_step % 3` selects core; prefers untouched seeds; native readiness now requires all 471 (157×3) seeds touched.
+- **FIQ provenance** (`zfae/fiq_emit.py`): hash-chained `zfae_chat_reply`, `zfae_training_step`, `zfae_sentinel_verdict`, `zfae_override_created`, `zfae_override_resolved` events in `fiq_audit_log` collection.
+- **JSON-safe metrics** (`agents/store.py`): `_safe_finite()` strips inf/NaN from `zfae_last_loss`; fixes recurring `/api/instances` 500.
+- **Doc-as-code**: 75 contracts · 72 pass / 0 fail / 0 error / 3 skipped.
+- **Regression**: `/app/backend/tests/test_zfae_three_core_sentinels.py` (8 tests pass).
+- **Testing-agent verification**: iteration_3 reports 100% (17/17) backend pass.
 
 ## How to run
 
