@@ -64,6 +64,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .weights import A0ZFAEWeightBank, WEIGHT_SHAPE
+from .weight_init import CORE_NAMES
 from ._parser import parse_semantic
 from ._intent import select_intent, INTENT_LABELS
 
@@ -111,13 +112,18 @@ class TrainingResult:
     weights_updated: bool
     intent_match: bool
     signature_mse: float
+    core: str = "phi"
+    seed_idx: int = 0
+    total_seeds_touched: int = 0
 
 
 class ZFAELearner:
     """Text-distillation trainer — intent-match + signature MSE.
 
     Loss = α · intent_loss + β · signature_mse
-    Update: small-step SGD on a low-rank signature projection (157 seeds × 53 payload).
+    Update: small-step SGD on a low-rank signature projection (157 seeds × 53 payload),
+    round-robin across the three cores (phi → psi → omega → phi …) so all 471
+    (157 × 3) seeds eventually become touched.
     """
 
     def __init__(self, learning_rate: float = 0.005, alpha: float = 1.0, beta: float = 1.0):
@@ -135,9 +141,11 @@ class ZFAELearner:
 
         - Compute the teacher's intent (via the same parser/selector as native infer).
         - Compute teacher reply signature (d=53).
-        - Compute the bank's projected signature at seed=0 (a simplification — full
-          ring projection is the network layer's job).
-        - Update weights toward the teacher's signature on the same seed.
+        - Round-robin core selection by current training_step.
+        - Prefer the next untouched seed in the selected core; fall back to a
+          hash-keyed seed if all are touched.
+        - Update only the selected core's weights at the selected seed toward
+          the teacher's signature.
         """
         teacher_features = parse_semantic(teacher_reply)
         teacher_intent = select_intent(teacher_features)
@@ -149,26 +157,32 @@ class ZFAELearner:
 
         teacher_sig = _text_to_d53(teacher_reply)
 
-        # Student signature = mean of weights[seed=0, :, :, :] over (circles, tensors) axes
-        # → a (53,) vector. This is a placeholder projection that the network layer
-        # will eventually replace with the full Φ Ψ Ω-routed signature.
-        seed_idx = abs(hash(prompt)) % WEIGHT_SHAPE[0]
-        student_sig = bank.weights[seed_idx].mean(axis=(1, 2))  # shape (53,)
-        # MSE
+        # ---- Round-robin core + next-untouched-seed selection -----------------
+        core = CORE_NAMES[bank.zfae_training_step % len(CORE_NAMES)]
+        touched = bank.seeds_touched(core)
+        all_seeds = range(WEIGHT_SHAPE[0])
+        untouched = [s for s in all_seeds if s not in touched]
+        if untouched:
+            # deterministic: pick by hash within the untouched set
+            seed_idx = untouched[abs(hash(f"{core}::{prompt}")) % len(untouched)]
+        else:
+            seed_idx = abs(hash(f"{core}::{prompt}")) % WEIGHT_SHAPE[0]
+
+        # Student signature on the chosen core+seed
+        core_arr = bank.core(core)
+        student_sig = core_arr[seed_idx].mean(axis=(1, 2))  # shape (53,)
         diff = teacher_sig - student_sig
         signature_mse = float(np.mean(diff * diff))
 
-        # Total loss
         total_loss = self.alpha * intent_loss + self.beta * signature_mse
 
-        # Gradient: only update bank.weights[seed_idx] toward teacher_sig
-        # delta shape (157, 53, 7, 7) — zeros except at seed_idx where we add lr * diff broadcast.
+        # Gradient: only update bank.core(core)[seed_idx] toward teacher_sig
         delta = np.zeros(WEIGHT_SHAPE, dtype=np.float32)
         delta[seed_idx] = (
             self.lr * diff[:, None, None].astype(np.float32) / (WEIGHT_SHAPE[2] * WEIGHT_SHAPE[3])
         )
 
-        new_digest = bank.apply_update(delta, total_loss)
+        new_digest = bank.apply_update(delta, total_loss, core=core)
 
         return TrainingResult(
             loss=total_loss,
@@ -177,6 +191,9 @@ class ZFAELearner:
             weights_updated=True,
             intent_match=intent_match,
             signature_mse=signature_mse,
+            core=core,
+            seed_idx=seed_idx,
+            total_seeds_touched=bank.total_seeds_touched,
         )
 
 

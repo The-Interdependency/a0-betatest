@@ -112,7 +112,7 @@ from interdependent_lib.zfae import (
     overrides as zfae_overrides,
     SENTINELS,
 )
-from interdependent_lib.carrier import registry as gonal_registry
+from interdependent_lib.gonal import registry as gonal_registry
 
 
 def _utc_now_iso() -> str:
@@ -797,10 +797,14 @@ app.include_router(api)
 
 
 # ---------- Agents (Tier 3): /api/instances/* + /api/chat/instance/{id} ----
-from db import agent_instances_col, pending_overrides_col
+from db import agent_instances_col, pending_overrides_col, fiq_audit_col
 
 _TEACHER_CLIENT = TeacherClient(REGISTRY, _get_key)
-_ZFAE_RUNTIME = ZFAERuntime(teacher_client=_TEACHER_CLIENT)
+_ZFAE_RUNTIME = ZFAERuntime(
+    teacher_client=_TEACHER_CLIENT,
+    pending_overrides_col=pending_overrides_col,
+    fiq_audit_col=fiq_audit_col,
+)
 init_agents_routes(agent_instances_col, runtime=_ZFAE_RUNTIME, get_key_fn=_get_key)
 app.include_router(agents_router, prefix="/api")
 
@@ -981,7 +985,7 @@ async def expire_overrides():
 @sentinels_api.get("/gonals")
 async def list_gonals():
     """Three named gonals. Default+mirror are public; private is per-agent and not enumerated here."""
-    from interdependent_lib.carrier.gonal import validate_gonal, GonalSpec
+    from interdependent_lib.gonal.gonal import validate_gonal, GonalSpec
     default = gonal_registry.get_default()
     mirror = gonal_registry.get_mirror()
     spec = GonalSpec()

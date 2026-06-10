@@ -76,10 +76,10 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..carrier.classes import ClassTag
-from ..carrier.disk_protocol import CarrierDisk, CarrierDiskUnavailable, DiskSignature
-from ..carrier.faces import ARITY
-from ..carrier.adjacency import hard_invariant_holds
+from ..gonal.classes import ClassTag
+from ..gonal.disk_protocol import CarrierDisk, CarrierDiskUnavailable, DiskSignature
+from ..gonal.faces import ARITY
+from ..gonal.adjacency import hard_invariant_holds
 
 
 CANON_DISK_ENV: str = "A0P_CARRIER_DISK_PATH"

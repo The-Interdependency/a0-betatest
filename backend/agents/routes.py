@@ -118,6 +118,7 @@ class ChatInstanceRequest(BaseModel):
     teacher_model_id: Optional[str] = None        # override character-sheet teacher
     user_feedback: Optional[Any] = None
     zfae_snapshot: Optional[dict] = None
+    override_id: Optional[str] = None             # approved pending-override id (resumes a halted turn)
 
 
 class TeacherPreviewRequest(BaseModel):
@@ -229,6 +230,9 @@ async def chat_instance(agent_id: str, body: ChatInstanceRequest):
         persona=agent.sheet.persona,
         user_feedback=body.user_feedback,
         zfae_snapshot=body.zfae_snapshot,
+        sentinel_modes=getattr(agent.sheet, "sentinel_modes", None),
+        sentinel_weights=getattr(agent.sheet, "sentinel_weights", None),
+        override_id=body.override_id,
     )
 
     # Persist weight bank if updated
@@ -236,7 +240,7 @@ async def chat_instance(agent_id: str, body: ChatInstanceRequest):
         store.save_weight_bank(agent_id, bank)
         await store.refresh_metrics(agent_id, body.user_id)
 
-    return {
+    response_body = {
         "agent_id": agent_id,
         "mode": mode.value,
         "assistantText": reply.assistantText,
@@ -247,7 +251,13 @@ async def chat_instance(agent_id: str, body: ChatInstanceRequest):
         "trace": reply.trace,
         "training_record_path": reply.training_record_path,
         "zfae_metrics": reply.zfae_metrics,
+        "sentinel_verdict": reply.sentinel_verdict,
+        "pending_override_id": reply.pending_override_id,
     }
+    if reply.reply_source == "zfae_halted":
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=202, content=response_body)
+    return response_body
 
 
 @router.post("/instances/{agent_id}/teacher-context-preview")

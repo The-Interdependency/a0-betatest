@@ -69,8 +69,8 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from ..carrier.disk_protocol import CarrierDisk, CarrierDiskUnavailable
-from ..carrier.public_fixture import build_public_fixture_disk
+from ..gonal.disk_protocol import CarrierDisk, CarrierDiskUnavailable
+from ..gonal.public_fixture import build_public_fixture_disk
 from ._theta_private_loader import load_canon_disk
 
 

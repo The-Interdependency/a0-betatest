@@ -80,6 +80,32 @@ def _ensure_dir(p: Path) -> Path:
     return p
 
 
+def _safe_finite(x):
+    """Return x if it's a finite float, else None. Guards against inf/NaN in JSON."""
+    import math
+    if x is None:
+        return None
+    try:
+        f = float(x)
+    except (TypeError, ValueError):
+        return None
+    return f if math.isfinite(f) else None
+
+
+def _metrics_from_bank(bank: A0ZFAEWeightBank, digest: str) -> dict:
+    """JSON-safe canonical metrics dict from a weight bank."""
+    return {
+        "zfae_weight_count": bank.zfae_weight_count,
+        "zfae_weight_count_per_core": bank.zfae_weight_count_per_core,
+        "zfae_weight_count_total": bank.zfae_weight_count_total,
+        "zfae_checkpoint_digest": digest,
+        "zfae_training_step": int(bank.zfae_training_step),
+        "zfae_last_loss": _safe_finite(bank.zfae_last_loss),
+        "zfae_total_seeds_touched": int(bank.total_seeds_touched),
+        "zfae_all_seeds_touched": bool(bank.all_seeds_touched),
+    }
+
+
 class AgentStore:
     """CRUD over MongoDB metadata + filesystem checkpoint dir per agent."""
 
@@ -117,12 +143,7 @@ class AgentStore:
         bank = A0ZFAEWeightBank.fresh(agent.id)
         cp = self.checkpoint_path(agent.id)
         digest = bank.save(str(cp))
-        agent.zfae_metrics = {
-            "zfae_weight_count": bank.zfae_weight_count,
-            "zfae_checkpoint_digest": digest,
-            "zfae_training_step": bank.zfae_training_step,
-            "zfae_last_loss": bank.zfae_last_loss,
-        }
+        agent.zfae_metrics = _metrics_from_bank(bank, digest)
         doc = agent.model_dump()
         doc["_id"] = doc.pop("id")
         await self._col.insert_one(doc)
@@ -181,12 +202,7 @@ class AgentStore:
         bank = self.load_weight_bank(agent_id)
         if not bank:
             return None
-        metrics = {
-            "zfae_weight_count": bank.zfae_weight_count,
-            "zfae_checkpoint_digest": bank.zfae_checkpoint_digest,
-            "zfae_training_step": bank.zfae_training_step,
-            "zfae_last_loss": bank.zfae_last_loss,
-        }
+        metrics = _metrics_from_bank(bank, bank.zfae_checkpoint_digest)
         await self._col.update_one(
             {"_id": agent_id, "user_id": user_id},
             {"$set": {"zfae_metrics": metrics, "updated_at": _utc_now_iso()}},
