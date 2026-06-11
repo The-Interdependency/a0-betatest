@@ -2,7 +2,7 @@
 # id: zfae_sentinel_modes
 #   module_name: sentinel_modes
 #   module_kind: schema
-#   summary: per-agent sentinel mode resolution — observe/flag/off — with canonical defaults (6 flag + 7 observe + 0 off)
+#   summary: per-agent sentinel mode resolution — observe/flag/off — with canonical defaults (7 flag + 6 observe + 0 off; flags = S1 S2 S3 S4 S8 S9 S12)
 #   owner: Erin Spencer
 #   public_surface: SENTINEL_MODES_DEFAULT, validate_modes, resolve_modes, bulk_set
 #   internal_surface: none
@@ -34,9 +34,15 @@
 # === END CAPABILITIES ===
 """Per-agent sentinel-mode defaults and resolution.
 
-Defaults (6 flag + 7 observe + 0 off):
+Defaults (7 flag + 6 observe + 0 off):
   flag    S1 S2 S3 S4 S8 S9 S12
   observe S5 S6 S7 S10 S11 S13
+
+hmmm: the dict below is canon; the previous "6 flag + 7 observe" label was a
+docstring drift bug (now corrected). The alternative reading — drop S3 to
+observe so the count actually equals 6 flag — is a behavioural change that
+needs Erin's ratification and is NOT applied here. Flag for review;
+do not silently rebalance.
 """
 from __future__ import annotations
 from .sentinels import SentinelMode, all_names
