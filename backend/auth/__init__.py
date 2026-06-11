@@ -258,7 +258,9 @@ async def register(body: RegisterBody, response: Response):
 async def login(body: LoginBody, response: Response, request: Request):
     from db import users_col
     ident = body.identifier.strip().lower()
-    lock_id = f"{request.client.host if request.client else 'unknown'}:{ident}"
+    # Lockout key: by identifier (username/email). Client-host alone is the K8s
+    # ingress proxy IP that rotates between requests on the same flow.
+    lock_id = f"ident:{ident}"
     if await _is_locked(lock_id):
         raise HTTPException(429, f"too many attempts — try again in {_LOCK_MIN} minutes")
     user = await users_col.find_one({"$or": [{"email": ident}, {"username": ident}]})

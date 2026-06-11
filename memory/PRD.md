@@ -146,7 +146,16 @@ manifest."* Tracked here so they stay visible.
 - ~~Fix /api/instances 500 (float inf in zfae_last_loss)~~ ✅ 2026-06-10
 - ~~Frontend overhaul: Agent CRUD + character sheets + 5 lattice modes + Sentinel override UI~~ ✅ 2026-06-10
 - ~~Frontend msdmd compliance (// === MODULE_BUILD === on every .js/.jsx)~~ ✅ 2026-06-10
-- E2E frontend testing pass ✅ 2026-06-10 (iteration_4 + iteration_5)
+- ~~E2E frontend testing pass~~ ✅ 2026-06-10
+- ~~Hybrid auth (JWT + Emergent Google + GitHub OAuth) with username + email + ≥16-char passphrase~~ ✅ 2026-06-11
+- ~~Splash page (`/`) + Login/Register page (`/login`,`/register`) with passphrase show/hide~~ ✅ 2026-06-11
+- ~~ProtectedRoute on all app pages; sidebar splits by auth status; signout~~ ✅ 2026-06-11
+- ~~Brute-force lockout keyed by identifier (not the rotating K8s ingress IP)~~ ✅ 2026-06-11
+- ~~Idempotent admin seeding on backend startup~~ ✅ 2026-06-11
+- ~~Two-vault split: Model Keys (BYOK) + Developer Keys (`/api/custom-keys`, free-form, rotatable)~~ ✅ 2026-06-11
+- ~~Emergent demo daily token budget (per user, 25k/day, resets 00:00 UTC)~~ ✅ 2026-06-11
+- ~~Living spec endpoint + page — auto-parses every MODULE_BUILD block in the repo~~ ✅ 2026-06-11
+- ~~msdmd backfill: 100% of backend (.py) modules now carry MODULE_BUILD + CONTRACTS blocks (incl. tests/)~~ ✅ 2026-06-11
 - Streaming responses (SSE) for chat
 
 ### P1
@@ -154,6 +163,9 @@ manifest."* Tracked here so they stay visible.
 - Council UI mode (AIMMH `council` is implemented; UI toggle missing)
 - Per-call cost display in transcript using public provider pricing JSON
 - PTCA stratified `Fiq → Circle → Seed` rebuild against canon `prime_core`
+- Migrate legacy `user_id='local'` agents → real user accounts; remove demo path
+- GitHub OAuth secrets in `.env` (currently endpoint returns 503 until set)
+- Wire Emergent demo quota into `runtime.reply()` — refuse teacher calls when remaining < projected_tokens; surface a BYOK CTA in the UI
 
 ### P2
 - Reproducibility receipt appended to every chat reply
