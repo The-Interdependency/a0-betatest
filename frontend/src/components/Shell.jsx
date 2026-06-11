@@ -36,7 +36,7 @@
 
 import React, { useEffect, useState } from "react";
 import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { Atom, KeyReturn, Brain, Cards, Vault, FileText, Pulse, Lightning, Coin, ShieldCheck, ShieldWarning, ScrollIcon as Scroll, SignOut, User as UserIcon, BookOpen } from "@phosphor-icons/react";
+import { Atom, KeyReturn, Brain, Cards, Vault, FileText, Pulse, Lightning, Coin, ShieldCheck, ShieldWarning, ScrollIcon as Scroll, SignOut, User as UserIcon, BookOpen, Wrench, Plug, Sparkle } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
 import { demoQuota } from "../lib/api";
 
@@ -45,6 +45,9 @@ const authedItems = [
   { to: "/agents",     label: "Agents",     icon: <Lightning size={18} />, testid: "nav-agents" },
   { to: "/sentinels",  label: "Sentinels",  icon: <ShieldCheck size={18} />, testid: "nav-sentinels" },
   { to: "/overrides",  label: "Overrides",  icon: <ShieldWarning size={18} />, testid: "nav-overrides" },
+  { to: "/tools",      label: "Tools",      icon: <Wrench size={18} />, testid: "nav-tools" },
+  { to: "/mcp",        label: "MCP",        icon: <Plug size={18} />, testid: "nav-mcp" },
+  { to: "/skills",     label: "Skills",     icon: <Sparkle size={18} />, testid: "nav-skills" },
   { to: "/inspector",  label: "Inspector",  icon: <Pulse size={18} />, testid: "nav-inspector" },
   { to: "/inventory",  label: "Inventory",  icon: <Cards size={18} />, testid: "nav-inventory" },
   { to: "/keys",       label: "Model Keys", icon: <KeyReturn size={18} />, testid: "nav-keys" },

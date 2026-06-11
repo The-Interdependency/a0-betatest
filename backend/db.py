@@ -77,6 +77,9 @@ login_attempts_col = db["login_attempts"]
 password_reset_tokens_col = db["password_reset_tokens"]
 demo_quota_col = db["demo_quota"]
 custom_keys_col = db["custom_keys"]
+user_tools_col = db["user_tools"]
+mcp_servers_col = db["mcp_servers"]
+skills_col = db["skills"]
 
 
 async def ensure_indexes():
@@ -96,6 +99,10 @@ async def ensure_indexes():
     await password_reset_tokens_col.create_index("expires_at", expireAfterSeconds=0)
     await demo_quota_col.create_index([("user_id", 1), ("day", 1)], unique=True)
     await custom_keys_col.create_index([("user_id", 1), ("name", 1)], unique=True)
+    await user_tools_col.create_index([("user_id", 1), ("name", 1)], unique=True)
+    await mcp_servers_col.create_index([("user_id", 1), ("name", 1)], unique=True)
+    await skills_col.create_index([("name", 1)])
+    await skills_col.create_index([("owner_user_id", 1)])
 
 # === CONTRACTS ===
 # id: a0p_db_motor_loads

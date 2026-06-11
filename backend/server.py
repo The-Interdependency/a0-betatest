@@ -803,6 +803,12 @@ _init_auth(app)
 from api_extensions import router as _ext_router
 app.include_router(_ext_router)
 
+# ---------- Tools / MCP (server + client) / Skills ----------
+from api_tools_mcp_skills import router as _tools_router
+from tools.mcp_server import router as _mcp_server_router
+app.include_router(_tools_router)
+app.include_router(_mcp_server_router)
+
 
 # ---------- Agents (Tier 3): /api/instances/* + /api/chat/instance/{id} ----
 from db import agent_instances_col, pending_overrides_col, fiq_audit_col

@@ -52,6 +52,9 @@ import InspectorPage from "./pages/InspectorPage";
 import AgentsPage from "./pages/AgentsPage";
 import SentinelsPage from "./pages/SentinelsPage";
 import OverridesPage from "./pages/OverridesPage";
+import ToolsPage from "./pages/ToolsPage";
+import MCPPage from "./pages/MCPPage";
+import SkillsPage from "./pages/SkillsPage";
 
 function Protected({ children }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
@@ -74,6 +77,9 @@ export default function App() {
             <Route path="/agents" element={<Protected><AgentsPage /></Protected>} />
             <Route path="/sentinels" element={<Protected><SentinelsPage /></Protected>} />
             <Route path="/overrides" element={<Protected><OverridesPage /></Protected>} />
+            <Route path="/tools" element={<Protected><ToolsPage /></Protected>} />
+            <Route path="/mcp" element={<Protected><MCPPage /></Protected>} />
+            <Route path="/skills" element={<Protected><SkillsPage /></Protected>} />
             <Route path="/inspector" element={<Protected><InspectorPage /></Protected>} />
             <Route path="/inventory" element={<Protected><InventoryPage /></Protected>} />
             <Route path="/keys" element={<Protected><KeyVaultPage /></Protected>} />
