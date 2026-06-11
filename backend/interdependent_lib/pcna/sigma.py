@@ -65,6 +65,14 @@ def sigma_band(value: str, bands: int = 7) -> int:
     """Map a sigma-encoded value to one of `bands` discrete bands."""
     h = hashlib.blake2b(value.encode("utf-8"), digest_size=2).digest()
     return int.from_bytes(h, "big") % bands
+
+# === CONTRACTS ===
+# id: pcna_sigma_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

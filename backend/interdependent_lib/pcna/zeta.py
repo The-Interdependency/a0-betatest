@@ -112,6 +112,14 @@ def echo(value: float, decay: float = 0.85, steps: int = 6) -> list[float]:
         out.append(round(v, 6))
         v = v * decay * math.cos(0.7)
     return out
+
+# === CONTRACTS ===
+# id: pcna_zeta_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

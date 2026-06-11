@@ -795,6 +795,14 @@ async def skill_all_report():
 
 app.include_router(api)
 
+# ---------- Auth (JWT + Emergent Google + GitHub OAuth) ----------
+from auth import init_auth as _init_auth, get_current_user_or_demo
+_init_auth(app)
+
+# ---------- API extensions: custom keys vault, demo quota, living spec ----
+from api_extensions import router as _ext_router
+app.include_router(_ext_router)
+
 
 # ---------- Agents (Tier 3): /api/instances/* + /api/chat/instance/{id} ----
 from db import agent_instances_col, pending_overrides_col, fiq_audit_col
@@ -1005,6 +1013,9 @@ app.include_router(sentinels_api)
 @app.on_event("startup")
 async def _on_startup():
     await ensure_indexes()
+    # Seed admin from .env (idempotent)
+    from auth import seed_admin
+    await seed_admin()
     # Seed a few starter detachable agents if the collection is empty.
     n = await agents_col.count_documents({})
     if n == 0:

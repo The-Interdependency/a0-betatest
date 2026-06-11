@@ -62,6 +62,14 @@ def hash_state(state, op: str = "", parents: list[str] | None = None) -> str:
     }
     blob = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
+
+# === CONTRACTS ===
+# id: ptca_provenance_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

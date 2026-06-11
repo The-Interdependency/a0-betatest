@@ -1,3 +1,38 @@
+# === MODULE_BUILD ===
+# id: tests_zfae_api_sentinels
+#   module_name: test_zfae_api_sentinels
+#   module_kind: test
+#   summary: integration tests for the ZFAE three-core + sentinel halt-and-override pipeline, hitting the live FastAPI service via REACT_APP_BACKEND_URL — Tests 1..8 from the review batch
+#   owner: Erin Spencer
+#   public_surface: test_*
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: pytest_runs_this_file
+#   rollout: default_enabled
+#   rollback: revert; lose api-level sentinel coverage
+# === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: tests_zfae_api_sentinels_boundaries
+#   summary: live api integration tests
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: Erin Spencer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: tests_zfae_api_sentinels
+#   summary: api-level sentinel + 3-core test suite
+#   exposes: test_*
+#   boundaries: auth:none, storage:none, network:external, user_data:read
+#   owner: Erin Spencer
+# === END CAPABILITIES ===
+
 """
 Integration tests for the ZFAE three-core + sentinel halt-and-override pipeline,
 hitting the live FastAPI service via REACT_APP_BACKEND_URL.
@@ -270,3 +305,12 @@ class TestT8PerAgentSentinelModes:
                 json={"modes": {"S4": "flag"}, "user_id": USER},
                 timeout=30,
             )
+
+# === CONTRACTS ===
+# id: tests_zfae_api_sentinels_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
+

@@ -108,3 +108,12 @@ __all__ = [
     "GonalName", "GONAL_NAMES", "PRIVATE_GONAL_SPEC_ENV",
     "get_default", "get_mirror", "get_private", "get_gonal",
 ]
+
+# === CONTRACTS ===
+# id: carrier_registry_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
+

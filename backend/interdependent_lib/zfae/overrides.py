@@ -176,3 +176,12 @@ __all__ = [
     "PendingOverride", "OVERRIDE_DEFAULT_TIMEOUT_MS",
     "create_override", "approve", "reject", "expire", "get", "list_pending",
 ]
+
+# === CONTRACTS ===
+# id: zfae_overrides_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
+

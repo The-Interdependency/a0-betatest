@@ -1,3 +1,7 @@
+# Ensure backend/.env is loaded before any contract import logic runs.
+# Without this, contracts that import modules reading env at module-top (e.g.
+# `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
+
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented
@@ -57,6 +61,14 @@ module's CONTRACTS block. Test-build imports and runs them. Each must:
   - have no required arguments
 """
 from __future__ import annotations
+
+# Ensure backend/.env is loaded before any contract import logic runs.
+from pathlib import Path as _Path
+try:
+    from dotenv import load_dotenv as _load_dotenv  # type: ignore
+    _load_dotenv(_Path(__file__).resolve().parent.parent / ".env")
+except ImportError:  # pragma: no cover
+    pass
 import asyncio
 
 
@@ -1070,6 +1082,73 @@ def frontend_module_build_runner_smoke_holds() -> None:
     assert report["covered"] == report["total_modules"]
 
 
+def auth_register_login_round_trip_holds():
+    """Contract: hash-and-verify password round trip + JWT token round trip."""
+    from auth import _hash_password, _verify_password, _make_tokens
+    import jwt as pyjwt, os
+    os.environ.setdefault("JWT_SECRET", "test-only-secret-do-not-use-in-prod")
+    h = _hash_password("a-very-long-passphrase-1234")
+    assert _verify_password("a-very-long-passphrase-1234", h)
+    assert not _verify_password("wrong", h)
+    access, refresh = _make_tokens("user-1", "u@x.test")
+    p1 = pyjwt.decode(access, os.environ["JWT_SECRET"], algorithms=["HS256"])
+    p2 = pyjwt.decode(refresh, os.environ["JWT_SECRET"], algorithms=["HS256"])
+    assert p1["sub"] == "user-1" and p1["type"] == "access"
+    assert p2["sub"] == "user-1" and p2["type"] == "refresh"
+
+
+def api_extensions_living_spec_holds():
+    """Contract: living spec scanner finds ≥30 modules across backend+frontend."""
+    from living_spec import scan_repo_blocks
+    mods = scan_repo_blocks()
+    assert len(mods) >= 30, f"living spec found only {len(mods)} modules"
+    # Every module entry must have a non-empty summary and module_name.
+    for m in mods:
+        assert m["module_name"], f"module missing module_name: {m['path']}"
+        assert m["summary"], f"module missing summary: {m['path']}"
+
+
+def module_imports_cleanly_holds():
+    """Generic contract: every MODULE_BUILD-bearing .py module under /app/backend
+    imports without raising. Used as the canonical 'integration' contract for
+    modules that don't have a more specific behavioural contract.
+
+    Skips: __pycache__, .venv, node_modules, scripts/, tests/ (tests are driven
+    by pytest, not importlib).
+    """
+    import importlib
+    from pathlib import Path
+    from interdependent_lib._msdmd.parser import parse_file
+
+    root = Path("/app/backend")
+    SKIP = {"__pycache__", ".venv", "node_modules", "scripts", "tests"}
+    failures: list[tuple[str, str]] = []
+    checked = 0
+    for p in sorted(root.rglob("*.py")):
+        if any(part in SKIP for part in p.parts):
+            continue
+        try:
+            mb = parse_file(p, "MODULE_BUILD") or []
+        except Exception:
+            continue
+        if not mb:
+            continue
+        rel = p.relative_to(root).with_suffix("")
+        if rel.name == "__init__":
+            modpath = ".".join(rel.parts[:-1])
+        else:
+            modpath = ".".join(rel.parts)
+        if not modpath:
+            continue
+        try:
+            importlib.import_module(modpath)
+            checked += 1
+        except Exception as e:  # pragma: no cover - reported via failures
+            failures.append((modpath, f"{type(e).__name__}: {e}"))
+    assert not failures, f"{len(failures)} modules failed to import: {failures[:3]}"
+    assert checked >= 30, f"only checked {checked} modules; expected ≥30"
+
+
 
 # ---------- Tier 3 — Agent character sheet shape ---------------------------
 
@@ -1305,6 +1384,14 @@ def pcea_kernel_chain_holds() -> None:
         recovered.append(rec)
         last = pt  # next inversion uses the original plaintext as the key
     assert recovered == list(plaintexts), "kernel_chain must round-trip with the original keys"
+
+# === CONTRACTS ===
+# id: a0p_contracts_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

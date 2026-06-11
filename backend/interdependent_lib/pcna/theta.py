@@ -56,6 +56,14 @@ def theta_modulate(x: float, phase: float = 0.0, depth: int = 7) -> float:
     """Bounded theta modulation across 7 phase bands."""
     band = (phase * depth) % depth
     return round(0.5 + 0.5 * math.sin(2 * math.pi * (x + band / depth)), 6)
+
+# === CONTRACTS ===
+# id: pcna_theta_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

@@ -41,7 +41,26 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const client = axios.create({
   baseURL: API,
   headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 });
+
+// ─── Custom-keys vault (per-user, generic GitHub/GCP/AWS/etc.) ─────────────
+export const customKeys = {
+  list:    () => client.get("/custom-keys").then(r => r.data),
+  upsert:  (body) => client.put("/custom-keys", body).then(r => r.data),
+  reveal:  (id) => client.post(`/custom-keys/${id}/reveal`).then(r => r.data),
+  remove:  (id) => client.delete(`/custom-keys/${id}`).then(r => r.data),
+};
+
+// ─── Demo quota ───────────────────────────────────────────────────────────
+export const demoQuota = {
+  get: () => client.get("/demo-quota").then(r => r.data),
+};
+
+// ─── Living spec ──────────────────────────────────────────────────────────
+export const livingSpec = {
+  get: () => client.get("/spec/living").then(r => r.data),
+};
 
 export const api = {
   base: API,

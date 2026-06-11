@@ -57,3 +57,12 @@ def mirror_of(arr: list[str]) -> list[str]:
 
 
 __all__ = ["mirror_of"]
+
+# === CONTRACTS ===
+# id: carrier_mirror_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
+

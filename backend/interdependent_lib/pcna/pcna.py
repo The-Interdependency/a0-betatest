@@ -164,6 +164,14 @@ class PCNAEngine:
     def absorb_response(self, model_id: str, text: str, usage: dict[str, Any] | None = None) -> None:
         self.memory.push_st(f"resp:{model_id}:{text[:80]}")
         self.cores["omega"].push("response", {"model": model_id, "tokens": (usage or {}).get("total", 0)})
+
+# === CONTRACTS ===
+# id: pcna_engine_impl_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

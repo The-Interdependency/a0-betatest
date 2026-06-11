@@ -112,3 +112,12 @@ __all__ = [
     "SENTINEL_WEIGHTS_DEFAULT", "INFERENCE_CHANNEL_DEFAULT",
     "validate_weights", "resolve_weights", "inference_channel",
 ]
+
+# === CONTRACTS ===
+# id: zfae_sentinel_weights_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
+

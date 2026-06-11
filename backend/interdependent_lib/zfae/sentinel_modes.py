@@ -94,3 +94,12 @@ __all__ = [
     "SENTINEL_MODES_DEFAULT",
     "validate_modes", "resolve_modes", "bulk_set",
 ]
+
+# === CONTRACTS ===
+# id: zfae_sentinel_modes_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
+

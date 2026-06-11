@@ -72,6 +72,11 @@ agent_instances_col = db["agent_instances"]
 usage_col      = db["usage_records"]
 fiq_audit_col  = db["fiq_audit_log"]
 pending_overrides_col = db["pending_overrides"]
+users_col      = db["users"]
+login_attempts_col = db["login_attempts"]
+password_reset_tokens_col = db["password_reset_tokens"]
+demo_quota_col = db["demo_quota"]
+custom_keys_col = db["custom_keys"]
 
 
 async def ensure_indexes():
@@ -85,6 +90,20 @@ async def ensure_indexes():
     await agent_instances_col.create_index([("user_id", 1), ("updated_at", -1)])
     await usage_col.create_index([("user_id", 1), ("created_at", -1)])
     await fiq_audit_col.create_index([("timestamp_ms", -1)])
+    await users_col.create_index("email", unique=True)
+    await users_col.create_index("username", unique=True)
+    await login_attempts_col.create_index("identifier")
+    await password_reset_tokens_col.create_index("expires_at", expireAfterSeconds=0)
+    await demo_quota_col.create_index([("user_id", 1), ("day", 1)], unique=True)
+    await custom_keys_col.create_index([("user_id", 1), ("name", 1)], unique=True)
+
+# === CONTRACTS ===
+# id: a0p_db_motor_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

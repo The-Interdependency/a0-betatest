@@ -58,6 +58,14 @@ PRIME_CIRCLE = [
     233, 239, 241,
 ]
 assert len(PRIME_CIRCLE) == 53
+
+# === CONTRACTS ===
+# id: pcea_primes_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

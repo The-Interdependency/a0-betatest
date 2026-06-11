@@ -120,6 +120,14 @@ class XAIProvider:
                 model_id=model,
                 provider="xai",
             )
+
+# === CONTRACTS ===
+# id: provider_xai_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

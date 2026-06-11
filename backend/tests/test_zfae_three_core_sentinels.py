@@ -1,3 +1,38 @@
+# === MODULE_BUILD ===
+# id: tests_zfae_three_core_sentinels
+#   module_name: test_zfae_three_core_sentinels
+#   module_kind: test
+#   summary: pytest regression suite for the 3-core (Φ/Ψ/Ω) weight bank, trainer round-robin, sentinel evaluator cliffs/slopes, native readiness gate, FIQ hash-chain emit, and PendingOverride lifecycle
+#   owner: Erin Spencer
+#   public_surface: test_three_core_weight_bank_total_count, test_trainer_round_robin_across_cores, test_sentinel_eval_cliff_fires_on_unsafe_marker, test_native_refusal_requires_all_seeds_touched, test_fiq_emit_chain, test_pending_override_lifecycle
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: pytest_runs_this_file
+#   rollout: default_enabled
+#   rollback: revert; lose 3-core regression coverage
+# === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: tests_zfae_three_core_sentinels_boundaries
+#   summary: pure pytest regression suite
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: Erin Spencer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: tests_zfae_three_core_sentinels
+#   summary: 3-core / sentinel / FIQ / overrides regression suite
+#   exposes: test_three_core_weight_bank_total_count, test_trainer_round_robin_across_cores, test_sentinel_eval_cliff_fires_on_unsafe_marker, test_native_refusal_requires_all_seeds_touched, test_fiq_emit_chain, test_pending_override_lifecycle
+#   boundaries: auth:none, storage:none, network:none, user_data:read
+#   owner: Erin Spencer
+# === END CAPABILITIES ===
+
 """Regression tests for ZFAE three-core refactor, sentinel halt-and-override, and FIQ chain."""
 from __future__ import annotations
 import numpy as np
@@ -144,3 +179,12 @@ async def test_pending_override_lifecycle():
     assert rec.status == "pending"
     r2 = await ov.approve(col, rec.id, "u", "ok")
     assert r2.status == "approved"
+
+# === CONTRACTS ===
+# id: tests_zfae_three_core_sentinels_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
+

@@ -1,3 +1,38 @@
+# === MODULE_BUILD ===
+# id: tests_backend_test
+#   module_name: backend_test
+#   module_kind: test
+#   summary: end-to-end backend regression suite — covers /api/health, BYOK keys CRUD with encryption-at-rest masking, and chat session flows; intended to be executed by the testing-agent harness against the live preview ingress
+#   owner: Erin Spencer
+#   public_surface: test_*
+#   internal_surface: none
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   tests: pytest_runs_this_file
+#   rollout: default_enabled
+#   rollback: revert; lose e2e coverage
+# === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: tests_backend_test_boundaries
+#   summary: end-to-end regression suite over REACT_APP_BACKEND_URL
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: external
+#   user_data_boundary: read
+#   admin_only: false
+#   owner: Erin Spencer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: tests_backend_test
+#   summary: e2e regression suite
+#   exposes: test_*
+#   boundaries: auth:none, storage:none, network:external, user_data:read
+#   owner: Erin Spencer
+# === END CAPABILITIES ===
+
 """End-to-end backend regression tests for the a0p research instrument.
 
 Covers:
@@ -452,3 +487,12 @@ class TestUsage:
         assert isinstance(agg.get("total_tokens", 0), int)
         assert isinstance(agg.get("by_provider", {}), dict)
         assert isinstance(agg.get("by_model", {}), dict)
+
+# === CONTRACTS ===
+# id: tests_backend_test_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
+

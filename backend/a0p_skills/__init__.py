@@ -57,6 +57,14 @@
 from . import test_build_runner, module_build_runner
 
 __all__ = ["test_build_runner", "module_build_runner"]
+
+# === CONTRACTS ===
+# id: a0p_skills_pkg_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

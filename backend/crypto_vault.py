@@ -76,6 +76,14 @@ def mask(plain: str) -> str:
     if len(plain) <= 8:
         return "*" * len(plain)
     return f"{plain[:4]}...{plain[-4:]}"
+
+# === CONTRACTS ===
+# id: a0p_crypto_vault_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented

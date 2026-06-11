@@ -78,6 +78,14 @@ def first_n_primes(n: int) -> list[int]:
 
 # Default capacity — supports N=157 (used by the PTCA seed cores).
 PRIMES_FIRST_N = first_n_primes(200)
+
+# === CONTRACTS ===
+# id: ptca_primes_loads
+#   given: module declares its msdmd canon
+#   then: the module imports cleanly under the current interpreter
+#   class: integration
+#   call: a0p_skills.contracts.module_imports_cleanly_holds
+# === END CONTRACTS ===
 # === RATIOS ===
 # id: loc_comments
 #   summary: lines of code to lines commented
