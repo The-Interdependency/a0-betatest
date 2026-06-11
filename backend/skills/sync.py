@@ -110,19 +110,78 @@ async def pull_from_skill_lib(col, url: str = _SKILL_LIB_URL) -> dict[str, Any]:
 
 
 async def push_to_skill_lib_stub(col, *, user_id: str) -> dict:
-    """Reverse-direction publish stub. Returns the list of skills marked
-    ``publishable=True`` along with the upstream PR URL guidance — actual git
-    push happens via a separate PR (no committer credentials in this process).
+    """Publish skills marked ``publishable=True`` to The-Interdependency/skill-lib.
+
+    If ``SKILL_LIB_GH_TOKEN`` is set, opens a PR via the GitHub API that updates
+    ``index.json`` with the publishable skill entries. Without the token, returns
+    a structured ``next_step`` payload describing the manual PR the user should open.
     """
+    import os, base64, json as _json, time as _time
     pubs: list[dict] = []
     async for d in col.find({"owner_user_id": user_id, "publishable": True}):
-        pubs.append({"id": d["_id"], "name": d["name"], "source": d.get("source")})
-    return {
-        "publish_ready": pubs,
-        "next_step": ("open a PR against The-Interdependency/skill-lib's index.json "
-                      "containing each of the entries above; future versions will "
-                      "automate this once a SKILL_LIB_GH_TOKEN is configured."),
-    }
+        pubs.append({"id": d["_id"], "name": d["name"], "description": d.get("description"),
+                     "prompt_template": d.get("prompt_template"),
+                     "tool_bindings": d.get("tool_bindings", []),
+                     "sentinel_overrides": d.get("sentinel_overrides", {}),
+                     "scope_tokens": d.get("scope_tokens", []),
+                     "logic_set_tokens": d.get("logic_set_tokens", []),
+                     "version": d.get("version", "1")})
+    token = os.environ.get("SKILL_LIB_GH_TOKEN")
+    repo = os.environ.get("SKILL_LIB_REPO", "The-Interdependency/skill-lib")
+    if not pubs:
+        return {"publish_ready": [], "ok": True, "next_step": "no skills marked publishable=true"}
+    if not token:
+        return {
+            "publish_ready": pubs, "ok": False, "pr_url": None,
+            "next_step": ("SKILL_LIB_GH_TOKEN not set — set it in /app/backend/.env "
+                          f"(needs `repo` scope on {repo}) and retry. "
+                          "Without it I cannot open the PR for you."),
+        }
+    # Real GitHub-API path: fetch index.json (default branch), merge our entries,
+    # create a branch, write the file, open a PR. Best-effort; any HTTP error
+    # bubbles up as ok:false.
+    base = f"https://api.github.com/repos/{repo}"
+    h = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
+         "X-GitHub-Api-Version": "2022-11-28"}
+    branch = f"a0p-publish-{int(_time.time())}"
+    try:
+        async with httpx.AsyncClient(timeout=30) as cli:
+            repo_info = (await cli.get(base, headers=h)).json()
+            default_branch = repo_info.get("default_branch", "main")
+            ref_resp = (await cli.get(f"{base}/git/refs/heads/{default_branch}", headers=h)).json()
+            head_sha = ref_resp["object"]["sha"]
+            file_resp = await cli.get(f"{base}/contents/index.json?ref={default_branch}", headers=h)
+            existing: list[dict] = []
+            file_sha: str | None = None
+            if file_resp.status_code == 200:
+                d = file_resp.json()
+                file_sha = d["sha"]
+                existing = _json.loads(base64.b64decode(d["content"]).decode())
+                if isinstance(existing, dict):
+                    existing = existing.get("skills", [])
+            by_name = {e.get("name"): e for e in existing if isinstance(e, dict)}
+            for p in pubs:
+                by_name[p["name"]] = p
+            merged = sorted(by_name.values(), key=lambda x: x.get("name", ""))
+            new_content = base64.b64encode(_json.dumps(merged, indent=2).encode()).decode()
+            await cli.post(f"{base}/git/refs", headers=h,
+                           json={"ref": f"refs/heads/{branch}", "sha": head_sha})
+            put_body = {"message": f"a0p: publish {len(pubs)} skill(s) from {user_id}",
+                        "content": new_content, "branch": branch}
+            if file_sha:
+                put_body["sha"] = file_sha
+            await cli.put(f"{base}/contents/index.json", headers=h, json=put_body)
+            pr = (await cli.post(f"{base}/pulls", headers=h, json={
+                "title": f"a0p: publish {len(pubs)} skill(s)",
+                "head": branch, "base": default_branch,
+                "body": f"Automated publish from a0p (user_id `{user_id}`).\n\n" +
+                        "\n".join(f"- {p['name']}" for p in pubs),
+            })).json()
+        return {"publish_ready": pubs, "ok": True, "pr_url": pr.get("html_url"),
+                "branch": branch, "next_step": "review and merge the PR"}
+    except Exception as e:
+        return {"publish_ready": pubs, "ok": False, "pr_url": None,
+                "next_step": f"github push failed: {type(e).__name__}: {e}"}
 
 
 __all__ = ["pull_from_skill_lib", "push_to_skill_lib_stub", "_SKILL_LIB_URL"]

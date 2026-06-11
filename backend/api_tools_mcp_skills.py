@@ -302,4 +302,23 @@ async def sync_skills_api(user=Depends(get_current_user)):
     return result
 
 
+@router.post("/skills/publish")
+async def publish_skills_api(user=Depends(get_current_user)):
+    """Publish any skills the user has flagged ``publishable=True`` back to
+    The-Interdependency/skill-lib via the GitHub API (needs SKILL_LIB_GH_TOKEN)."""
+    return await skills_pkg.push_to_skill_lib_stub(skills_col, user_id=user["id"])
+
+
+@router.patch("/skills/{skill_id}/publishable")
+async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends(get_current_user)):
+    """Mark a user-owned skill as publishable (or revoke)."""
+    r = await skills_col.update_one(
+        {"_id": skill_id, "owner_user_id": user["id"]},
+        {"$set": {"publishable": bool(publishable)}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(404, "skill not found or not yours")
+    return {"ok": True, "publishable": bool(publishable)}
+
+
 __all__ = ["router"]

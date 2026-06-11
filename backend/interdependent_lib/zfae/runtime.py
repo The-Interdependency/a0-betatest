@@ -338,6 +338,27 @@ class ZFAERuntime:
         weights_updated = False
         training_loss: Optional[float] = None
         training_step_before = bank.zfae_training_step
+
+        # ---- Demo quota gate (Emergent shared key only) ------------------------
+        try:
+            from api_extensions import check_demo_quota, record_demo_usage
+            # Project ~500 tokens per teacher round-trip (heuristic).
+            quota = await check_demo_quota(user_id, projected_tokens=500)
+            if not quota["fits"]:
+                return RuntimeReply(
+                    assistantText=("Daily demo budget exhausted "
+                                   f"({quota['used']}/{quota['budget']} tokens). "
+                                   "Bring your own key on /keys or wait until 00:00 UTC."),
+                    reply_source="zfae_refused",
+                    teacher_called=False,
+                    zfae_weights_updated=False,
+                    mode=RuntimeMode.TEACHER_ASSISTED.value,
+                    nextSnapshot=zfae_snapshot,
+                    trace={"reason": "demo_quota_exhausted", **quota},
+                    zfae_metrics=self._metrics(bank),
+                )
+        except Exception:
+            pass
         if teacher.teacher_reply and not teacher.error:
             result: TrainingResult = self.learner.distill_step(
                 bank, raw_prompt, teacher.teacher_reply,
@@ -345,6 +366,13 @@ class ZFAERuntime:
             weights_updated = result.weights_updated
             training_loss = result.loss
             bank.record_teacher(teacher.teacher_model_id)
+            # Burn demo-quota tokens (best-effort)
+            try:
+                from api_extensions import record_demo_usage
+                approx = (len(raw_prompt) + len(teacher.teacher_reply or "")) // 4
+                await record_demo_usage(user_id, max(50, approx))
+            except Exception:
+                pass
             # FIQ emit: training_step
             if self.fiq_audit_col is not None:
                 try:

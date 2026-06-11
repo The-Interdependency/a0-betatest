@@ -156,8 +156,13 @@ manifest."* Tracked here so they stay visible.
 - ~~Emergent demo daily token budget (per user, 25k/day, resets 00:00 UTC)~~ ✅ 2026-06-11
 - ~~Living spec endpoint + page — auto-parses every MODULE_BUILD block in the repo~~ ✅ 2026-06-11
 - ~~msdmd backfill: 100% of backend (.py) modules now carry MODULE_BUILD + CONTRACTS blocks (incl. tests/)~~ ✅ 2026-06-11
-- ~~Tools + MCP (server + client) + Skills layer with sentinel-gated tool calls, MCP bidirectional (a0p exposes /api/mcp as server, registers external MCP servers as client), skill catalog with jaccard overlap detection, sync from The-Interdependency/skill-lib repo~~ ✅ 2026-06-11
-- ~~Frontend Tools / MCP / Skills pages with full data-testid coverage; sidebar nav updated; msdmd 27/27 modules~~ ✅ 2026-06-11
+- ~~Tools + MCP (server + client) + Skills layer with sentinel-gated tool calls, MCP bidirectional, skill catalog with jaccard overlap detection, sync from The-Interdependency/skill-lib~~ ✅ 2026-06-11
+- ~~Live Tool/CoT Tape on Workspace polling FIQ chain with client-side hash verification~~ ✅ 2026-06-11
+- ~~Real `push_to_skill_lib` via GitHub API (creates branch + commits index.json + opens PR; falls back to structured guidance without SKILL_LIB_GH_TOKEN)~~ ✅ 2026-06-11
+- ~~Real GitHub OAuth (returns 503 until `GITHUB_CLIENT_ID/SECRET` set in `.env`)~~ ✅ 2026-06-11
+- ~~Admin-editable runtime settings (`/api/settings`) — Emergent Google OAuth URL, skill-lib index URL, skill-lib repo~~ ✅ 2026-06-11
+- ~~Demo quota enforcement in `runtime._teacher_assisted` — refuses with `zfae_refused` + clear message when day budget exhausted; records ~tokens per round-trip~~ ✅ 2026-06-11
+- ~~Legacy `user_id='local'` agents migrated to admin on startup; chat endpoint now requires auth~~ ✅ 2026-06-11
 - Streaming responses (SSE) for chat
 
 ### P1

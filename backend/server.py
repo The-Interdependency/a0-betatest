@@ -806,8 +806,10 @@ app.include_router(_ext_router)
 # ---------- Tools / MCP (server + client) / Skills ----------
 from api_tools_mcp_skills import router as _tools_router
 from tools.mcp_server import router as _mcp_server_router
+from app_settings import router as _settings_router
 app.include_router(_tools_router)
 app.include_router(_mcp_server_router)
+app.include_router(_settings_router)
 
 
 # ---------- Agents (Tier 3): /api/instances/* + /api/chat/instance/{id} ----
@@ -1021,7 +1023,16 @@ async def _on_startup():
     await ensure_indexes()
     # Seed admin from .env (idempotent)
     from auth import seed_admin
-    await seed_admin()
+    admin = await seed_admin()
+    # Migrate legacy user_id='local' agents to the admin user (idempotent).
+    if admin and admin.get("_id"):
+        from db import agent_instances_col as _ai
+        r = await _ai.update_many(
+            {"user_id": "local"}, {"$set": {"user_id": admin["_id"]}},
+        )
+        if r.modified_count:
+            import logging as _lg
+            _lg.getLogger("a0p").info("migrated %d legacy local agents to admin", r.modified_count)
     # Seed a few starter detachable agents if the collection is empty.
     n = await agents_col.count_documents({})
     if n == 0:

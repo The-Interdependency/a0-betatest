@@ -67,7 +67,7 @@
 from __future__ import annotations
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
 from .schema import AgentInstance, CharacterSheet, AgentMode
@@ -200,8 +200,17 @@ async def archive_instance(agent_id: str, user_id: str = "local"):
 # ---- mode-aware chat ----------------------------------------------------
 
 @router.post("/chat/instance/{agent_id}")
-async def chat_instance(agent_id: str, body: ChatInstanceRequest):
-    """Mode-aware chat — dispatches to ZFAERuntime in teacher_assisted or zfae_native mode."""
+async def chat_instance(agent_id: str, body: ChatInstanceRequest, request: Request):
+    """Mode-aware chat — dispatches to ZFAERuntime in teacher_assisted or zfae_native mode.
+
+    Requires authentication; the chat is always run as the calling user (the body's
+    ``user_id`` field is ignored). Legacy ``user_id='local'`` agents were migrated
+    on backend startup to the admin account, so the anonymous demo path is closed.
+    """
+    from auth import get_current_user
+    user = await get_current_user(request)
+    body.user_id = user["id"]
+
     store = get_agent_store()
     agent = await store.get(agent_id, body.user_id)
     if not agent:
