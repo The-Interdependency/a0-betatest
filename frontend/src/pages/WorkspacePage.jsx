@@ -40,6 +40,7 @@ import { api } from "../lib/api";
 import MarkdownView from "../components/MarkdownView";
 import SentinelVerdictRibbon from "../components/SentinelVerdictRibbon";
 import OverrideModal from "../components/OverrideModal";
+import AuditTape from "../components/AuditTape";
 import { MODE_OPTIONS } from "../lib/sentinels";
 
 function Turn({ t }) {
@@ -227,6 +228,8 @@ export default function WorkspacePage() {
       {err && (
         <div className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-rose-300 text-xs font-mono" data-testid="ws-error">{String(err)}</div>
       )}
+
+      {agentId && <AuditTape agentId={agentId} />}
 
       <div ref={scrollRef} className="border border-white/10 bg-bg-panel min-h-[20rem] max-h-[60vh] overflow-y-auto p-4 space-y-4" data-testid="ws-transcript">
         {turns.length === 0 && (

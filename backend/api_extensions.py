@@ -2,7 +2,7 @@
 # id: api_extensions_routes
 #   module_name: extensions
 #   module_kind: api_router
-#   summary: post-auth API extensions — custom keys vault (user-defined GitHub/GCP/AWS-style keys), Emergent demo quota (per-user daily token budget), living spec endpoint (auto-parses MODULE_BUILD/BOUNDARIES/CAPABILITIES/CONTRACTS/RATIOS blocks from the repo and serves them as JSON)
+#   summary: post-auth API extensions — custom keys vault (user-defined GitHub/GCP/AWS-style keys), Emergent demo quota (per-user daily token budget), living spec endpoint (auto-parses MODULE_BUILD/BOUNDARIES/CAPABILITIES/CONTRACTS/RATIOS blocks from the repo and serves them as JSON), audit feed (hash-chained FIQ events for the Tool/CoT Tape)
 #   owner: Erin Spencer
 #   public_surface: router, record_demo_usage, check_demo_quota
 #   internal_surface: _quota_key, _today_utc, _scan_repo_blocks
@@ -276,6 +276,39 @@ async def living_spec():
         "by_kind": by_kind,
         "modules": modules,
     }
+
+
+@router.get("/audit/feed")
+async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = ""):
+    """Return the most recent hash-chained FIQ events.
+
+    Filters: ``agent_id`` (exact match), ``kind`` (event_type prefix). Public
+    inside the app — surfaces the same canonical chain that the Workspace
+    Tool/CoT Tape polls every few seconds. Each row carries prev_hash + this_hash
+    so any client can verify chain integrity locally.
+    """
+    from db import fiq_audit_col
+    q: dict = {}
+    if agent_id:
+        q["agent_id"] = agent_id
+    if kind:
+        q["event_type"] = {"$regex": f"^{kind}"}
+    limit = max(1, min(int(limit), 200))
+    cursor = fiq_audit_col.find(q).sort("timestamp_ms", -1).limit(limit)
+    out = []
+    async for d in cursor:
+        out.append({
+            "id": str(d.get("_id")),
+            "event_type": d.get("event_type"),
+            "agent_id": d.get("agent_id"),
+            "user_id": d.get("user_id"),
+            "payload": d.get("payload"),
+            "timestamp_ms": d.get("timestamp_ms"),
+            "prev_hash": d.get("prev_hash"),
+            "this_hash": d.get("this_hash"),
+        })
+    # Reverse to chronological so the UI appends downward.
+    return {"count": len(out), "events": list(reversed(out))}
 
 
 __all__ = ["router", "record_demo_usage", "check_demo_quota"]
