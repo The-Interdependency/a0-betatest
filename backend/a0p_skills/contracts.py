@@ -1108,7 +1108,48 @@ def api_extensions_living_spec_holds():
         assert m["summary"], f"module missing summary: {m['path']}"
 
 
+def zfae_decoder_native_only_holds():
+    """Contract pins (per the decoder handoff):
+      (a) decode() is deterministic given identical state → identical text.
+      (b) energy state varies → output varies (energy-conditioned, not template-fixed).
+      (c) decoder missing for an unknown intent → MISSING_DECODER_MESSAGE.
+      (d) render() is retained as the named fallback voice.
+    """
+    from interdependent_lib.zfae._decoder import decode, render, MISSING_DECODER_MESSAGE
+    from interdependent_lib.zfae._parser import parse_semantic
+
+    f = parse_semantic("describe the state of the engine")
+    s_a = {"tick_number": 7, "phi_energy": 0.3, "psi_energy": -0.1,
+           "omega_energy": 0.05, "theta_energy": 0.0, "sigma_energy": 0.2,
+           "coherence_total": 0.12, "memory_l_count": 3, "memory_s_count": 1,
+           "last_intent_hash": "abc1234"}
+    s_b = dict(s_a, phi_energy=-0.4, omega_energy=-0.3, tick_number=8)
+
+    # (a) determinism
+    out_a1 = decode("describe_state", f, s_a)
+    out_a2 = decode("describe_state", f, dict(s_a))
+    assert out_a1 == out_a2, "decode must be deterministic given identical state"
+
+    # (b) energy-conditioned (different state → different output)
+    out_b = decode("describe_state", f, s_b)
+    assert out_b != out_a1, "decode must vary with energy state"
+
+    # (c) unknown intent → MISSING_DECODER_MESSAGE
+    assert decode("not_a_real_intent", f, s_a) == MISSING_DECODER_MESSAGE
+
+    # (d) render fallback still callable and returns a non-empty string
+    assert isinstance(render("describe_state", f, s_a), str)
+    assert render("describe_state", f, s_a)
+
+
 def module_imports_cleanly_holds():
+    """Generic contract: every MODULE_BUILD-bearing .py module under /app/backend
+    imports without raising. Used as the canonical 'integration' contract for
+    modules that don't have a more specific behavioural contract.
+
+    Skips: __pycache__, .venv, node_modules, scripts/, tests/ (tests are driven
+    by pytest, not importlib).
+    """
     """Generic contract: every MODULE_BUILD-bearing .py module under /app/backend
     imports without raising. Used as the canonical 'integration' contract for
     modules that don't have a more specific behavioural contract.

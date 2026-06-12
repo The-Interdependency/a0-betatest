@@ -70,6 +70,11 @@ from dataclasses import dataclass, field, asdict
 from enum import Enum
 from typing import Any, Optional
 
+import logging as _logging
+
+_AUDIT_LOG = _logging.getLogger("a0p.zfae.audit")
+
+
 from .inference import A0ZFAEInferenceEngine, MISSING_NATIVE_MESSAGE
 from .weights import A0ZFAEWeightBank
 from .trainer import ZFAELearner, TrainingResult
@@ -244,8 +249,8 @@ class ZFAERuntime:
                         "vector": list(verdict.vector),
                     },
                 )
-            except Exception:
-                pass
+            except Exception as _e:
+                _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
 
         if not verdict.requires_override:
             return verdict, None
@@ -285,8 +290,8 @@ class ZFAERuntime:
                     agent_id=agent_id, user_id=user_id,
                     payload={"override_id": rec.id, "flagged": list(verdict.flagged_sentinels)},
                 )
-            except Exception:
-                pass
+            except Exception as _e:
+                _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
         return verdict, rec
 
     async def _fiq_emit_chat_reply(self, agent_id, user_id, reply_obj, verdict):
@@ -305,8 +310,8 @@ class ZFAERuntime:
                     "training_step": reply_obj.zfae_metrics.get("zfae_training_step"),
                 },
             )
-        except Exception:
-            pass
+        except Exception as _e:
+            _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
 
     async def _teacher_assisted(
         self, *, agent_id, user_id, bank, raw_prompt, transcript,
@@ -357,8 +362,8 @@ class ZFAERuntime:
                     trace={"reason": "demo_quota_exhausted", **quota},
                     zfae_metrics=self._metrics(bank),
                 )
-        except Exception:
-            pass
+        except Exception as _e:
+            _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
         if teacher.teacher_reply and not teacher.error:
             result: TrainingResult = self.learner.distill_step(
                 bank, raw_prompt, teacher.teacher_reply,
@@ -371,8 +376,8 @@ class ZFAERuntime:
                 from api_extensions import record_demo_usage
                 approx = (len(raw_prompt) + len(teacher.teacher_reply or "")) // 4
                 await record_demo_usage(user_id, max(50, approx))
-            except Exception:
-                pass
+            except Exception as _e:
+                _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
             # FIQ emit: training_step
             if self.fiq_audit_col is not None:
                 try:
@@ -391,8 +396,8 @@ class ZFAERuntime:
                             "training_step": int(result.new_training_step),
                         },
                     )
-                except Exception:
-                    pass
+                except Exception as _e:
+                    _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
 
         # native engine produces nextSnapshot for state continuity
         native_result = self.native.infer(
