@@ -1033,6 +1033,15 @@ async def _on_startup():
         if r.modified_count:
             import logging as _lg
             _lg.getLogger("a0p").info("migrated %d legacy local agents to admin", r.modified_count)
+    # Regenerate README.md from the living spec
+    try:
+        from readme_writer import write_readme
+        n = write_readme()
+        import logging as _lg2
+        _lg2.getLogger("a0p").info("README.md regenerated from %d living-spec modules", n)
+    except Exception as _e:
+        import logging as _lg3
+        _lg3.getLogger("a0p").warning("README regeneration failed: %s", _e)
     # Seed a few starter detachable agents if the collection is empty.
     n = await agents_col.count_documents({})
     if n == 0:
