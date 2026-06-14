@@ -64,6 +64,14 @@
 #   class: correctness
 #   call: a0p_skills.contracts.zfae_weight_bank_three_core_total_holds
 # === END CONTRACTS ===
+
+# === CONTRACTS ===
+# id: zfae_weight_bank_persists_gonal_seed
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: a0p_skills.contracts.zfae_weight_bank_persists_gonal_seed_holds
+# === END CONTRACTS ===
 """A0ZFAEWeightBank — persistent three-core (phi, psi, omega) weight bank.
 
 Each core is a (157, 53, 7, 7) ndarray. The bank's total scalar count is
@@ -88,7 +96,9 @@ from .weight_init import (
     WEIGHT_COUNT_PER_CORE,
     WEIGHT_COUNT_TOTAL,
     CORE_NAMES,
+    GONAL_SEED_WIDTH,
     seed_initial_three_core,
+    seed_initial_gonal,
     default_metadata,
 )
 
@@ -113,6 +123,7 @@ class A0ZFAEWeightBank:
         cores: dict[str, np.ndarray] | None = None,
         metadata: dict[str, str] | None = None,
         last_loss: float | None = None,
+        gonal_seed: np.ndarray | None = None,
     ):
         self.agent_id = agent_id
         if cores is None:
@@ -135,6 +146,13 @@ class A0ZFAEWeightBank:
             coerced[name] = arr.astype(np.float32, copy=False)
         self._cores: dict[str, np.ndarray] = coerced
         self._metadata: dict[str, str] = _coerce_metadata(metadata, agent_id)
+        # 4th persisted tensor — private-gonal seed (Route A inscription entropy).
+        if gonal_seed is None:
+            gonal_seed = seed_initial_gonal(agent_id)
+        gs = np.asarray(gonal_seed, dtype=np.float32).reshape(-1)
+        if gs.size != GONAL_SEED_WIDTH:
+            gs = seed_initial_gonal(agent_id)
+        self._gonal_seed: np.ndarray = gs.astype(np.float32, copy=False)
         self._last_loss: float | None = (
             None if last_loss is None or not (last_loss == last_loss and last_loss != float("inf") and last_loss != float("-inf"))
             else float(last_loss)
@@ -188,6 +206,16 @@ class A0ZFAEWeightBank:
     @property
     def cores(self) -> dict[str, np.ndarray]:
         return dict(self._cores)
+
+    @property
+    def gonal_seed(self) -> np.ndarray:
+        """The per-agent private-gonal seed vector (width 53)."""
+        return self._gonal_seed
+
+    @property
+    def gonal_seed_bytes(self) -> bytes:
+        """Raw bytes of the private-gonal seed — passed to PrivateGonal.from_seed."""
+        return self._gonal_seed.tobytes()
 
     @property
     def metadata(self) -> dict[str, str]:
@@ -273,13 +301,16 @@ class A0ZFAEWeightBank:
             cores = {"phi": tensors["weights"], "psi": seeded["psi"], "omega": seeded["omega"]}
         else:
             raise ValueError(f"checkpoint missing core tensors: {path}")
-        return cls(agent_id, cores=cores, metadata=meta, last_loss=last_loss)
+        gonal_seed = tensors.get("gonal_seed")
+        return cls(agent_id, cores=cores, metadata=meta, last_loss=last_loss, gonal_seed=gonal_seed)
 
     def save(self, path: str | Path) -> str:
         """Save weight bank to safetensors + sidecar metadata JSON. Returns combined digest."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        save_file(self._cores, str(path), metadata=self._metadata)
+        tensors = dict(self._cores)
+        tensors["gonal_seed"] = self._gonal_seed
+        save_file(tensors, str(path), metadata=self._metadata)
         sidecar = path.with_suffix(".meta.json")
         sidecar.write_text(
             json.dumps({"metadata": self._metadata, "last_loss": self._last_loss}, indent=2),

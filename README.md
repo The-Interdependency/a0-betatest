@@ -3,8 +3,8 @@
 > _changes constant. refinements welcome._
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-14 08:21:20 UTC._
-_149 modules across 17 kinds._
+_Living spec — auto-regenerated on backend startup at 2026-06-14 08:34:35 UTC._
+_152 modules across 17 kinds._
 
 Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 
@@ -42,7 +42,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `mcp_relay` | `backend/tools/mcp_relay.py` | relay tool invocations to external MCP servers registered per user — Streamable HTTP JSON-RPC client (Model Context Protocol over HTTP) with bearer-token auth; outbound only, the server-side surfac… |
 | `webhook` | `backend/tools/webhook.py` | invoke user-registered webhook tools — POSTs the JSON params to the user's URL with an HMAC-SHA256 signature header (X-A0P-Signature) so the user can verify the call came from a0p |
 
-## engine · 56
+## engine · 57
 
 | module | path | summary |
 |---|---|---|
@@ -66,6 +66,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `ficks` | `backend/interdependent_lib/fiq/ficks.py` | ficks — gradient term D_r(Φ_a − Φ_b) in the fiq flux equation; named after Fick's law of diffusion; resolves "tics-per-tok" framing as the gradient of fiq tics per LLM token |
 | `fiq` | `backend/interdependent_lib/fiq/__init__.py` | fiq motion canon — boundary law for audited motion between PCNA/PCTA/PTCA strata; tick schedule (3/5/7); χ indicators; FIQ_TRANSFER/BUFFERED/BLOCKED events; sentinels S1-S9, R0, fiques_time |
 | `gated_invoke` | `backend/tools/gated_invoke.py` | per-tool-call sentinel gate — evaluates the 13 sentinels against the tool name + serialized params, halts on any flag (creates a PendingOverride and emits zfae_override_created), only proceeds when… |
+| `gonal_inscription` | `backend/interdependent_lib/zfae/gonal_inscription.py` | ZFAE Native Decoder Route A — Gonal Inscription. A per-agent PrivateGonal (secret phase + permutation, seeded at instantiation) inscribes the continuous Φ/Ψ/Ω tensor field onto polygon vertices to … |
 | `group` | `backend/interdependent_lib/pcna/group.py` | "all seven together is a tensor" — aggregate composition op that lifts 7 Tensors to 1 Tensor (the 8th referent, the projection upward into the next layer) |
 | `inference` | `backend/interdependent_lib/zfae/inference.py` | a0(ZFAE) inference engine — native deterministic symbolic/state engine; no LLM dependency; returns {assistantText, nextSnapshot, trace} |
 | `instance` | `backend/interdependent_lib/pcea/instance.py` | stateful PCEA instance — auto-advances last_state per call |
@@ -103,12 +104,13 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `zeta` | `backend/interdependent_lib/pcna/zeta.py` | zeta-injection ring — harmonic LT/ST/SUB memory mix + alpha-echo resonance |
 | `zfae` | `backend/interdependent_lib/zfae/__init__.py` | a0(ZFAE) — the inference provider, not an agent label. Exposes A0ZFAEInferenceEngine (native deterministic), plus the legacy ZFAEAgent persona for backward-compat with prior PCNAEngine wiring |
 
-## experiment · 2
+## experiment · 3
 
 | module | path | summary |
 |---|---|---|
 | `contracts` | `backend/a0p_skills/contracts.py` | executable test functions referenced by CONTRACTS `call:` paths across the repo |
 | `public_fixture` | `backend/interdependent_lib/gonal/public_fixture.py` | public fixture disk generator — binary-order rule per user spec; deterministic, committable, satisfies hard invariants, NOT the canon |
+| `test_zfae_gonal_inscription` | `backend/tests/test_zfae_gonal_inscription.py` | regression for ZFAE Route A — PrivateGonal determinism, 53→32 whitening bridge, engine PCEA-digest + non-flat tensors, gonal-seed safetensors persistence |
 
 ## library · 1
 
@@ -155,7 +157,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `tick_schedule` | `backend/interdependent_lib/fiq/tick_schedule.py` | ψ/φ/ω consciousness-prime tick constants (3/5/7); orthogonal stratum + core attention axes; logical default with optional real-time toggle |
 | `topology` | `backend/interdependent_lib/network/topology.py` | ring topology spec — names, per-ring N (Φ Ψ Ω 157, Θ 29, Σ 53, MemL 19, MemS 17), heptagram routing slots (lock-step avoidance via unique step+direction), ring weights for coherence scoring |
 
-## service · 12
+## service · 13
 
 | module | path | summary |
 |---|---|---|
@@ -166,6 +168,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `db` | `backend/db.py` | Motor async client + collection accessors + index ensurance |
 | `fiq_emit` | `backend/interdependent_lib/zfae/fiq_emit.py` | ZFAE-level provenance emitter — appends hash-chained zfae_* events (training_step, chat_reply, sentinel_verdict, override_created, override_resolved) to fiq_audit_log |
 | `living_spec` | `backend/living_spec.py` | pure scanner over the repo that returns every msdmd block as JSON; no DB / network dependencies; used by the /api/spec/living endpoint and by contract tests |
+| `long_memory` | `backend/interdependent_lib/zfae/long_memory.py` | a0 long-term memory canon — folds the repo's living spec (every MODULE_BUILD block) into a cached deterministic summary the ZFAE engine carries on every inference, so the agent "queries itself" |
 | `overrides` | `backend/interdependent_lib/zfae/overrides.py` | PendingOverride dataclass + lifecycle helpers for sentinel halt-and-override; backed by MongoDB pending_overrides_col |
 | `readme_writer` | `backend/readme_writer.py` | regenerates /app/README.md on every backend startup from the living spec (scan_repo_blocks); idempotent, deterministic, never raises |
 | `registry` | `backend/interdependent_lib/gonal/registry.py` | three-gonal registry — default (EXAMPLE_157), mirror (mirror_of default), private (per-agent built via build_gonal from spec); resolves an agent's per-core gonal triplet |

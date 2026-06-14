@@ -211,6 +211,8 @@ class ZFAERuntime:
 
         reply_obj.sentinel_verdict = _verdict_to_dict(verdict) if verdict else None
 
+        # ---- FIQ emit: zfae_decode (non-silent native inscription audit) --------
+        await self._fiq_emit_decode(agent_id, user_id, reply_obj)
         # ---- FIQ emit: chat_reply -----------------------------------------------
         await self._fiq_emit_chat_reply(agent_id, user_id, reply_obj, verdict)
         return reply_obj
@@ -293,6 +295,23 @@ class ZFAERuntime:
             except Exception as _e:
                 _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
         return verdict, rec
+
+    async def _fiq_emit_decode(self, agent_id, user_id, reply_obj):
+        """Non-silent audit — emit a zfae_decode event when Route A inscribed text."""
+        if self.fiq_audit_col is None:
+            return
+        meta = (reply_obj.trace or {}).get("zfae_decode")
+        if not meta:
+            return
+        try:
+            await fiq_emit.emit(
+                self.fiq_audit_col,
+                event_type="zfae_decode",
+                agent_id=agent_id, user_id=user_id,
+                payload=meta,
+            )
+        except Exception as _e:
+            _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
 
     async def _fiq_emit_chat_reply(self, agent_id, user_id, reply_obj, verdict):
         if self.fiq_audit_col is None:
@@ -405,6 +424,7 @@ class ZFAERuntime:
             transcript=transcript,
             zfaeSnapshot=zfae_snapshot,
             rings={"summary": ring_summary} if ring_summary else None,
+            gonal_seed=bank.gonal_seed_bytes,
         )
         snapshot_after = native_result["nextSnapshot"]
 
@@ -475,6 +495,7 @@ class ZFAERuntime:
             rawPrompt=raw_prompt,
             transcript=transcript,
             zfaeSnapshot=zfae_snapshot,
+            gonal_seed=bank.gonal_seed_bytes,
         )
         return RuntimeReply(
             assistantText=native_result["assistantText"]

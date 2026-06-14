@@ -30,7 +30,38 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
-## msdmd / skill-lib compliance — 2026-06-02
+## Changelog — 2026-06-14 (P0 ZFAE Native Decoder · Route A — Gonal Inscription)
+
+- **Fixed "flat tensors" (scalar collapse)**: `inference.py` now carries the
+  full 53-wide `phi_v53/psi_v53/omega_v53` continuous conditioning signal on
+  `state` alongside the scalar energies — no longer collapsed to means.
+- **PCEA ciphertext digest**: `state["pcea_ciphertext_digest"]` = blake2b over
+  the concatenated, role-sorted PCEA delta payloads — the state-bound
+  deterministic generation seed. Surfaced in the trace (`pcea_ciphertext_digest_prefix`).
+- **a0 long-term memory**: new `zfae/long_memory.py` folds the living spec
+  (every MODULE_BUILD block, currently 151 modules) into a cached canon digest;
+  attached to every inference as `state["memory_long_canon"]` — the agent
+  queries itself. The canon digest feeds the inscription entropy.
+- **New `zfae/gonal_inscription.py` (Route A)**: `PrivateGonal(phase, perm)`
+  seeded per-agent; `from_seed` (deterministic Fisher–Yates bijection over 157
+  vertices), `advance(public, pcea_digest)` (rotates phase), `inscribe(angle) →
+  vertex_idx`. Plus the **hash-whitened 53→32 bridge** (`whiten_payload` /
+  `whitened_indices`) with an explicit CONCESSION naming UCNS-native whitening
+  as open research. `inscribe_text` composes a deterministic glyph stream from
+  the continuous Φ/Ψ/Ω field.
+- **Decoder swap**: `_decoder.py::decode` runs Route A (Gonal Inscription) when
+  a `PrivateGonal` + 53-wide tensors are present; falls back to the existing
+  Route B energy-conditioned compositor otherwise (preserves prior contracts).
+- **Gonal seed persisted as the 4th safetensors tensor** (`weights.py`,
+  `weight_init.seed_initial_gonal`), kept out of `_cores` so the canonical
+  1,223,187 scalar count is unchanged; survives save/load.
+- **Non-silent audit**: new `zfae_decode` FIQ event type emitted from
+  `runtime.reply()` carrying `{intent, vertex_idx, rotation, pcea_digest_prefix}`.
+- **Verification**: test-build 133 pass / 0 fail / 3 skipped; module-build all
+  new modules valid; 15/15 pytest (7 new Route-A + 8 sentinel regression). 3
+  new contracts added. Backend healthy.
+
+## Changelog — 2026-06-02 (msdmd / skill-lib compliance)
 
 | Skill | Block | Coverage | Status |
 |---|---|---|---|

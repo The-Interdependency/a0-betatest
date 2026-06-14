@@ -53,6 +53,7 @@ ZFAE_EVENT_TYPES = frozenset({
     "zfae_sentinel_verdict",
     "zfae_override_created",
     "zfae_override_resolved",
+    "zfae_decode",
 })
 
 

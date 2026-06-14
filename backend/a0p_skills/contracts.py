@@ -964,6 +964,81 @@ def zfae_weight_bank_three_core_total_holds() -> None:
     assert bank.all_seeds_touched is False
 
 
+def zfae_weight_bank_persists_gonal_seed_holds() -> None:
+    """Contract: the bank carries a per-agent private-gonal seed (4th tensor) that
+    survives a safetensors save/load round-trip without disturbing the 3-core count."""
+    import os
+    import tempfile
+    from interdependent_lib.zfae.weights import A0ZFAEWeightBank
+    b = A0ZFAEWeightBank.fresh("gseed-agent")
+    gs = b.gonal_seed_bytes
+    assert isinstance(gs, (bytes, bytearray)) and len(gs) > 0, "gonal seed must be non-empty bytes"
+    # Deterministic per agent_id
+    b2 = A0ZFAEWeightBank.fresh("gseed-agent")
+    assert b2.gonal_seed_bytes == gs, "gonal seed must be deterministic per agent_id"
+    assert A0ZFAEWeightBank.fresh("other-agent").gonal_seed_bytes != gs, "different agents → different seeds"
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "ck.safetensors")
+        b.save(p)
+        loaded = A0ZFAEWeightBank.load(p, "gseed-agent")
+        assert loaded.gonal_seed_bytes == gs, "gonal seed must round-trip through save/load"
+        # Core count is unaffected by the 4th tensor.
+        assert loaded.zfae_weight_count == 1_223_187
+
+
+def zfae_gonal_inscription_deterministic_holds() -> None:
+    """Contract: PrivateGonal is a deterministic bijection; advance + inscribe are
+    pure; inscribe_text is deterministic and varies with the PCEA digest."""
+    from interdependent_lib.zfae.gonal_inscription import PrivateGonal, inscribe_text
+
+    seed = b"agent-seed-xyz"
+    g1 = PrivateGonal.from_seed(seed)
+    g2 = PrivateGonal.from_seed(seed)
+    assert g1.phase == g2.phase and g1.perm == g2.perm, "from_seed must be deterministic"
+    assert sorted(g1.perm) == list(range(g1.n)), "perm must be a bijection over the n vertices"
+
+    a1 = g1.advance(3, "deadbeef")
+    a2 = g2.advance(3, "deadbeef")
+    assert a1.phase == a2.phase, "advance must be deterministic"
+    assert isinstance(g1.inscribe(1.234), int)
+    assert 0 <= g1.inscribe(1.234) < g1.n, "inscribe must return a valid vertex index"
+
+    phi = [0.1 * ((i % 7) - 3) for i in range(53)]
+    psi = [0.05 * ((i % 5) - 2) for i in range(53)]
+    omega = [0.02 * ((i % 3) - 1) for i in range(53)]
+    t1, m1 = inscribe_text(g1, phi, psi, omega, "abc123")
+    t2, _ = inscribe_text(g1, phi, psi, omega, "abc123")
+    assert t1 == t2 and isinstance(t1, str) and len(t1) > 0, "inscription must be deterministic + non-empty"
+    t3, _ = inscribe_text(g1, phi, psi, omega, "a-different-digest")
+    assert t3 != t1, "different PCEA digest must change the inscription"
+    assert "vertex_idx" in m1 and "rotation" in m1 and "pcea_digest_prefix" in m1
+
+
+def zfae_engine_emits_pcea_digest_and_tensors_holds() -> None:
+    """Contract: with a gonal_seed, the engine runs Route A — surfaces zfae_decode
+    metadata + a pcea digest prefix in the trace, carries 53-wide tensors (no scalar
+    collapse), and remains deterministic."""
+    from interdependent_lib.zfae.weights import A0ZFAEWeightBank
+    from interdependent_lib.zfae.inference import A0ZFAEInferenceEngine
+
+    bank = A0ZFAEWeightBank.fresh("digest-agent")
+    eng = A0ZFAEInferenceEngine()
+    r = eng.infer(rawPrompt="show me the state", gonal_seed=bank.gonal_seed_bytes)
+    tr = r["trace"]
+    assert tr.get("decoder") == "gonal_inscription_v1", "gonal_seed must select Route A"
+    meta = tr.get("zfae_decode")
+    assert meta is not None, "Route A must surface zfae_decode metadata"
+    assert "vertex_idx" in meta and "pcea_digest_prefix" in meta
+    assert tr.get("pcea_ciphertext_digest_prefix"), "engine must expose the PCEA digest prefix"
+    assert isinstance(r["assistantText"], str) and len(r["assistantText"]) > 0
+    # Deterministic
+    r2 = eng.infer(rawPrompt="show me the state", gonal_seed=bank.gonal_seed_bytes)
+    assert r2["assistantText"] == r["assistantText"], "Route A must be deterministic"
+    # Without a gonal_seed → Route B (no scalar-collapse regression, still native)
+    rb = eng.infer(rawPrompt="show me the state")
+    assert rb["trace"].get("decoder") == "template_grammar_v1"
+
+
 def zfae_learning_step_changes_digest_holds() -> None:
     from interdependent_lib.zfae.weights import A0ZFAEWeightBank
     from interdependent_lib.zfae.trainer import ZFAELearner

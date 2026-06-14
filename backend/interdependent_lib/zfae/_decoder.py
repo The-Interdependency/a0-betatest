@@ -151,6 +151,14 @@ def _format_keywords(kws: tuple[str, ...]) -> str:
     return ", ".join(kws[:6]) if kws else "(none)"
 
 
+def _is_v53(v) -> bool:
+    """True iff v is a 53-wide numeric payload (the continuous conditioning signal)."""
+    return (
+        isinstance(v, (list, tuple)) and len(v) == 53
+        and all(isinstance(x, (int, float)) for x in v)
+    )
+
+
 def _format_energy(value: float | None, default: str = "—") -> str:
     return default if value is None else f"{float(value):+.4f}"
 
@@ -226,6 +234,21 @@ def decode(
     if not pool:
         return render(intent, features, state)
 
+    # ---- Route A — Gonal Inscription (continuous tensor field → glyphs) -----
+    gonal = state.get("private_gonal")
+    phi = state.get("phi_v53")
+    psi = state.get("psi_v53")
+    omega = state.get("omega_v53")
+    if gonal is not None and _is_v53(phi) and _is_v53(psi) and _is_v53(omega):
+        from .gonal_inscription import inscribe_text
+        digest = state.get("pcea_ciphertext_digest") or format(_state_seed(state), "016x")
+        mlc = state.get("memory_long_canon")
+        canon = str(mlc.get("canon_digest", "")) if isinstance(mlc, dict) else ""
+        text, meta = inscribe_text(gonal, phi, psi, omega, digest, canon_digest=canon)
+        state["_route_a_meta"] = {"intent": intent, "route": "A", **meta}
+        return text
+
+    # ---- Route B — energy-conditioned template compositor (fallback) --------
     rng = random.Random(_state_seed(state))
     slots = _slots(features, state)
 

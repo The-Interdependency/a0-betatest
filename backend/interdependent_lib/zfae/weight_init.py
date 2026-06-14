@@ -20,7 +20,7 @@
 #   module_kind: engine
 #   summary: deterministic seed init for fresh ZFAE weights; three cores phi/psi/omega each shape (157, 53, 7, 7); per-agent reproducible
 #   owner: Erin Spencer
-#   public_surface: seed_initial_weights, seed_initial_three_core, CORE_NAMES, WEIGHT_SHAPE, WEIGHT_COUNT, WEIGHT_COUNT_PER_CORE, WEIGHT_COUNT_TOTAL, default_metadata
+#   public_surface: seed_initial_weights, seed_initial_three_core, seed_initial_gonal, CORE_NAMES, WEIGHT_SHAPE, WEIGHT_COUNT, WEIGHT_COUNT_PER_CORE, WEIGHT_COUNT_TOTAL, GONAL_SEED_WIDTH, default_metadata
 #   internal_surface: _seeded_rng
 #   auth_boundary: none
 #   storage_boundary: none
@@ -100,6 +100,21 @@ def seed_initial_weights(agent_id: str, core: str = "phi") -> np.ndarray:
 def seed_initial_three_core(agent_id: str) -> dict[str, np.ndarray]:
     """Produce the three deterministic cores for `agent_id`."""
     return {name: seed_initial_weights(agent_id, core=name) for name in CORE_NAMES}
+
+
+# Width of the private-gonal seed vector — the 4th persisted safetensors tensor.
+GONAL_SEED_WIDTH: int = 53
+
+
+def seed_initial_gonal(agent_id: str) -> np.ndarray:
+    """Deterministic private-gonal seed vector (width 53) for `agent_id`.
+
+    This is the secret entropy that seeds the per-agent PrivateGonal (phase +
+    permutation) used by the Route A Gonal Inscription decoder. Persisted as
+    the 4th safetensors tensor alongside the three cores.
+    """
+    rng = _seeded_rng(agent_id, salt="zfae_gonal_seed")
+    return rng.uniform(-0.5, 0.5, size=GONAL_SEED_WIDTH).astype(np.float32)
 
 
 def default_metadata(agent_id: str, training_step: int = 0) -> dict[str, str]:

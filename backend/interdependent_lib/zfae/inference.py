@@ -56,6 +56,13 @@
 #   class: correctness
 #   call: a0p_skills.contracts.zfae_engine_native_only_holds
 # === END CONTRACTS ===
+# === CONTRACTS ===
+# id: zfae_engine_route_a_emits_decode
+#   given: per the module's declared behaviour
+#   then: the named callable returns without raising
+#   class: correctness
+#   call: a0p_skills.contracts.zfae_engine_emits_pcea_digest_and_tensors_holds
+# === END CONTRACTS ===
 """a0(ZFAE) — native inference engine. Deterministic symbolic/state pipeline.
 
 Pipeline (all pure functions, no external calls):
@@ -77,6 +84,7 @@ import assertion).
 """
 from __future__ import annotations
 import hashlib
+import struct
 from dataclasses import dataclass
 from typing import Any, TypedDict
 
@@ -145,6 +153,33 @@ def _coerce_snapshot(snap: Any) -> dict:
     return {}
 
 
+def _payload_or_none(t: Any) -> list[float] | None:
+    """Return a Tensor's full 53-wide payload as a list — no scalar collapse."""
+    if isinstance(t, Tensor):
+        return list(t.payload)
+    return None
+
+
+def _pcea_ciphertext_digest(ciphertexts: dict[str, Tensor]) -> str:
+    """blake2b over the concatenated PCEA delta payloads (role-sorted).
+
+    This is the state-bound entropy/RNG seed for deterministic Gonal
+    Inscription generation — identical PCEA deltas → identical digest.
+    """
+    h = hashlib.blake2b(digest_size=16)
+    for role in sorted(ciphertexts.keys()):
+        h.update(role.encode("utf-8"))
+        for v in ciphertexts[role].payload:
+            h.update(struct.pack("<q", int(round(float(v) * (1 << 28)))))
+    return h.hexdigest()
+
+
+def _long_memory_canon() -> dict:
+    """a0 long-term memory — the living-spec canon (cached, deterministic)."""
+    from .long_memory import canon_summary
+    return canon_summary()
+
+
 def _intent_hash_short(features: SemanticFeatures, intent: IntentLabel) -> str:
     h = hashlib.blake2b(
         f"{intent}::{','.join(features.tokens)}".encode(), digest_size=4
@@ -184,6 +219,7 @@ class A0ZFAEInferenceEngine:
         omega: Any = None,
         edcmbone: Any = None,
         edcm: Any = None,
+        gonal_seed: bytes | None = None,
         **_ignored,
     ) -> InferenceResult:
         """Run one a0(zfae) inference step. Pure, deterministic.
@@ -219,6 +255,9 @@ class A0ZFAEInferenceEngine:
                 last_state[role] = Tensor(list(prev))
         ciphertexts = advance_zfae_state(bound, last_state=last_state)
 
+        # 4b. PCEA ciphertext digest — state-bound deterministic generation seed.
+        pcea_digest = _pcea_ciphertext_digest(ciphertexts)
+
         # 5. Build the slot state for the decoder
         ring_dict = _coerce_rings(rings)
         ring_energies = {
@@ -239,9 +278,22 @@ class A0ZFAEInferenceEngine:
             "memory_s_count": _memory_count(memoryS),
             "last_intent_hash": prior.get("intent_hash") or "—",
             "intent": intent,
+            # ---- continuous tensor conditioning (no scalar collapse) ----------
+            "pcea_ciphertext_digest": pcea_digest,
+            "phi_v53": _payload_or_none(bound.get("phi")),
+            "psi_v53": _payload_or_none(bound.get("psi")),
+            "omega_v53": _payload_or_none(bound.get("omega")),
+            # ---- a0 long-term memory canon (the agent queries itself) ---------
+            "memory_long_canon": _long_memory_canon(),
         }
 
-        # 6. Decode native
+        # 5b. Seed the per-agent PrivateGonal (Route A — Gonal Inscription).
+        if gonal_seed:
+            from .gonal_inscription import PrivateGonal
+            gonal = PrivateGonal.from_seed(bytes(gonal_seed))
+            state["private_gonal"] = gonal.advance(state["tick_number"], pcea_digest)
+
+        # 6. Decode native (Route A if a PrivateGonal is present, else Route B).
         text = self.decoder.decode(intent, features, state)
 
         # 7. nextSnapshot
@@ -296,7 +348,13 @@ class A0ZFAEInferenceEngine:
             "transcript_turn_count": (
                 len(transcript) if isinstance(transcript, (list, tuple)) else 0
             ),
-            "decoder": "template_grammar_v1",
+            "decoder": (
+                "gonal_inscription_v1" if state.get("private_gonal") is not None
+                else "template_grammar_v1"
+            ),
+            "pcea_ciphertext_digest_prefix": str(state.get("pcea_ciphertext_digest", ""))[:12],
+            "memory_long_canon": state.get("memory_long_canon"),
+            "zfae_decode": state.get("_route_a_meta"),
         }
 
 
