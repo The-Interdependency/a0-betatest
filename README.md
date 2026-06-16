@@ -3,8 +3,8 @@
 > _changes constant. refinements welcome._
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-15 19:34:47 UTC._
-_152 modules across 17 kinds._
+_Living spec — auto-regenerated on backend startup at 2026-06-16 02:55:02 UTC._
+_154 modules across 17 kinds._
 
 Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 
@@ -42,7 +42,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `mcp_relay` | `backend/tools/mcp_relay.py` | relay tool invocations to external MCP servers registered per user — Streamable HTTP JSON-RPC client (Model Context Protocol over HTTP) with bearer-token auth; outbound only, the server-side surfac… |
 | `webhook` | `backend/tools/webhook.py` | invoke user-registered webhook tools — POSTs the JSON params to the user's URL with an HMAC-SHA256 signature header (X-A0P-Signature) so the user can verify the call came from a0p |
 
-## engine · 57
+## engine · 59
 
 | module | path | summary |
 |---|---|---|
@@ -51,6 +51,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `_parser` | `backend/interdependent_lib/zfae/_parser.py` | deterministic prompt parser — token stats, intent surfaces (question, greeting, command, reflection), semantic load |
 | `_transition` | `backend/interdependent_lib/zfae/_transition.py` | ZFAE transition rules — folds semantic features into Φ/Ψ/Ω ring snapshots via PCEA kernel cross-cut; produces nextSnapshot |
 | `adjacency` | `backend/interdependent_lib/gonal/adjacency.py` | hard invariants on the carrier — no L-L adjacent, no N-N adjacent; works against any CarrierDisk implementation |
+| `agent_loop` | `backend/tools/agent_loop.py` | provider-agnostic agentic tool-use loop over raw HTTP (BYOK) — normalizes OpenAI/xAI Chat Completions, Anthropic Messages, and Gemini generateContent function-calling into one multi-step loop; adve… |
 | `aimmh` | `backend/interdependent_lib/aimmh/__init__.py` | async multi-model orchestration patterns over a call_fn(model_id, messages) |
 | `bones` | `backend/interdependent_lib/gonal/bones.py` | face-crossing detection over a bone's constituent positions; measurable structural property, not a violation |
 | `builtin` | `backend/tools/builtin.py` | register the built-in native tools — living_spec_lookup, vault_get_key, fetch_url, web_search; each one declares its JSON Schema and is sentinel-gated automatically by the registry's invoke |
@@ -75,6 +76,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `memory_core` | `backend/interdependent_lib/pcna/memory_core.py` | dual prime-ring memory — LT N=19, ST N=17, plus volatile sub-agent caches |
 | `mirror` | `backend/interdependent_lib/gonal/mirror.py` | position-reflection mirror of a gonal arrangement (invariant-preserving) |
 | `motion` | `backend/interdependent_lib/fiq/motion.py` | core fiq flux equation F = χ_route · χ_audit · χ_support · χ_attention · P_ab · D_r(Φ_a − Φ_b); pure functions |
+| `native_tools` | `backend/interdependent_lib/zfae/native_tools.py` | deterministic native tool-use — maps a raw prompt to at most one built-in tool call (fetch_url / web_search / living_spec_lookup) using pure rule-based detection so the a0(zfae) native engine can t… |
 | `network` | `backend/interdependent_lib/network/__init__.py` | canonical PCNA inference engine — 5 rings (Φ Ψ Ω Θ Σ) + 2 memory rings on the layered substrate, with PCEA cross-cut and Σ host-integrity observer |
 | `patterns` | `backend/interdependent_lib/aimmh/patterns.py` | pure-async multi-model orchestration patterns over call_fn(model_id, messages) |
 | `pcea` | `backend/interdependent_lib/pcea/__init__.py` | prime-circular bijective base encryption over first 53 primes (this state / last state) |
