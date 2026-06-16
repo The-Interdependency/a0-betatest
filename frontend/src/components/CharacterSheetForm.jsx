@@ -34,6 +34,7 @@
 // === END CAPABILITIES ===
 
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Plus, X } from "@phosphor-icons/react";
 import { MODE_OPTIONS } from "../lib/sentinels";
 import { api } from "../lib/api";
@@ -114,19 +115,28 @@ function ModelSelect({ value, onChange, inventory, testid, placeholder }) {
 
   if (showCustom) {
     return (
-      <div className="flex gap-2">
-        <input
-          data-testid={`${testid}-input`}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1 bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-xs text-white"
-        />
-        {opts.length > 0 && (
-          <button type="button" data-testid={`${testid}-uselist`} onClick={() => setCustomMode(false)}
-                  className="px-2 py-1 border border-white/10 font-mono text-[0.6rem] uppercase tracking-wider text-neutral-300 hover:bg-bg-surface">
-            list
-          </button>
+      <div className="space-y-1">
+        <div className="flex gap-2">
+          <input
+            data-testid={`${testid}-input`}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            className="flex-1 bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-xs text-white"
+          />
+          {opts.length > 0 && (
+            <button type="button" data-testid={`${testid}-uselist`} onClick={() => setCustomMode(false)}
+                    className="px-2 py-1 border border-white/10 font-mono text-[0.6rem] uppercase tracking-wider text-neutral-300 hover:bg-bg-surface">
+              list
+            </button>
+          )}
+        </div>
+        {opts.length === 0 && (
+          <span className="block text-[0.6rem] font-mono text-neutral-600">
+            inventory empty —{" "}
+            <Link to="/keys" className="text-accent-cyan underline" data-testid={`${testid}-add-key-link`}>add a BYOK key</Link>{" "}
+            to pick from a dropdown
+          </span>
         )}
       </div>
     );

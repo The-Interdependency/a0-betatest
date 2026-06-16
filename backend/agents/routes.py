@@ -151,6 +151,13 @@ class TeacherPreviewRequest(BaseModel):
     transcript: Optional[list[dict]] = None
 
 
+class TrainRequest(BaseModel):
+    """Training Room — distill the echo from two or more teacher models."""
+    model_config = ConfigDict(protected_namespaces=())
+    prompts: list[str]
+    teacher_model_ids: list[str]
+
+
 # ---- CRUD ---------------------------------------------------------------
 
 @router.get("/instances")
@@ -300,6 +307,50 @@ async def chat_instance(agent_id: str, body: ChatInstanceRequest, request: Reque
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=202, content=response_body)
     return response_body
+
+
+# ---- training room (multi-teacher distillation) ------------------------
+
+@router.post("/instances/{agent_id}/train")
+async def train_instance(agent_id: str, body: TrainRequest, request: Request):
+    """Training Room — distill the agent's a0(zfae) echo from TWO OR MORE teacher models.
+
+    Each prompt is answered by every selected teacher; the echo runs one distill
+    step per answer (round-robin core/seed) so the weight bank accumulates across
+    models. Requires authentication and the calling user's BYOK keys.
+    """
+    from auth import get_current_user
+    user = await get_current_user(request)
+    uid = user["id"]
+
+    store = get_agent_store()
+    agent = await store.get(agent_id, uid)
+    if not agent:
+        raise HTTPException(404, f"agent {agent_id} not found")
+
+    prompts = [p for p in (body.prompts or []) if (p or "").strip()]
+    if not prompts:
+        raise HTTPException(400, "provide at least one prompt to train on")
+    teachers = [t for t in (body.teacher_model_ids or []) if (t or "").strip()]
+    if len(teachers) < 2:
+        raise HTTPException(400, "the training room needs two or more teacher models")
+
+    runtime = getattr(router, "runtime", None)
+    if runtime is None:
+        raise HTTPException(500, "ZFAERuntime not initialised on the agents router")
+
+    from interdependent_lib.zfae.weights import A0ZFAEWeightBank
+    bank = store.load_weight_bank(agent_id) or A0ZFAEWeightBank.fresh(agent_id)
+    result = await runtime.train_multi(
+        agent_id=agent_id, user_id=uid, bank=bank,
+        prompts=prompts, teacher_model_ids=teachers,
+        system_prompt=agent.sheet.system_prompt, persona=agent.sheet.persona,
+    )
+    if result.get("weights_updated"):
+        store.save_weight_bank(agent_id, bank)
+        await store.refresh_metrics(agent_id, uid)
+    result["agent_id"] = agent_id
+    return result
 
 
 @router.post("/instances/{agent_id}/teacher-context-preview")

@@ -3,8 +3,8 @@
 > _changes constant. refinements welcome._
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-16 06:42:45 UTC._
-_155 modules across 17 kinds._
+_Living spec — auto-regenerated on backend startup at 2026-06-16 08:16:57 UTC._
+_157 modules across 17 kinds._
 
 Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 
@@ -192,13 +192,14 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `runner` | `backend/interdependent_lib/_msdmd/runner.py` | msdmd CAPABILITIES coverage runner (deprecated in favour of skills.module_build_runner) |
 | `test_build_runner` | `backend/a0p_skills/test_build_runner.py` | test-build skill executor — imports each CONTRACTS `call:` and runs it |
 
-## test · 5
+## test · 6
 
 | module | path | summary |
 |---|---|---|
 | `backend_test` | `backend/tests/backend_test.py` | end-to-end backend regression suite — covers /api/health, BYOK keys CRUD with encryption-at-rest masking, and chat session flows; intended to be executed by the testing-agent harness against the li… |
 | `conftest` | `backend/tests/conftest.py` | pytest configuration — enables pytest-asyncio plugin in auto mode for the backend test suite |
 | `test_tool_use_loop` | `backend/tests/test_tool_use_loop.py` | pytest coverage for the cross-provider tool-use loop (run_tool_loop), the |
+| `test_training_room` | `backend/tests/test_training_room.py` | pytest for ZFAERuntime.train_multi — multi-teacher distillation runs one |
 | `test_zfae_api_sentinels` | `backend/tests/test_zfae_api_sentinels.py` | integration tests for the ZFAE three-core + sentinel halt-and-override pipeline, hitting the live FastAPI service via REACT_APP_BACKEND_URL — Tests 1..8 from the review batch |
 | `test_zfae_three_core_sentinels` | `backend/tests/test_zfae_three_core_sentinels.py` | pytest regression suite for the 3-core (Φ/Ψ/Ω) weight bank, trainer round-robin, sentinel evaluator cliffs/slopes, native readiness gate, FIQ hash-chain emit, and PendingOverride lifecycle |
 
@@ -207,7 +208,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | module | path | summary |
 |---|---|---|
 | `AuditTape` | `frontend/src/components/AuditTape.jsx` | live polling FIQ-chain tape for the active agent — surfaces tool_call, sentinel_verdict, chat_reply, override_created events with their hash chain (prev_hash → this_hash) so the user can watch chai… |
-| `CharacterSheetForm` | `frontend/src/components/CharacterSheetForm.jsx` | editable character-sheet form for an Agent — name, mode (5-lattice), models, system_prompt, persona, tools allow-list, native-readiness thresholds, gonal assignment; emits onSubmit(sheet) |
+| `CharacterSheetForm` | `frontend/src/components/CharacterSheetForm.jsx` | fully-editable character-sheet form for an Agent — name, mode (5-lattice), models, system_prompt, persona, live tools_allowed multi-select (fetched from /api/tools with a custom-name fallback), mem… |
 | `MarkdownView` | `frontend/src/components/MarkdownView.jsx` | render Markdown + GFM tables + LaTeX (incl. arxiv \\(...\\) and \\[...\\] forms) via react-markdown + remark-math + rehype-katex |
 | `OverrideModal` | `frontend/src/components/OverrideModal.jsx` | modal that surfaces a pending sentinel-override and asks the user to approve (with justification) or reject (with reason); destructive cliff overrides require typed confirmation |
 | `Panel` | `frontend/src/components/Panel.jsx` | shared presentational primitives — Panel section, Pill badge, Stat metric tile, AsciiLoader progress indicator |
@@ -221,7 +222,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `auth` | `frontend/src/lib/auth.jsx` | AuthContext + useAuth hook + ProtectedRoute — manages JWT-cookie session, exposes user/loading/login/register/logout/refresh, redirects unauthenticated traffic to /login while keeping the splash & … |
 | `sentinels` | `frontend/src/lib/sentinels.js` | client-side helpers + canonical metadata for the 13 sentinels and the 5 lattice modes; pure, no I/O |
 
-## ui_page · 16
+## ui_page · 17
 
 | module | path | summary |
 |---|---|---|
@@ -229,7 +230,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `CustomKeysPage` | `frontend/src/pages/CustomKeysPage.jsx` | user-owned developer key vault — name + value (Fernet-encrypted at rest) + kind + label; supports rotation (PUT same name) and reveal (decrypt on demand); for GitHub PATs, GCP service accounts, AWS… |
 | `DraftsPage` | `frontend/src/pages/DraftsPage.jsx` | local prompt drafts — list / create / edit / delete; persists via /api/drafts |
 | `InspectorPage` | `frontend/src/pages/InspectorPage.jsx` | live inspector for PCNA/PTCA/PCEA skills + msdmd compliance reports (capabilities / module-build / contracts coverage); heartbeat ping |
-| `InventoryPage` | `frontend/src/pages/InventoryPage.jsx` | discovered model inventory across providers (openai, anthropic, gemini, xai, emergent) — populated from /api/models/inventory |
+| `InventoryPage` | `frontend/src/pages/InventoryPage.jsx` | discovered model inventory across providers (openai, anthropic, gemini, xai) — populated from /api/models/inventory; each row has a "create agent" action that instantiates a teacher-assisted a0(zfa… |
 | `KeyVaultPage` | `frontend/src/pages/KeyVaultPage.jsx` | BYOK key vault — list, upsert (Fernet-encrypted), delete BYOK provider keys (OpenAI/Anthropic/Gemini/XAI) |
 | `LivingSpecPage` | `frontend/src/pages/LivingSpecPage.jsx` | renders every msdmd block parsed live from the repo — grouped by module_kind, searchable, expandable per module to show MODULE_BUILD / BOUNDARIES / CAPABILITIES / CONTRACTS / RATIOS in full |
 | `LoginPage` | `frontend/src/pages/LoginPage.jsx` | tabbed sign-in / sign-up screen — username or email + ≥16-char passphrase (show/hide toggle) + Emergent Google + GitHub OAuth; auto-resumes the user's intended route after auth |
@@ -239,6 +240,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `SkillsPage` | `frontend/src/pages/SkillsPage.jsx` | skill catalog browser + authoring form with live overlap warning before save (jaccard ≥0.6 over scope ∪ logic tokens against existing user+global skills); admin-style sync button pulls global skill… |
 | `SplashPage` | `frontend/src/pages/SplashPage.jsx` | public landing — "changes constant. refinements welcome." manifesto + Sign in / Sign up CTAs + email-of-record (wayseer@interdependentway.org); shows demo-mode notice for unauthenticated visitors |
 | `ToolsPage` | `frontend/src/pages/ToolsPage.jsx` | lists every native + user-webhook + MCP-relay tool the current user can invoke; allows registering new user-webhook tools and invoking any tool with arbitrary JSON params; surfaces sentinel halts a… |
+| `TrainingRoom` | `frontend/src/pages/TrainingRoom.jsx` | multi-teacher distillation room — pick an agent, select TWO OR MORE teacher models (from the live inventory or custom ids), enter a batch of prompts (one per line), and run POST /api/instances/{id}… |
 | `VaultPage` | `frontend/src/pages/VaultPage.jsx` | per-site multi-account env vault — list, reveal (decrypts on demand), upsert, delete |
 | `WorkspacePage` | `frontend/src/pages/WorkspacePage.jsx` | chat workspace bound to one agent instance; sends prompts through /api/chat/instance/{id}; renders per-turn sentinel verdict ribbon; intercepts HTTP 202 sentinel-halts and opens an OverrideModal th… |
 

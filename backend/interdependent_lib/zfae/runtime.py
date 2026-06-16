@@ -462,6 +462,78 @@ class ZFAERuntime:
         await self._fiq_emit_tool_trace(agent_id, user_id, trace)
         return trace, summary, None
 
+    async def train_multi(
+        self, *, agent_id, user_id, bank, prompts, teacher_model_ids,
+        system_prompt="", persona="",
+    ) -> dict:
+        """Training Room — distill the a0(zfae) echo from TWO OR MORE teacher models.
+
+        For each prompt, every selected teacher answers and the echo runs one
+        distill step per answer (round-robin core/seed). The weight bank
+        accumulates across all (prompt × model) pairs. No silent fallback — a
+        missing BYOK key / provider error is recorded per step and skipped.
+        Returns ``{steps, weights_updated, teachers_used, ok_steps, metrics}``.
+        """
+        steps: list[dict] = []
+        any_updated = False
+        if self.teacher is None:
+            return {"steps": [], "weights_updated": False, "teachers_used": [],
+                    "ok_steps": 0, "metrics": self._metrics(bank),
+                    "error": "no teacher client configured"}
+        for pi, prompt in enumerate(prompts):
+            if not (prompt or "").strip():
+                continue
+            messages = build_curated_context(
+                system_prompt=system_prompt, persona=persona,
+                transcript=None, prompt=prompt,
+            )
+            for tm in teacher_model_ids:
+                entry = {"prompt_index": pi, "prompt": prompt[:140], "teacher_model_id": tm}
+                try:
+                    teacher = await self.teacher.invoke(
+                        user_id=user_id, teacher_model_id=tm, messages=messages)
+                except Exception as e:
+                    entry.update({"ok": False, "error": str(e)[:200]})
+                    steps.append(entry)
+                    continue
+                if teacher.error or not teacher.teacher_reply:
+                    entry.update({"ok": False, "error": teacher.error or "empty teacher reply"})
+                    steps.append(entry)
+                    continue
+                res = self.learner.distill_step(bank, prompt, teacher.teacher_reply)
+                any_updated = any_updated or res.weights_updated
+                bank.record_teacher(teacher.teacher_model_id)
+                entry.update({
+                    "ok": True,
+                    "loss": float(res.loss),
+                    "intent_match": bool(res.intent_match),
+                    "core": res.core,
+                    "seed_idx": int(res.seed_idx),
+                    "training_step": int(res.new_training_step),
+                    "total_seeds_touched": int(res.total_seeds_touched),
+                    "reply_preview": (teacher.teacher_reply or "")[:160],
+                })
+                steps.append(entry)
+                if self.fiq_audit_col is not None:
+                    try:
+                        await fiq_emit.emit(
+                            self.fiq_audit_col, event_type="zfae_training_step",
+                            agent_id=agent_id, user_id=user_id,
+                            payload={"core": res.core, "seed_idx": int(res.seed_idx),
+                                     "loss": float(res.loss), "intent_match": bool(res.intent_match),
+                                     "training_step": int(res.new_training_step),
+                                     "teacher_model_id": tm, "room": "training_room"},
+                        )
+                    except Exception as _e:
+                        _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
+        return {
+            "steps": steps,
+            "weights_updated": any_updated,
+            "teachers_used": sorted({s["teacher_model_id"] for s in steps if s.get("ok")}),
+            "ok_steps": sum(1 for s in steps if s.get("ok")),
+            "metrics": self._metrics(bank),
+        }
+
     async def _teacher_assisted(
         self, *, agent_id, user_id, bank, raw_prompt, transcript,
         teacher_model_id, system_prompt, persona, ring_summary,

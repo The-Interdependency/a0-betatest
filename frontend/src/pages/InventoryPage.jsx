@@ -35,10 +35,10 @@
 
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { Panel, Pill, AsciiLoader } from "../components/Panel";
-import { ArrowsClockwise, Robot } from "@phosphor-icons/react";
+import { ArrowsClockwise, Robot, KeyReturn } from "@phosphor-icons/react";
 
 export default function InventoryPage() {
   const [data, setData] = useState({ models: [], errors: {}, count: 0 });
@@ -127,8 +127,12 @@ export default function InventoryPage() {
         </div>
 
         {(data.models?.length ?? 0) === 0 && !loading && (
-          <div className="p-6 text-xs text-neutral-400 font-sans">
-            No models in the inventory yet. This build is BYOK — open the <span className="font-mono text-accent-cyan">Key Vault</span> and add an OpenAI / Anthropic / Google / xAI key. Live models will appear here as soon as a valid key is saved.
+          <div className="p-6 text-xs text-neutral-400 font-sans space-y-3" data-testid="inv-empty-cta">
+            <p>No models in the inventory yet. This build is BYOK — add an OpenAI / Anthropic / Google / xAI key and live models will appear here instantly.</p>
+            <Link to="/keys" data-testid="inv-add-key-btn"
+              className="inline-flex items-center gap-2 px-3 py-1.5 border border-accent-cyan/40 text-accent-cyan font-mono text-xs uppercase tracking-wider hover:bg-accent-cyan/10">
+              <KeyReturn size={14} /> add a model key
+            </Link>
           </div>
         )}
 
