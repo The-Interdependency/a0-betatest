@@ -652,6 +652,7 @@ class ZFAERuntime:
                     "max_loss_required": self.max_loss,
                     "total_seeds_touched": bank.total_seeds_touched,
                     "all_seeds_touched": bank.all_seeds_touched,
+                    "tool_trace": [],
                     **extra_trace,
                 },
                 zfae_metrics=self._metrics(bank),

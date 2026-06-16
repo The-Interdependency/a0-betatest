@@ -30,6 +30,40 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-16 (P0 Mid-thought Tool-Use Loop · teacher + native)
+
+- **Cross-provider tool-use loop wired into the runtime** (`tools/agent_loop.py`
+  `run_tool_loop`): teacher path (`runtime._teacher_assisted` → new
+  `_teacher_tool_loop`) now resolves the agent's `sheet.tools_allowed` (a list of
+  TOOL NAMES) into provider tool schemas and runs a multi-step function-calling
+  loop over raw HTTP for OpenAI / xAI (Chat Completions), Anthropic (Messages),
+  and Gemini (generateContent). The executor dispatches through the existing
+  **sentinel-gated** `tools.registry.invoke`; a mid-tool cliff raises
+  `ToolLoopHalt` → the turn returns `reply_source='zfae_halted'` with a
+  `pending_override_id`. Falls back to single-shot teacher when no BYOK key /
+  no resolvable tools.
+- **Native deterministic tool-use** (`zfae/native_tools.py` +
+  `runtime._native_tool_use`): the a0(zfae) engine picks ≤1 built-in tool via
+  pure rule-based `select_native_tool` (URL→fetch_url, spec→living_spec_lookup,
+  search→web_search), runs it gated, and folds a `summarize_tool_result` line
+  into the native reply. Only fires when the selected tool ∈ `tools_allowed`.
+- **Provenance**: every chat reply's `trace.tool_trace` now carries the
+  per-call `{name, args, status, result_preview}`. New FIQ event types
+  `zfae_tool_call` / `zfae_tool_result` emitted per invocation.
+- **UI**: `WorkspacePage` renders a "mid-thought tool calls" block per assistant
+  turn (`turn-<id>-tools` / `tool-call-<id>-<i>`); `AuditTape` surfaces the two
+  new tool events with violet tint + Wrench icon.
+- **Auth hardening (bug fix)**: agent instance routes (`agents/routes.py`
+  list/create/get/update/delete/archive/preview) now derive `user_id` from the
+  auth cookie via `_resolve_user_id` (falls back to query param only when
+  unauthenticated). Fixes the empty Workspace agent dropdown that appeared after
+  the legacy `user_id='local'` → admin migration.
+- **Tests**: `tests/test_tool_use_loop.py` (17) + `tests/test_tool_loop_http_e2e.py`
+  (6) → 23 pass. 2 new contracts (`tools_agent_loop_two_step`,
+  `zfae_native_tool_selection`). test-build 135 pass / 0 fail / 0 error / 3 skip.
+  Verified via testing-agent (iteration_7) + manual curl (gated tool dispatch,
+  S4 cliff halt, tools_allowed persistence, graceful no-key fallback).
+
 ## Changelog — 2026-06-14 (P0 ZFAE Native Decoder · Route A — Gonal Inscription)
 
 - **Fixed "flat tensors" (scalar collapse)**: `inference.py` now carries the
