@@ -125,6 +125,9 @@ export const api = {
   chatInstance:     (id, body) => client.post(`/chat/instance/${id}`, body, { timeout: 180000, validateStatus: (s) => s < 500 }).then(r => ({ status: r.status, data: r.data })),
   teacherContextPreview: (id, body) => client.post(`/instances/${id}/teacher-context-preview`, body).then(r => r.data),
 
+  // ─── Tools (built-in + user webhook/MCP) ────────────────────────────────
+  listTools:        () => client.get("/tools").then(r => r.data),
+
   // ─── Sentinels (13-sentinel canon + per-agent modes/weights) ────────────
   sentinelsCanon:   () => client.get("/sentinels/canon").then(r => r.data),
   getSentinelModes: (agent_id, user_id = "local") => client.get(`/instances/${agent_id}/sentinel-modes`, { params: { user_id } }).then(r => r.data),
