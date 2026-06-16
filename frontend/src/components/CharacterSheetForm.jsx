@@ -89,20 +89,22 @@ const listToLines = (l) => (l || []).join("\n");
 
 function useInventory() {
   const [inv, setInv] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let alive = true;
     api.inventory()
       .then(r => { if (alive) setInv(r.models || []); })
-      .catch(() => { if (alive) setInv([]); });
+      .catch(() => { if (alive) setInv([]); })
+      .finally(() => { if (alive) setLoaded(true); });
     return () => { alive = false; };
   }, []);
-  return inv;
+  return { inv, loaded };
 }
 
 // Model picker: a dropdown of `provider:id` options from the live inventory,
 // with a "+ custom…" escape hatch (and auto-custom when the inventory is empty,
 // e.g. BYOK with no keys yet) so the field is always editable.
-function ModelSelect({ value, onChange, inventory, testid, placeholder }) {
+function ModelSelect({ value, onChange, inventory, inventoryLoaded, testid, placeholder }) {
   const opts = useMemo(
     () => Array.from(new Set((inventory || []).map(m => `${m.provider}:${m.id}`))),
     [inventory],
@@ -131,7 +133,7 @@ function ModelSelect({ value, onChange, inventory, testid, placeholder }) {
             </button>
           )}
         </div>
-        {opts.length === 0 && (
+        {opts.length === 0 && inventoryLoaded && (
           <span className="block text-[0.6rem] font-mono text-neutral-600">
             inventory empty —{" "}
             <Link to="/keys" className="text-accent-cyan underline" data-testid={`${testid}-add-key-link`}>add a BYOK key</Link>{" "}
@@ -183,7 +185,7 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
   const [privateSpecPath, setPrivateSpecPath] = useState(initial?.private_gonal_spec_path ?? "");
 
   const { tools: availableTools, err: toolsErr } = useTools();
-  const inventory = useInventory();
+  const { inv: inventory, loaded: invLoaded } = useInventory();
 
   const needsBase = useMemo(() => /<model>/.test(mode), [mode]);
   const needsOuter = useMemo(() => /a0\(<model>\)<model>|a0\(zfae\)<model>/.test(mode), [mode]);
@@ -250,13 +252,13 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
 
         {needsBase && (
           <Field label="base model (inner <model>)" hint="from your model inventory — add a BYOK key to populate, or type a custom id" testid="csf-base">
-            <ModelSelect value={baseModel} onChange={setBaseModel} inventory={inventory}
+            <ModelSelect value={baseModel} onChange={setBaseModel} inventory={inventory} inventoryLoaded={invLoaded}
                          testid="csf-base" placeholder="openai:gpt-4o" />
           </Field>
         )}
         {needsOuter && (
           <Field label="outer model" hint="critic / second teacher" testid="csf-outer">
-            <ModelSelect value={outerModel} onChange={setOuterModel} inventory={inventory}
+            <ModelSelect value={outerModel} onChange={setOuterModel} inventory={inventory} inventoryLoaded={invLoaded}
                          testid="csf-outer" placeholder="anthropic:claude-sonnet-4-5" />
           </Field>
         )}

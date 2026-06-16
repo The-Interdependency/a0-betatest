@@ -30,6 +30,32 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-16d (Training Room — multi-teacher distillation + Key-Vault CTAs)
+
+- **Training Room** (`/training`, `pages/TrainingRoom.jsx`): pick an agent, select
+  **two or more** teacher models (chips from the live inventory + custom-id add),
+  enter a batch of prompts (one per line), and run
+  `POST /api/instances/{id}/train` → `ZFAERuntime.train_multi` distills the
+  a0(zfae) echo with **one distill step per (prompt × model)**, accumulating the
+  weight bank across all models (round-robin core/seed). Renders a metrics ribbon
+  (step / loss / seeds touched / teachers used) + a per-step results table
+  (intent ✓/✗, core, loss, status). Backend enforces ≥2 teacher models (400
+  otherwise) and records per-step provider/key errors without aborting. FIQ emits
+  `zfae_training_step` per distill. New nav item `nav-training`.
+- **Key-Vault CTAs** (accepted improvement): Inventory empty-state now has an
+  `inv-add-key-btn` → `/keys`; the agent model picker shows an "add a BYOK key"
+  link when the inventory is empty (suppressed during initial fetch to avoid a flash).
+- **Discovery / correction**: `/api/models/inventory` is NOT BYOK-gated — it
+  returns a **full ~112-model catalog** (OpenAI/xAI/…) even with no keys. So the
+  model dropdowns, the per-row "create agent" buttons, and the Training Room model
+  chips are all fully populated out of the box; keys are only needed to actually
+  *call* a model. (The "add key" CTAs are a rare fallback.)
+- **Tests**: `tests/test_training_room.py` (3) prove train_multi accumulates the
+  bank by one step per (prompt×model) across 2 models, records per-step errors,
+  and handles a missing teacher. 44 backend unit tests pass; frontend-module-build
+  29/29; eslint clean. Testing-agent iteration_10 → Training Room 5/5 pass
+  (gating, custom-model chips, prompt counter, run → graceful per-step result table).
+
 ## Changelog — 2026-06-16c (Inventory-driven model picker + one-click agent instantiation)
 
 - **Model fields are now pull-downs from the live inventory**: `base_model` /

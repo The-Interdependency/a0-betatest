@@ -39,7 +39,7 @@ import { GraduationCap, Play, Plus, X, CheckCircle, XCircle } from "@phosphor-ic
 import { api } from "../lib/api";
 import { Panel, Pill, Stat, AsciiLoader } from "../components/Panel";
 
-function ModelChips({ inventory, selected, onToggle, onAddCustom, onRemove }) {
+function ModelChips({ inventory, loading, selected, onToggle, onAddCustom, onRemove }) {
   const [custom, setCustom] = useState("");
   const names = useMemo(
     () => Array.from(new Set((inventory || []).map(m => `${m.provider}:${m.id}`))),
@@ -59,7 +59,10 @@ function ModelChips({ inventory, selected, onToggle, onAddCustom, onRemove }) {
             {n}{!selected.includes(n) && <Plus size={10} className="opacity-50" />}
           </button>
         ))}
-        {names.length === 0 && (
+        {names.length === 0 && loading && (
+          <span className="text-[0.6rem] font-mono text-neutral-600">loading models…</span>
+        )}
+        {names.length === 0 && !loading && (
           <span className="text-[0.6rem] font-mono text-neutral-600">
             no models in inventory — type a model id below, or{" "}
             <Link to="/keys" className="text-accent-cyan underline" data-testid="tr-add-key-link">add a BYOK key</Link>
@@ -91,6 +94,7 @@ function ModelChips({ inventory, selected, onToggle, onAddCustom, onRemove }) {
 export default function TrainingRoom() {
   const [agents, setAgents] = useState([]);
   const [inventory, setInventory] = useState([]);
+  const [invLoaded, setInvLoaded] = useState(false);
   const [agentId, setAgentId] = useState("");
   const [models, setModels] = useState([]);
   const [prompts, setPrompts] = useState("Explain entropy in one sentence.\nWhat is the capital of France?");
@@ -100,7 +104,10 @@ export default function TrainingRoom() {
 
   useEffect(() => {
     api.listInstances().then(r => setAgents(r.agents || [])).catch(() => setAgents([]));
-    api.inventory().then(r => setInventory(r.models || [])).catch(() => setInventory([]));
+    api.inventory()
+      .then(r => setInventory(r.models || []))
+      .catch(() => setInventory([]))
+      .finally(() => setInvLoaded(true));
   }, []);
 
   const promptList = prompts.split("\n").map(p => p.trim()).filter(Boolean);
@@ -158,7 +165,7 @@ export default function TrainingRoom() {
 
           <label className="block space-y-1">
             <span className="section-overline">teacher models (pick two or more)</span>
-            <ModelChips inventory={inventory} selected={models} onToggle={toggle} onAddCustom={addCustom} onRemove={toggle} />
+            <ModelChips inventory={inventory} loading={!invLoaded} selected={models} onToggle={toggle} onAddCustom={addCustom} onRemove={toggle} />
             {models.length < 2 && (
               <span className="text-[0.6rem] font-mono text-amber-300/80" data-testid="tr-models-hint">select at least two teacher models</span>
             )}
