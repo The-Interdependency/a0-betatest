@@ -126,7 +126,7 @@ export default function InventoryPage() {
           />
         </div>
 
-        {data.count === 0 && !loading && (
+        {(data.models?.length ?? 0) === 0 && !loading && (
           <div className="p-6 text-xs text-neutral-400 font-sans">
             No models in the inventory yet. This build is BYOK — open the <span className="font-mono text-accent-cyan">Key Vault</span> and add an OpenAI / Anthropic / Google / xAI key. Live models will appear here as soon as a valid key is saved.
           </div>

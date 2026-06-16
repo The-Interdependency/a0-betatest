@@ -30,6 +30,22 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-16c (Inventory-driven model picker + one-click agent instantiation)
+
+- **Model fields are now pull-downs from the live inventory**: `base_model` /
+  `outer_model` in `CharacterSheetForm` use a new `ModelSelect` populated from
+  `GET /api/models/inventory` (`provider:id` options). A "+ custom…" escape hatch
+  + an automatic editable text fallback (when the BYOK inventory is empty)
+  keep the field always editable.
+- **Models Inventory page**: each model row gets a **"create agent"** button
+  (`inv-create-agent-<provider>-<id>`) that instantiates a teacher-assisted
+  `a0(zfae)<model>` agent bound to that `provider:id` and opens it in the
+  Workspace. Added an error banner; empty-state CTA hardened to
+  `models.length === 0`.
+- **Verified**: testing-agent iteration_9 → 100% (action column renders, empty
+  inventory → editable text fallback, create-from-form persists `base_model`,
+  no JS console errors). eslint clean, frontend-module-build 28/28.
+
 ## Changelog — 2026-06-16b (Fully-editable character sheet — "everything editable" principle)
 
 - **CharacterSheetForm** now exposes every user-facing sheet field per the
