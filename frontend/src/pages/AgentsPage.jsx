@@ -105,7 +105,7 @@ export default function AgentsPage() {
   async function handleCreate(sheet) {
     setBusy(true); setErr(null);
     try {
-      await api.createInstance({ user_id: "local", sheet });
+      await api.createInstance({ sheet });
       setCreating(false);
       await load();
     } catch (e) {
@@ -117,7 +117,7 @@ export default function AgentsPage() {
     if (!editing) return;
     setBusy(true); setErr(null);
     try {
-      await api.patchInstance(editing.id, { user_id: "local", sheet });
+      await api.patchInstance(editing.id, { sheet });
       setEditing(null);
       await load();
     } catch (e) {

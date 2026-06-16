@@ -30,6 +30,26 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-16b (Fully-editable character sheet — "everything editable" principle)
+
+- **CharacterSheetForm** now exposes every user-facing sheet field per the
+  "every editable place should be editable" build principle:
+  - `tools_allowed` upgraded from a comma-text box to a **live multi-select**
+    fetched from `GET /api/tools` (built-in + webhook/MCP tools), with a custom
+    tool-name fallback (chips, sentinel-gated when invoked).
+  - New editors: `memory_seed` (long/short-term, one-per-line), `teacher_context_template`,
+    `tags`, and `boundaries` (auth/storage/network/user_data/admin_only selects).
+  - Structural engine dicts (`edcm`, `ring_n_override`, `heptagram_overrides`,
+    `px_resolution`) intentionally NOT exposed — engine-owned; editing them
+    would break the runtime. Omitted from submit so PATCH preserves them.
+- `api.listTools()` added. AgentsPage create/patch now omit the dead
+  `user_id:'local'` body field (cookie identity is the single source of truth).
+- **Verified**: testing-agent iteration_8 → 100% (all 5 items pass: table loads,
+  every field renders, live tool chips load + toggle, custom-tool add/remove,
+  full create + edit round-trip with merge-not-replace). eslint clean,
+  frontend-module-build 28/28. Backend curl confirmed create/PATCH persist all
+  new fields.
+
 ## Changelog — 2026-06-16 (P0 Mid-thought Tool-Use Loop · teacher + native)
 
 - **Cross-provider tool-use loop wired into the runtime** (`tools/agent_loop.py`
