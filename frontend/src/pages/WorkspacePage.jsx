@@ -35,7 +35,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { PaperPlaneTilt, Pulse, ShieldWarning, ArrowsClockwise } from "@phosphor-icons/react";
+import { PaperPlaneTilt, Pulse, ShieldWarning, ArrowsClockwise, Wrench } from "@phosphor-icons/react";
 import { api } from "../lib/api";
 import MarkdownView from "../components/MarkdownView";
 import SentinelVerdictRibbon from "../components/SentinelVerdictRibbon";
@@ -61,6 +61,28 @@ function Turn({ t }) {
         ? <pre className="font-mono text-sm text-white whitespace-pre-wrap break-words">{t.content}</pre>
         : <MarkdownView text={t.content} />
       }
+      {t.tool_trace?.length > 0 && (
+        <div className="space-y-1" data-testid={`turn-${t.id}-tools`}>
+          <div className="text-[0.55rem] font-mono uppercase tracking-ultra text-violet-300/70">mid-thought tool calls</div>
+          {t.tool_trace.map((tr, i) => (
+            <div key={i} data-testid={`tool-call-${t.id}-${i}`}
+                 className="flex items-center gap-2 text-[0.6rem] font-mono border-l-2 border-violet-400/40 pl-2 py-0.5">
+              <Wrench size={11} className="text-violet-300" />
+              <span className="text-violet-300">{tr.name}</span>
+              <span className="text-neutral-500">({Object.keys(tr.args || {}).join(", ")})</span>
+              <span className={
+                tr.status === "halted" ? "text-rose-300" :
+                tr.status === "error" ? "text-amber-300" : "text-emerald-300/80"
+              }>{tr.status}</span>
+              {tr.result_preview && (
+                <span className="text-neutral-500 truncate" title={String(tr.result_preview)}>
+                  · {String(tr.result_preview).slice(0, 90)}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
       {t.sentinel_verdict && <SentinelVerdictRibbon verdict={t.sentinel_verdict} />}
       {t.zfae_metrics && (
         <div className="text-[0.6rem] font-mono text-neutral-600 flex flex-wrap gap-3">
@@ -140,6 +162,7 @@ export default function WorkspacePage() {
         zfae_weights_updated: data.zfae_weights_updated,
         sentinel_verdict: data.sentinel_verdict,
         zfae_metrics: data.zfae_metrics,
+        tool_trace: data.trace?.tool_trace,
       };
       setTurns(prev => [...prev, assistantTurn]);
       if (status === 202 && data.pending_override_id) {

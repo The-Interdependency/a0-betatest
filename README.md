@@ -3,8 +3,8 @@
 > _changes constant. refinements welcome._
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-16 02:55:02 UTC._
-_154 modules across 17 kinds._
+_Living spec — auto-regenerated on backend startup at 2026-06-16 03:18:21 UTC._
+_155 modules across 17 kinds._
 
 Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 
@@ -192,12 +192,13 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `runner` | `backend/interdependent_lib/_msdmd/runner.py` | msdmd CAPABILITIES coverage runner (deprecated in favour of skills.module_build_runner) |
 | `test_build_runner` | `backend/a0p_skills/test_build_runner.py` | test-build skill executor — imports each CONTRACTS `call:` and runs it |
 
-## test · 4
+## test · 5
 
 | module | path | summary |
 |---|---|---|
 | `backend_test` | `backend/tests/backend_test.py` | end-to-end backend regression suite — covers /api/health, BYOK keys CRUD with encryption-at-rest masking, and chat session flows; intended to be executed by the testing-agent harness against the li… |
 | `conftest` | `backend/tests/conftest.py` | pytest configuration — enables pytest-asyncio plugin in auto mode for the backend test suite |
+| `test_tool_use_loop` | `backend/tests/test_tool_use_loop.py` | pytest coverage for the cross-provider tool-use loop (run_tool_loop), the |
 | `test_zfae_api_sentinels` | `backend/tests/test_zfae_api_sentinels.py` | integration tests for the ZFAE three-core + sentinel halt-and-override pipeline, hitting the live FastAPI service via REACT_APP_BACKEND_URL — Tests 1..8 from the review batch |
 | `test_zfae_three_core_sentinels` | `backend/tests/test_zfae_three_core_sentinels.py` | pytest regression suite for the 3-core (Φ/Ψ/Ω) weight bank, trainer round-robin, sentinel evaluator cliffs/slopes, native readiness gate, FIQ hash-chain emit, and PendingOverride lifecycle |
 

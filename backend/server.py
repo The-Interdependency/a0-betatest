@@ -820,6 +820,7 @@ _ZFAE_RUNTIME = ZFAERuntime(
     teacher_client=_TEACHER_CLIENT,
     pending_overrides_col=pending_overrides_col,
     fiq_audit_col=fiq_audit_col,
+    get_key_fn=_get_key,
 )
 init_agents_routes(agent_instances_col, runtime=_ZFAE_RUNTIME, get_key_fn=_get_key)
 app.include_router(agents_router, prefix="/api")

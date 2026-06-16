@@ -46,11 +46,16 @@ const ICONS = {
   zfae_sentinel_verdict: <ShieldCheck size={12} />,
   zfae_override_created: <ShieldWarning size={12} />,
   zfae_override_resolved: <ShieldWarning size={12} />,
+  zfae_tool_call: <Wrench size={12} />,
+  zfae_tool_result: <Wrench size={12} />,
 };
 
 function formatPayload(p) {
   if (!p) return "";
-  // Tool calls
+  // Native/teacher tool invocations
+  if (p.args_keys !== undefined && p.tool) return `→ ${p.tool}(${(p.args_keys || []).join(", ")})`;
+  if (p.status !== undefined && p.preview !== undefined && p.tool) return `${p.tool} · ${p.status} · ${String(p.preview).slice(0, 70)}`;
+  // Tool calls (legacy piggyback)
   if (p.kind === "tool_call" && p.tool) return `→ ${p.tool}(${(p.params_summary || []).join(", ")})`;
   // Sentinel verdicts
   if (p.kind === "tool_call" && p.flagged !== undefined) return `${p.tool || ""} flagged=${(p.flagged || []).join(",") || "—"}${p.blocking_cliff ? " · CLIFF" : ""}`;
@@ -68,6 +73,8 @@ function TapeRow({ e, broken }) {
     e.event_type === "zfae_sentinel_verdict" ? "border-emerald-500/30 text-emerald-300/80" :
     e.event_type === "zfae_chat_reply" ? "border-accent-cyan/40 text-accent-cyan" :
     e.event_type === "zfae_training_step" ? "border-amber-400/30 text-amber-300/80" :
+    e.event_type === "zfae_tool_call" ? "border-violet-400/40 text-violet-300" :
+    e.event_type === "zfae_tool_result" ? "border-violet-400/25 text-violet-200/80" :
     "border-white/10 text-neutral-300";
   return (
     <div className={`grid grid-cols-[1.2rem_5.5rem_8rem_1fr_7rem] gap-2 items-center px-2 py-1 border-l-2 ${tint} ${broken ? "bg-rose-500/5" : ""}`}

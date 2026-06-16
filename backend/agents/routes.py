@@ -253,6 +253,7 @@ async def chat_instance(agent_id: str, body: ChatInstanceRequest, request: Reque
         sentinel_modes=getattr(agent.sheet, "sentinel_modes", None),
         sentinel_weights=getattr(agent.sheet, "sentinel_weights", None),
         override_id=body.override_id,
+        tools_allowed=getattr(agent.sheet, "tools_allowed", None),
     )
 
     # Persist weight bank if updated

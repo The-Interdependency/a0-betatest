@@ -54,6 +54,8 @@ ZFAE_EVENT_TYPES = frozenset({
     "zfae_override_created",
     "zfae_override_resolved",
     "zfae_decode",
+    "zfae_tool_call",
+    "zfae_tool_result",
 })
 
 

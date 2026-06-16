@@ -1631,6 +1631,83 @@ def tools_pkg_imports_holds():
     assert len(natives) >= 4, f"only {len(natives)} native tools registered"
 
 
+def tools_agent_loop_two_step_holds():
+    """run_tool_loop runs one tool then returns the final text, per provider."""
+    return _tools_agent_loop_two_step_async()
+
+
+async def _tools_agent_loop_two_step_async() -> None:
+    from tools.agent_loop import run_tool_loop, tool_to_schema
+
+    tools = [{
+        "name": "echo", "description": "echo a value",
+        "input_schema": {"type": "object", "properties": {"v": {"type": "string"}}, "required": ["v"]},
+    }]
+
+    async def executor(tc):
+        assert tc["name"] == "echo"
+        return {"echoed": tc["args"].get("v")}
+
+    def make_poster(provider):
+        calls = {"n": 0}
+
+        def tool_call():
+            if provider in ("openai", "xai"):
+                return {"choices": [{"message": {"content": None, "tool_calls": [
+                    {"id": "c1", "function": {"name": "echo", "arguments": '{"v": "hi"}'}}]}}],
+                    "usage": {"total_tokens": 3}}
+            if provider == "anthropic":
+                return {"content": [{"type": "tool_use", "id": "c1", "name": "echo", "input": {"v": "hi"}}],
+                        "usage": {"input_tokens": 1, "output_tokens": 2}}
+            return {"candidates": [{"content": {"parts": [
+                {"functionCall": {"name": "echo", "args": {"v": "hi"}}}]}}],
+                "usageMetadata": {"totalTokenCount": 3}}
+
+        def final():
+            if provider in ("openai", "xai"):
+                return {"choices": [{"message": {"content": "done: hi"}}], "usage": {"total_tokens": 2}}
+            if provider == "anthropic":
+                return {"content": [{"type": "text", "text": "done: hi"}],
+                        "usage": {"input_tokens": 1, "output_tokens": 1}}
+            return {"candidates": [{"content": {"parts": [{"text": "done: hi"}]}}],
+                    "usageMetadata": {"totalTokenCount": 2}}
+
+        async def poster(url, headers, params, payload):
+            calls["n"] += 1
+            return tool_call() if calls["n"] == 1 else final()
+        return poster
+
+    for provider in ("openai", "xai", "anthropic", "gemini"):
+        tool_to_schema(tools[0], provider)  # translation must not raise
+        out = await run_tool_loop(
+            provider=provider, model="m", api_key="k",
+            generic_messages=[{"role": "user", "content": "say hi"}],
+            tools=tools, executor=executor, poster=make_poster(provider),
+        )
+        assert out["error"] is None, f"{provider}: {out['error']}"
+        assert out["final_text"] == "done: hi", f"{provider}: {out['final_text']!r}"
+        assert out["iterations"] == 2, f"{provider}: {out['iterations']}"
+        assert len(out["tool_trace"]) == 1 and out["tool_trace"][0]["name"] == "echo"
+        assert out["tool_trace"][0]["status"] == "ok"
+
+
+def zfae_native_tool_selection_holds():
+    """select_native_tool is deterministic + prioritised; summarize is total."""
+    from interdependent_lib.zfae.native_tools import select_native_tool, summarize_tool_result
+    s = select_native_tool("please read https://example.com/a now")
+    assert s and s["name"] == "fetch_url" and s["params"]["url"].startswith("https://example.com")
+    s2 = select_native_tool("show me the living spec for the runtime module")
+    assert s2 and s2["name"] == "living_spec_lookup"
+    s3 = select_native_tool("search for prime tensor papers")
+    assert s3 and s3["name"] == "web_search"
+    assert select_native_tool("hello there friend") is None
+    assert select_native_tool("search for prime tensor papers") == s3  # deterministic
+    assert isinstance(summarize_tool_result("fetch_url", {"status": 200, "text": "abcd"}), str)
+    assert isinstance(summarize_tool_result("web_search", {"results": [{"title": "x"}]}), str)
+    assert isinstance(summarize_tool_result("living_spec_lookup", {"count": 3}), str)
+    assert isinstance(summarize_tool_result("other", "raw string"), str)
+
+
 def skills_registry_overlap_warns_holds():
     """Two semantically-overlapping skills trigger SkillExistsWarning."""
     return _skills_registry_overlap_async()
