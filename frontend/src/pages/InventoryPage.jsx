@@ -2,14 +2,14 @@
 // id: fe_page_inventory
 //   module_name: InventoryPage
 //   module_kind: ui_page
-//   summary: discovered model inventory across providers (openai, anthropic, gemini, xai, emergent) — populated from /api/models/inventory
+//   summary: discovered model inventory across providers (openai, anthropic, gemini, xai) — populated from /api/models/inventory; each row has a "create agent" action that instantiates a teacher-assisted a0(zfae) agent bound to that model and opens it in the workspace
 //   owner: Erin Spencer
 //   public_surface: InventoryPage
-//   internal_surface: none
+//   internal_surface: createAgentFor
 //   auth_boundary: none
 //   storage_boundary: none
 //   network_boundary: external
-//   user_data_boundary: read
+//   user_data_boundary: write
 //   admin_only: false
 //   tests: manual_browser_smoke
 //   rollout: default_enabled
@@ -17,33 +17,37 @@
 // === END MODULE_BUILD ===
 // === BOUNDARIES ===
 // id: fe_page_inventory_boundaries
-//   summary: read-only inventory
+//   summary: inventory viewer + per-model "create agent" action
 //   auth_boundary: none
 //   storage_boundary: none
 //   network_boundary: external
-//   user_data_boundary: read
+//   user_data_boundary: write
 //   admin_only: false
 //   owner: Erin Spencer
 // === END BOUNDARIES ===
 // === CAPABILITIES ===
 // id: fe_page_inventory
-//   summary: model inventory ui
+//   summary: model inventory ui + agent instantiation
 //   exposes: InventoryPage
-//   boundaries: auth:none, storage:none, network:external, user_data:read
+//   boundaries: auth:none, storage:none, network:external, user_data:write
 //   owner: Erin Spencer
 // === END CAPABILITIES ===
 
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { Panel, Pill, AsciiLoader } from "../components/Panel";
-import { ArrowsClockwise } from "@phosphor-icons/react";
+import { ArrowsClockwise, Robot } from "@phosphor-icons/react";
 
 export default function InventoryPage() {
   const [data, setData] = useState({ models: [], errors: {}, count: 0 });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [creatingId, setCreatingId] = useState(null);
+  const [err, setErr] = useState(null);
+  const navigate = useNavigate();
 
   async function load() {
     setLoading(true);
@@ -52,6 +56,25 @@ export default function InventoryPage() {
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
+  async function createAgentFor(m) {
+    const modelId = `${m.provider}:${m.id}`;
+    setCreatingId(modelId); setErr(null);
+    try {
+      const agent = await api.createInstance({
+        sheet: {
+          name: `${m.id}`,
+          mode: "a0(zfae)<model>",   // teacher-assisted: this model teaches the a0(zfae) core
+          base_model: modelId,
+        },
+      });
+      navigate(`/workspace?agent=${agent.id}`);
+    } catch (e) {
+      setErr(e?.response?.data?.detail || e.message || String(e));
+    } finally {
+      setCreatingId(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     let xs = data.models || [];
@@ -79,6 +102,10 @@ export default function InventoryPage() {
           <ArrowsClockwise size={14} /> refresh
         </button>
       </header>
+
+      {err && (
+        <div className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-rose-300 text-xs font-mono" data-testid="inv-error">{String(err)}</div>
+      )}
 
       <Panel title={`catalog · ${data.count} models`}>
         <div className="flex flex-wrap gap-2 p-4 border-b border-white/10">
@@ -114,6 +141,7 @@ export default function InventoryPage() {
                 <th className="text-left p-3">provider</th>
                 <th className="text-left p-3">context</th>
                 <th className="text-left p-3">modality</th>
+                <th className="text-left p-3">action</th>
               </tr>
             </thead>
             <tbody>
@@ -126,10 +154,21 @@ export default function InventoryPage() {
                   </td>
                   <td className="p-3 text-neutral-400">{m.context_window || "—"}</td>
                   <td className="p-3 text-neutral-400">{m.modality || "text"}</td>
+                  <td className="p-3">
+                    <button
+                      className="btn-ghost"
+                      data-testid={`inv-create-agent-${m.provider}-${m.id}`}
+                      disabled={creatingId === `${m.provider}:${m.id}`}
+                      onClick={() => createAgentFor(m)}
+                      title={`Create a teacher-assisted a0(zfae) agent using ${m.provider}:${m.id}`}
+                    >
+                      <Robot size={13} /> {creatingId === `${m.provider}:${m.id}` ? "creating…" : "create agent"}
+                    </button>
+                  </td>
                 </tr>
               ))}
               {!filtered.length && !loading && (
-                <tr><td colSpan={5} className="p-6 text-center text-neutral-500">No models match the current filter.</td></tr>
+                <tr><td colSpan={6} className="p-6 text-center text-neutral-500">No models match the current filter.</td></tr>
               )}
             </tbody>
           </table>

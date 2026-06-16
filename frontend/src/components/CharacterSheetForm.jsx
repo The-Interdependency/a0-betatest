@@ -38,8 +38,6 @@ import { Plus, X } from "@phosphor-icons/react";
 import { MODE_OPTIONS } from "../lib/sentinels";
 import { api } from "../lib/api";
 
-const MODEL_HINT = "openai:gpt-4o · anthropic:claude-sonnet-4-5 · gemini:gemini-2.5-flash · xai:grok-2";
-
 const BOUNDARY_OPTIONS = {
   auth: ["none", "bearer", "admin"],
   storage: ["none", "read", "write"],
@@ -88,6 +86,68 @@ function useTools() {
 const linesToList = (s) => (s || "").split("\n").map(x => x.trim()).filter(Boolean);
 const listToLines = (l) => (l || []).join("\n");
 
+function useInventory() {
+  const [inv, setInv] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    api.inventory()
+      .then(r => { if (alive) setInv(r.models || []); })
+      .catch(() => { if (alive) setInv([]); });
+    return () => { alive = false; };
+  }, []);
+  return inv;
+}
+
+// Model picker: a dropdown of `provider:id` options from the live inventory,
+// with a "+ custom…" escape hatch (and auto-custom when the inventory is empty,
+// e.g. BYOK with no keys yet) so the field is always editable.
+function ModelSelect({ value, onChange, inventory, testid, placeholder }) {
+  const opts = useMemo(
+    () => Array.from(new Set((inventory || []).map(m => `${m.provider}:${m.id}`))),
+    [inventory],
+  );
+  const [customMode, setCustomMode] = useState(false);
+  useEffect(() => {
+    if (value && opts.length && !opts.includes(value)) setCustomMode(true);
+  }, [value, opts]);
+  const showCustom = customMode || opts.length === 0;
+
+  if (showCustom) {
+    return (
+      <div className="flex gap-2">
+        <input
+          data-testid={`${testid}-input`}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-xs text-white"
+        />
+        {opts.length > 0 && (
+          <button type="button" data-testid={`${testid}-uselist`} onClick={() => setCustomMode(false)}
+                  className="px-2 py-1 border border-white/10 font-mono text-[0.6rem] uppercase tracking-wider text-neutral-300 hover:bg-bg-surface">
+            list
+          </button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <select
+      data-testid={`${testid}-select`}
+      value={opts.includes(value) ? value : ""}
+      onChange={e => {
+        if (e.target.value === "__custom__") { setCustomMode(true); onChange(""); }
+        else onChange(e.target.value);
+      }}
+      className="w-full bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-xs text-white"
+    >
+      <option value="">— select model —</option>
+      {opts.map(o => <option key={o} value={o}>{o}</option>)}
+      <option value="__custom__">+ custom…</option>
+    </select>
+  );
+}
+
 export default function CharacterSheetForm({ initial, onSubmit, onCancel, submitLabel = "Create agent", busy }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [mode, setMode] = useState(initial?.mode ?? "a0(zfae)");
@@ -113,6 +173,7 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
   const [privateSpecPath, setPrivateSpecPath] = useState(initial?.private_gonal_spec_path ?? "");
 
   const { tools: availableTools, err: toolsErr } = useTools();
+  const inventory = useInventory();
 
   const needsBase = useMemo(() => /<model>/.test(mode), [mode]);
   const needsOuter = useMemo(() => /a0\(<model>\)<model>|a0\(zfae\)<model>/.test(mode), [mode]);
@@ -178,25 +239,15 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
         </Field>
 
         {needsBase && (
-          <Field label="base model (inner <model>)" hint={MODEL_HINT} testid="csf-base">
-            <input
-              data-testid="csf-base-input"
-              value={baseModel}
-              onChange={e => setBaseModel(e.target.value)}
-              className="w-full bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-xs text-white"
-              placeholder="openai:gpt-4o"
-            />
+          <Field label="base model (inner <model>)" hint="from your model inventory — add a BYOK key to populate, or type a custom id" testid="csf-base">
+            <ModelSelect value={baseModel} onChange={setBaseModel} inventory={inventory}
+                         testid="csf-base" placeholder="openai:gpt-4o" />
           </Field>
         )}
         {needsOuter && (
           <Field label="outer model" hint="critic / second teacher" testid="csf-outer">
-            <input
-              data-testid="csf-outer-input"
-              value={outerModel}
-              onChange={e => setOuterModel(e.target.value)}
-              className="w-full bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-xs text-white"
-              placeholder="anthropic:claude-sonnet-4-5"
-            />
+            <ModelSelect value={outerModel} onChange={setOuterModel} inventory={inventory}
+                         testid="csf-outer" placeholder="anthropic:claude-sonnet-4-5" />
           </Field>
         )}
       </div>
