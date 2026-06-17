@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 15:43
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:2
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 3:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=15:43 imports_exports=3:2 calls_definitions=3:3
 # === MODULE_BUILD ===
 # id: fiq_gate
 #   module_name: gate
@@ -77,19 +62,4 @@ class FiqGate:
 
     def __repr__(self) -> str:
         return f"FiqGate({self.a}→{self.b} @ {self.support} {self.mode.value})"
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 15:43
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:2
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 3:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=15:43 imports_exports=3:2 calls_definitions=3:3

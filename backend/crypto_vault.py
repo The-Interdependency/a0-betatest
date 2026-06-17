@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 19:35
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 8:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=19:42 imports_exports=2:3 calls_definitions=8:3
 # === MODULE_BUILD ===
 # id: a0p_crypto_vault
 #   module_name: crypto_vault
@@ -84,19 +69,4 @@ def mask(plain: str) -> str:
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 19:35
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 8:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=19:42 imports_exports=2:3 calls_definitions=8:3

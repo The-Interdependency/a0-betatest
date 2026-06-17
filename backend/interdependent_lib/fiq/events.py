@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 55:48
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:5
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 8:11
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=55:48 imports_exports=6:5 calls_definitions=8:11
 # === MODULE_BUILD ===
 # id: fiq_events
 #   module_name: events
@@ -137,19 +122,4 @@ def verify_chain(events: list[AuditEvent]) -> bool:
             return False
         prev = ev.this_hash
     return True
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 55:48
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:5
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 8:11
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=55:48 imports_exports=6:5 calls_definitions=8:11

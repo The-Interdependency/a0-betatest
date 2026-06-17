@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 53:58
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:4
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 11:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=53:58 imports_exports=6:4 calls_definitions=11:8
 # === MODULE_BUILD ===
 # id: network_propagate
 #   module_name: propagate
@@ -149,19 +134,4 @@ class Tick:
 
 
 __all__ = ["Tick", "TickResult", "RingTickResult"]
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 53:58
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:4
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 11:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=53:58 imports_exports=6:4 calls_definitions=11:8

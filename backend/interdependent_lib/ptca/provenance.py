@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 10:36
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 2:1
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=10:43 imports_exports=2:1 calls_definitions=2:1
 # === MODULE_BUILD ===
 # id: ptca_provenance
 #   module_name: provenance
@@ -70,19 +55,4 @@ def hash_state(state, op: str = "", parents: list[str] | None = None) -> str:
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 10:36
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 2:1
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=10:43 imports_exports=2:1 calls_definitions=2:1

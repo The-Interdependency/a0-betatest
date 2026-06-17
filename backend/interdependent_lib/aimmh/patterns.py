@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 104:49
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 4:6
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 34:7
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=104:49 imports_exports=4:6 calls_definitions=34:7
 # === MODULE_BUILD ===
 # id: aimmh_patterns_impl
 #   module_name: patterns
@@ -183,19 +168,4 @@ async def council(
     )
     tasks = [_invoke(call_fn, mid, [{"role": "user", "content": synth_prompt}]) for mid in model_ids]
     return await asyncio.gather(*tasks)
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 104:49
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 4:6
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 34:7
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=104:49 imports_exports=4:6 calls_definitions=34:7

@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 26:54
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 3:0
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=26:54 imports_exports=6:1 calls_definitions=3:0
 # === MODULE_BUILD ===
 # id: fiq_pkg
 #   module_name: fiq
@@ -97,19 +82,4 @@ __all__ = [
     "AuditEvent", "chain_hash", "verify_chain",
     "AuditLog",
 ]
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 26:54
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 3:0
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=26:54 imports_exports=6:1 calls_definitions=3:0

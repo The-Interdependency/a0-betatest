@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: hmmm
-#   basis: ratios_runner.compute_loc_comments (recorded on next run)
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: hmmm
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: hmmm
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=25:52 imports_exports=4:3 calls_definitions=5:2
 # === MODULE_BUILD ===
 # id: zfae_long_memory
 #   module_name: long_memory
@@ -100,3 +85,4 @@ def reset_cache() -> None:
 
 
 __all__ = ["canon_summary", "reset_cache"]
+# ratios: loc_comments=25:52 imports_exports=4:3 calls_definitions=5:2

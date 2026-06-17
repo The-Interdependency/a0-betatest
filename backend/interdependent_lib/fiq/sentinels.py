@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 129:64
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 5:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 22:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=129:64 imports_exports=5:3 calls_definitions=22:8
 # === MODULE_BUILD ===
 # id: fiq_sentinels
 #   module_name: sentinels
@@ -238,19 +223,4 @@ __all__ = [
     "S6_COHERENCE", "S7_RECALL", "S8_BUDGET", "S9_OUTPUT",
     "R0_ROOT", "FIQUES_TIME",
 ]
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 129:64
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 5:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 22:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=129:64 imports_exports=5:3 calls_definitions=22:8

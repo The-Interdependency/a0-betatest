@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: hmmm
-#   basis: ratios_runner.compute_loc_comments (recorded on next run)
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: hmmm
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: hmmm
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=120:90 imports_exports=6:5 calls_definitions=51:9
 # === MODULE_BUILD ===
 # id: zfae_gonal_inscription
 #   module_name: gonal_inscription
@@ -256,3 +241,4 @@ __all__ = [
     "BRIDGE_OUT_WIDTH",
     "DEFAULT_INSCRIBE_LENGTH",
 ]
+# ratios: loc_comments=120:90 imports_exports=6:5 calls_definitions=51:9

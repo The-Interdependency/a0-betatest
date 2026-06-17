@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 4:47
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 0:0
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=4:47 imports_exports=3:1 calls_definitions=0:0
 # === MODULE_BUILD ===
 # id: pcea_pkg
 #   module_name: pcea
@@ -68,19 +53,4 @@ from .cipher import encrypt_state, decrypt_state
 from .instance import PCEAInstance
 
 __all__ = ["PRIME_CIRCLE", "encrypt_state", "decrypt_state", "PCEAInstance"]
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 4:47
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 0:0
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=4:47 imports_exports=3:1 calls_definitions=0:0

@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 6:47
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 2:1
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=6:47 imports_exports=3:1 calls_definitions=2:1
 # === MODULE_BUILD ===
 # id: carrier_bones
 #   module_name: bones
@@ -70,19 +55,4 @@ def face_crossing(constituent_positions: Iterable[int]) -> bool:
     """
     faces = {face(int(k)) for k in constituent_positions}
     return len(faces) > 1
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 6:47
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 2:1
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=6:47 imports_exports=3:1 calls_definitions=2:1

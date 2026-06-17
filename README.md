@@ -3,7 +3,7 @@
 > _changes constant. refinements welcome._
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-17 05:23:11 UTC._
+_Living spec — auto-regenerated on backend startup at 2026-06-17 09:03:22 UTC._
 _157 modules across 17 kinds._
 
 Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
@@ -187,8 +187,8 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `capabilities_runner` | `backend/a0p_skills/capabilities_runner.py` | cap-build skill executor — parses CAPABILITIES blocks, builds capability map, flags duplicates/hmmm/gaps |
 | `interdependent_lib` | `backend/interdependent_lib/__init__.py` | meta-package exposing pcea, ptca, pcna, aimmh, zfae submodules |
 | `module_build_runner` | `backend/a0p_skills/module_build_runner.py` | meta-module-build skill executor — validates MODULE_BUILD schema + gap report |
-| `parser` | `backend/interdependent_lib/_msdmd/parser.py` | canonical msdmd parser — line-for-line sync of skill-lib/msdmd/parsers/universal.py |
-| `ratios_runner` | `backend/a0p_skills/ratios_runner.py` | ratios skill executor — recomputes loc_comments/imports_exports/calls_definitions per file; fails on drift |
+| `parser` | `backend/interdependent_lib/_msdmd/parser.py` | canonical msdmd block parser + single-line RATIOS reader (loc_comments/imports_exports/calls_definitions on first & last line) |
+| `ratios_runner` | `backend/a0p_skills/ratios_runner.py` | ratios skill executor — recomputes loc_comments/imports_exports/calls_definitions and gates on drift + first/last-line placement of the single-line RATIOS declaration |
 | `runner` | `backend/interdependent_lib/_msdmd/runner.py` | msdmd CAPABILITIES coverage runner (deprecated in favour of skills.module_build_runner) |
 | `test_build_runner` | `backend/a0p_skills/test_build_runner.py` | test-build skill executor — imports each CONTRACTS `call:` and runs it |
 

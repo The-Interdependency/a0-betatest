@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 39:57
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 7:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=39:57 imports_exports=2:1 calls_definitions=7:3
 # === MODULE_BUILD ===
 # id: ptca_constants
 #   module_name: constants
@@ -124,19 +109,4 @@ def is_coherence_prime(p: int) -> bool:
     if len(set(factors)) != len(factors):  # square-free
         return False
     return all(f in COHERENCE_FACTOR_UNIVERSE for f in factors)
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 39:57
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 7:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=39:57 imports_exports=2:1 calls_definitions=7:3

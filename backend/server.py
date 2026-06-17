@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 601:96
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 31:39
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 201:47
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=790:107 imports_exports=45:56 calls_definitions=273:64
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -1076,19 +1061,4 @@ async def _on_startup():
         for a in starters:
             await agents_col.insert_one({"_id": new_id(), **a.model_dump(),
                                          "created_at": now, "updated_at": now})
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 601:96
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 31:39
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 201:47
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=790:107 imports_exports=45:56 calls_definitions=273:64

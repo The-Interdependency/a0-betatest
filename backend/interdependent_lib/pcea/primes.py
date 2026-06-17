@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 9:35
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 0:0
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 1:0
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=9:42 imports_exports=0:0 calls_definitions=1:0
 # === MODULE_BUILD ===
 # id: pcea_primes
 #   module_name: primes
@@ -66,19 +51,4 @@ assert len(PRIME_CIRCLE) == 53
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 9:35
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 0:0
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 1:0
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=9:42 imports_exports=0:0 calls_definitions=1:0

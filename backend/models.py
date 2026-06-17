@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 105:35
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 5:14
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 18:16
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=105:42 imports_exports=5:14 calls_definitions=18:16
 # === MODULE_BUILD ===
 # id: a0p_models
 #   module_name: models
@@ -196,19 +181,4 @@ def new_id() -> str:
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 105:35
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 5:14
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 18:16
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=105:42 imports_exports=5:14 calls_definitions=18:16

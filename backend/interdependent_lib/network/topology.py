@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 46:62
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 6:2
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=46:62 imports_exports=3:3 calls_definitions=6:2
 # === MODULE_BUILD ===
 # id: network_topology
 #   module_name: topology
@@ -141,19 +126,4 @@ __all__ = [
     "MEMORY_RING_NAMES",
     "unique_heptagram_slots",
 ]
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 46:62
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 6:2
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=46:62 imports_exports=3:3 calls_definitions=6:2

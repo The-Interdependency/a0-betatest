@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: hmmm
-#   basis: ratios_runner.compute_loc_comments (recorded on next run)
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: hmmm
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: hmmm
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=37:56 imports_exports=3:3 calls_definitions=19:2
 # === MODULE_BUILD ===
 # id: zfae_native_tools
 #   module_name: native_tools
@@ -122,3 +107,4 @@ def summarize_tool_result(name: str, result) -> str:
 
 
 __all__ = ["select_native_tool", "summarize_tool_result", "NATIVE_TOOL_NAMES"]
+# ratios: loc_comments=37:56 imports_exports=3:3 calls_definitions=19:2

@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 51:62
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 14:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=51:62 imports_exports=6:3 calls_definitions=14:8
 # === MODULE_BUILD ===
 # id: carrier_public_fixture
 #   module_name: public_fixture
@@ -148,19 +133,4 @@ def build_public_fixture_disk() -> CarrierDisk:
     no L-L adjacent, no N-N adjacent) and is obviously NOT the canon disk.
     """
     return PublicFixtureDisk()
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 51:62
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 14:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=51:62 imports_exports=6:3 calls_definitions=14:8

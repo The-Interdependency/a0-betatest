@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 86:63
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 10:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 33:10
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=86:63 imports_exports=10:1 calls_definitions=33:10
 # === MODULE_BUILD ===
 # id: theta_private_loader
 #   module_name: _theta_private_loader
@@ -185,19 +170,4 @@ def load_canon_disk() -> CarrierDisk:
     disk = _CanonDisk(class_map)
     _validate_canon_invariants(disk)
     return disk
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 86:63
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 10:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 33:10
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=86:63 imports_exports=10:1 calls_definitions=33:10

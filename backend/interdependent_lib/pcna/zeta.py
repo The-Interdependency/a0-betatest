@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 40:44
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 18:4
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=40:51 imports_exports=2:3 calls_definitions=18:4
 # === MODULE_BUILD ===
 # id: pcna_zeta
 #   module_name: zeta
@@ -120,19 +105,4 @@ def echo(value: float, decay: float = 0.85, steps: int = 6) -> list[float]:
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 40:44
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 18:4
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=40:51 imports_exports=2:3 calls_definitions=18:4

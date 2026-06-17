@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 154:60
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 9:14
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 51:14
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=224:78 imports_exports=14:16 calls_definitions=84:18
 # === MODULE_BUILD ===
 # id: agents_routes
 #   module_name: routes
@@ -378,19 +363,4 @@ async def teacher_context_preview(agent_id: str, body: TeacherPreviewRequest, re
         "surface_3_teacher_context": messages,
         "context_distinct_from_prompt": len(messages) > 1 or (messages and messages[-1].get("content") != body.prompt or messages[0].get("role") != "user"),
     }
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 154:60
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 9:14
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 51:14
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=224:78 imports_exports=14:16 calls_definitions=84:18

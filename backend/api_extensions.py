@@ -231,12 +231,13 @@ def _iter_repo_files():
 
 
 def _scan_repo_blocks() -> list[dict]:
-    from interdependent_lib._msdmd.parser import parse_file
+    from interdependent_lib._msdmd.parser import parse_file, parse_ratios_file
     BLOCKS = ("MODULE_BUILD", "BOUNDARIES", "CAPABILITIES", "CONTRACTS", "RATIOS")
     modules: list[dict] = []
     for p in _iter_repo_files():
         try:
-            entries_by_kind = {k: (parse_file(p, k) or []) for k in BLOCKS}
+            entries_by_kind = {k: (parse_file(p, k) or []) for k in BLOCKS if k != "RATIOS"}
+            entries_by_kind["RATIOS"] = parse_ratios_file(p) or []
         except Exception:
             entries_by_kind = {k: [] for k in BLOCKS}
         mb = entries_by_kind["MODULE_BUILD"]

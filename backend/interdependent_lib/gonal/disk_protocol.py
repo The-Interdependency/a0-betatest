@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 26:56
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 1:12
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=26:56 imports_exports=3:3 calls_definitions=1:12
 # === MODULE_BUILD ===
 # id: carrier_disk_protocol
 #   module_name: disk_protocol
@@ -108,19 +93,4 @@ class DiskSignature(Protocol):
     def is_canon(self) -> bool:
         """True iff this is the private canon disk (theta_microkernel-loaded)."""
         ...
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 26:56
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 1:12
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=26:56 imports_exports=3:3 calls_definitions=1:12

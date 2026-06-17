@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 3:42
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 0:0
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=3:42 imports_exports=2:1 calls_definitions=0:0
 # === MODULE_BUILD ===
 # id: agents_pkg
 #   module_name: agents
@@ -60,19 +45,4 @@ from .schema import AgentInstance, CharacterSheet, AgentMode, PXResolution, ALL_
 from .store import AgentStore
 
 __all__ = ["AgentInstance", "CharacterSheet", "AgentMode", "PXResolution", "AgentStore", "ALL_MODES"]
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 3:42
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 0:0
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=3:42 imports_exports=2:1 calls_definitions=0:0

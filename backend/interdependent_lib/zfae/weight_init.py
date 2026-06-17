@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 22:56
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:2
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 5:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=39:65 imports_exports=3:4 calls_definitions=10:5
 # === MODULE_BUILD ===
 # id: zfae_weight_init
 #   module_name: weight_init
@@ -135,19 +120,4 @@ def default_metadata(agent_id: str, training_step: int = 0) -> dict[str, str]:
         "created_from": "seed_init_then_teacher_distillation",
         "teacher_models_seen": "[]",
     }
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 22:56
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:2
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 5:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=39:65 imports_exports=3:4 calls_definitions=10:5

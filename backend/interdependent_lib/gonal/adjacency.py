@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 18:45
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 4:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 7:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=18:45 imports_exports=4:3 calls_definitions=7:3
 # === MODULE_BUILD ===
 # id: carrier_adjacency
 #   module_name: adjacency
@@ -83,19 +68,4 @@ def find_N_N_violations(disk: CarrierDisk) -> list[tuple[int, int]]:
 def hard_invariant_holds(disk: CarrierDisk) -> bool:
     """True iff no L-L adjacencies AND no N-N adjacencies anywhere on the disk."""
     return not find_L_L_violations(disk) and not find_N_N_violations(disk)
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 18:45
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 4:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 7:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=18:45 imports_exports=4:3 calls_definitions=7:3

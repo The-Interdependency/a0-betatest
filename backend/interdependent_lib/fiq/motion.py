@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 53:58
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 5:7
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 12:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=53:58 imports_exports=5:7 calls_definitions=12:8
 # === MODULE_BUILD ===
 # id: fiq_motion
 #   module_name: motion
@@ -144,19 +129,4 @@ def flux(
     if not gate_open:
         return 0.0
     return float(gate_open) * float(P_ab) * ficks(phi_a, phi_b, D_r)
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 53:58
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 5:7
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 12:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=53:58 imports_exports=5:7 calls_definitions=12:8

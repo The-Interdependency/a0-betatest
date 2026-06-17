@@ -1,27 +1,12 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 100:75
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 4:5
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 34:7
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=134:86 imports_exports=4:8 calls_definitions=49:10
 # === MODULE_BUILD ===
 # id: msdmd_parser
 #   module_name: parser
 #   module_kind: skill
-#   summary: canonical msdmd parser — line-for-line sync of skill-lib/msdmd/parsers/universal.py
+#   summary: canonical msdmd block parser + single-line RATIOS reader (loc_comments/imports_exports/calls_definitions on first & last line)
 #   owner: a0p maintainer
-#   public_surface: parse_text, parse_file, walk_tree, marker_for
-#   internal_surface: _MARKERS, _DEFAULT_SKIP, _block_regex
+#   public_surface: parse_text, parse_file, walk_tree, marker_for, parse_ratios, parse_ratios_file, ratios_placement, RATIO_IDS
+#   internal_surface: _MARKERS, _DEFAULT_SKIP, _block_regex, _RATIOS_LINE_RE
 #   auth_boundary: none
 #   storage_boundary: read
 #   network_boundary: none
@@ -44,8 +29,8 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: msdmd_parser
-#   summary: canonical msdmd parser — line-for-line sync of skill-lib/msdmd/parsers/universal.py
-#   exposes: parse_text, parse_file, walk_tree, marker_for
+#   summary: canonical msdmd block parser + single-line RATIOS reader
+#   exposes: parse_text, parse_file, walk_tree, marker_for, parse_ratios, parse_ratios_file, ratios_placement
 #   boundaries: auth:none, storage:read, network:none, user_data:none
 #   owner: a0p maintainer
 # === END CAPABILITIES ===
@@ -96,6 +81,11 @@ _DEFAULT_SKIP = (
     "dist", "build", ".next", ".nuxt", "target", ".pytest_cache",
     ".mypy_cache", ".tox",
 )
+
+# Canonical ratio ids carried by the single-line RATIOS declaration.
+RATIO_IDS = ("loc_comments", "imports_exports", "calls_definitions")
+_RATIOS_LINE_RE = lambda m: re.compile(rf"^{re.escape(m)}\s*ratios:\s*(?P<body>.+?)\s*$")
+_RATIOS_TOKEN_RE = re.compile(r"(?P<key>[a-z_]+)=(?P<val>\S+)")
 
 
 def marker_for(path: Path) -> str | None:
@@ -158,6 +148,56 @@ def parse_file(path: Path, block_name: str) -> list[dict]:
         return []
 
 
+def parse_ratios(text: str, marker: str = "#") -> list[dict]:
+    """Read single-line RATIOS declarations.
+
+    Unlike the other msdmd declarations, RATIOS is NOT a fenced block — it is a
+    single comment line of the form::
+
+        <marker> ratios: loc_comments=N:M imports_exports=N:M calls_definitions=N:M
+
+    The canonical placement is the file's first line and its last line. This
+    reader returns one flat ``{"id", "value"}`` dict per (declaration × ratio)
+    so a drift gate can verify every occurrence.
+    """
+    line_re = _RATIOS_LINE_RE(marker)
+    out: list[dict] = []
+    for raw in text.splitlines():
+        lm = line_re.match(raw.rstrip())
+        if not lm:
+            continue
+        for tm in _RATIOS_TOKEN_RE.finditer(lm.group("body")):
+            out.append({"id": tm.group("key"), "value": tm.group("val")})
+    return out
+
+
+def parse_ratios_file(path: Path) -> list[dict]:
+    """parse_ratios for a file path (marker auto-detected); [] on unreadable."""
+    marker = marker_for(path)
+    if marker is None:
+        return []
+    try:
+        return parse_ratios(path.read_text(encoding="utf-8"), marker)
+    except (OSError, UnicodeDecodeError):
+        return []
+
+
+def ratios_placement(text: str, marker: str = "#") -> tuple[bool, bool]:
+    """Return (first_line_has_ratios, last_non_blank_line_has_ratios)."""
+    line_re = _RATIOS_LINE_RE(marker)
+    lines = text.splitlines()
+    if not lines:
+        return (False, False)
+    first_ok = bool(line_re.match(lines[0].rstrip()))
+    last_ok = False
+    for raw in reversed(lines):
+        if raw.strip() == "":
+            continue
+        last_ok = bool(line_re.match(raw.rstrip()))
+        break
+    return (first_ok, last_ok)
+
+
 def walk_tree(
     root: Path,
     block_name: str,
@@ -216,19 +256,4 @@ def walk(root: Path, block_name: str, exts: tuple[str, ...] = (".py",)):
         yield p, entries
     for p in untested:
         yield p, []
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 100:75
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 4:5
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 34:7
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=134:86 imports_exports=4:8 calls_definitions=49:10

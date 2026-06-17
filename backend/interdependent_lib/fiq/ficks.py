@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 5:51
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 1:2
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 3:2
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=5:51 imports_exports=1:2 calls_definitions=3:2
 # === MODULE_BUILD ===
 # id: fiq_ficks_gradient
 #   module_name: ficks
@@ -76,19 +61,4 @@ def ficks(phi_a: float, phi_b: float, D_r: float = 1.0) -> float:
 def gradient_potential(phi_a: float, phi_b: float) -> float:
     """Bare gradient Φ_a − Φ_b without diffusion coefficient. Useful for tics-per-tok ratio reads."""
     return float(phi_a) - float(phi_b)
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 5:51
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 1:2
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 3:2
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=5:51 imports_exports=1:2 calls_definitions=3:2

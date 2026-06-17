@@ -30,6 +30,35 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-16e (RATIOS reshaped to single-line first/last declarations — per msdmd intent)
+
+- **RATIOS is no longer a fenced block.** Per the original msdmd intent, each
+  file now carries its three ratios (`loc_comments`, `imports_exports`,
+  `calls_definitions`) on a **single line 1 and a single last line**:
+  `# ratios: loc_comments=N:M imports_exports=N:M calls_definitions=N:M`.
+  The previous agent had emitted a 16-line `# === RATIOS ===` block duplicated
+  top+bottom (a literal misreading of "first line / last line").
+- **Parser taught the grammar** (`_msdmd/parser.py`): new `parse_ratios`,
+  `parse_ratios_file`, `ratios_placement` (first-line + last-line check),
+  `RATIO_IDS`. Block parser for the other declarations untouched.
+- **`ratios_runner` rewritten** to walk source files, read the single-line form,
+  verify each value against the canonical computers, and **gate on first/last
+  placement** (`misplaced`) as well as drift. Result: `121 files · 95 covered ·
+  570 verified · 0 drift · 0 misplaced`.
+- **Consumers updated** (`living_spec.py`, `api_extensions.py`) to read RATIOS
+  via `parse_ratios_file`, so the Living-Spec / Inspector views still surface
+  the ratios.
+- **Migrated all 95 annotated backend files** block→single-line (one-off scripts,
+  not committed to repo).
+- **Repaired a pre-existing defect in `contracts.py`**: a malformed RATIOS
+  footer had wrapped ~190 lines of appended contract functions *inside* the
+  block (opener@1511, closer@1768). The global strip removed that span; rebuilt
+  by surgically dropping only the unique RATIOS-signature comment lines —
+  **all 87 `*_holds` contract functions preserved**.
+- **Verified**: test-build 135 pass / 0 fail / 0 error; 41 backend pytest pass;
+  backend healthy. (The lone module-build `module_kind='client'` note is a
+  pre-existing nonconformance, unrelated.)
+
 ## Changelog — 2026-06-16d (Training Room — multi-teacher distillation + Key-Vault CTAs)
 
 - **Training Room** (`/training`, `pages/TrainingRoom.jsx`): pick an agent, select

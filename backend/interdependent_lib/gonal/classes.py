@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 11:52
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 4:1
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=11:52 imports_exports=2:1 calls_definitions=4:1
 # === MODULE_BUILD ===
 # id: carrier_classes
 #   module_name: classes
@@ -84,19 +69,4 @@ LITERAL_TYPES: frozenset[ClassTag] = frozenset({ClassTag.L, ClassTag.N})
 
 # Aggregate slots: hard invariant applies only after runtime resolution.
 AGGREGATE_SLOTS: frozenset[ClassTag] = frozenset({ClassTag.P, ClassTag.X})
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 11:52
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 4:1
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=11:52 imports_exports=2:1 calls_definitions=4:1

@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 53:71
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:5
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 29:6
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=59:75 imports_exports=6:5 calls_definitions=32:6
 # === MODULE_BUILD ===
 # id: agents_schema
 #   module_name: schema
@@ -184,19 +169,4 @@ class AgentInstance(BaseModel):
 
     # Cached metrics from ZFAE weight bank (refreshed on read; canonical lives in safetensors)
     zfae_metrics: dict[str, Any] = Field(default_factory=dict)
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 53:71
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:5
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 29:6
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=59:75 imports_exports=6:5 calls_definitions=32:6

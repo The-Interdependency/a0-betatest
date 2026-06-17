@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 72:65
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 4:4
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 24:15
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=72:65 imports_exports=4:4 calls_definitions=24:15
 # === MODULE_BUILD ===
 # id: pcna_tensor_leaf
 #   module_name: tensor
@@ -179,19 +164,4 @@ def tensors_equal(a: Tensor, b: Tensor, tol: float = 0.0) -> bool:
 
 
 __all__ = ["Tensor", "TENSOR_DIM", "zero_tensor", "tensors_equal"]
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 72:65
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 4:4
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 24:15
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=72:65 imports_exports=4:4 calls_definitions=24:15

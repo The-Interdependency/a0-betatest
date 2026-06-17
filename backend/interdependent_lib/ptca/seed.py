@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 91:84
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 8:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 26:14
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=91:84 imports_exports=8:1 calls_definitions=26:14
 # === MODULE_BUILD ===
 # id: ptca_seed
 #   module_name: seed
@@ -217,19 +202,4 @@ class Seed:
     def __repr__(self) -> str:
         agg_head = self.aggregate().payload[0]
         return f"Seed({{7/{self._step}}}, circles={SEED_CIRCLES}, agg_head={agg_head:+.4f})"
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 91:84
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 8:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 26:14
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=91:84 imports_exports=8:1 calls_definitions=26:14

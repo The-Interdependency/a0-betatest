@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 27:48
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 0:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 7:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=27:48 imports_exports=0:3 calls_definitions=7:3
 # === MODULE_BUILD ===
 # id: pcea_codec
 #   module_name: codec
@@ -98,19 +83,4 @@ def key_digits(value: int, p: int, length: int) -> list[int]:
         out.append((v % p) + 1)  # shifted into {1..p} for additive use
         v //= p
     return out
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 27:48
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 0:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 7:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=27:48 imports_exports=0:3 calls_definitions=7:3

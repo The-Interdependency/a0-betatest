@@ -1,27 +1,12 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 165:41
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 5:7
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 60:9
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=199:52 imports_exports=6:7 calls_definitions=73:10
 # === MODULE_BUILD ===
 # id: ratios_runner
 #   module_name: ratios_runner
 #   module_kind: skill
-#   summary: ratios skill executor — recomputes loc_comments/imports_exports/calls_definitions per file; fails on drift
+#   summary: ratios skill executor — recomputes loc_comments/imports_exports/calls_definitions and gates on drift + first/last-line placement of the single-line RATIOS declaration
 #   owner: a0p maintainer
 #   public_surface: run, COMPUTERS, compute_loc_comments, compute_imports_exports, compute_calls_definitions
-#   internal_surface: _strip_ratios_lines, _is_in_string, _DOCSTRING_OPEN
+#   internal_surface: _strip_ratios_lines, _iter_source, _DOCSTRING_OPEN
 #   auth_boundary: none
 #   storage_boundary: read
 #   network_boundary: none
@@ -50,22 +35,31 @@
 # === END CAPABILITIES ===
 """ratios skill executor — recomputes canonical computers + drift gate."""
 from __future__ import annotations
+import os
 import re
 import sys
 from pathlib import Path
-from interdependent_lib._msdmd.parser import walk_tree, parse_text
+from interdependent_lib._msdmd.parser import (
+    marker_for, parse_ratios, ratios_placement, RATIO_IDS,
+)
 
 
 _SKIP = {"tests", "__pycache__", "node_modules", ".git", ".venv", "venv",
          "dist", "build", ".pytest_cache", ".mypy_cache", ".tox"}
 
+# Legacy fenced block (kept so transitional files don't pollute the counts) +
+# the canonical single-line form `<marker> ratios: ...`.
 _RATIOS_FENCE = re.compile(r"^#\s*===\s*RATIOS\s*===.*?^#\s*===\s*END\s+RATIOS\s*===",
                            re.MULTILINE | re.DOTALL)
+_RATIOS_LINE = re.compile(r"^\s*(?:#|//|--)\s*ratios:.*$", re.MULTILINE)
 
 
 def _strip_ratios_lines(text: str) -> str:
-    """Remove every line inside a RATIOS fence (self-exclusion rule)."""
-    return _RATIOS_FENCE.sub("", text)
+    """Remove every RATIOS declaration (legacy block + single-line) so the
+    ratios self-exclude from their own computation."""
+    text = _RATIOS_FENCE.sub("", text)
+    text = _RATIOS_LINE.sub("", text)
+    return text
 
 
 def _split_lines(text: str) -> list[str]:
@@ -167,19 +161,44 @@ COMPUTERS = {
 }
 
 
+def _iter_source(root: Path):
+    """Yield every source file under root with a known comment marker."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP]
+        for fn in sorted(filenames):
+            p = Path(dirpath) / fn
+            if marker_for(p) is not None:
+                yield p
+
+
 def run(root: Path, strict: bool = False) -> dict:
-    annotated, untested = walk_tree(root, "RATIOS", skip=_SKIP)
     drift: list[dict] = []
     pending: list[dict] = []
     verified: list[dict] = []
     unverifiable: list[dict] = []
+    misplaced: list[dict] = []
+    untested: list[Path] = []
     by_file: dict[str, list[dict]] = {}
+    scanned = 0
+    covered = 0
 
-    for path, es in annotated:
+    for path in _iter_source(root):
+        scanned += 1
         rel = str(path.relative_to(root))
-        by_file[rel] = es
+        marker = marker_for(path)
         text = path.read_text(encoding="utf-8", errors="ignore")
-        for e in es:
+        entries = parse_ratios(text, marker)
+        if not entries:
+            untested.append(path)
+            continue
+        covered += 1
+        by_file[rel] = entries
+
+        first_ok, last_ok = ratios_placement(text, marker)
+        if not (first_ok and last_ok):
+            misplaced.append({"file": rel, "first_line": first_ok, "last_line": last_ok})
+
+        for e in entries:
             cid = e.get("id", "")
             value = (e.get("value") or "").strip()
             if value == "hmmm":
@@ -204,12 +223,14 @@ def run(root: Path, strict: bool = False) -> dict:
     return {
         "skill": "ratios",
         "root": str(root),
-        "scanned": len(annotated) + len(untested),
-        "covered": len(annotated),
+        "scanned": scanned,
+        "covered": covered,
         "gaps_count": len(untested),
         "gaps": [str(p.relative_to(root)) for p in untested],
         "drift": drift,
         "drift_count": len(drift),
+        "misplaced": misplaced,
+        "misplaced_count": len(misplaced),
         "pending": pending,
         "pending_count": len(pending),
         "verified": verified,
@@ -224,6 +245,7 @@ def summary(rep: dict) -> str:
         f"ratios · {rep['scanned']} files · "
         f"{rep['covered']} covered / {rep['gaps_count']} gaps · "
         f"{rep['verified_count']} verified · {rep['drift_count']} drift · "
+        f"{rep['misplaced_count']} misplaced · "
         f"{rep['pending_count']} hmmm · {len(rep['unverifiable'])} unverifiable"
     )
 
@@ -240,11 +262,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nDRIFT ({len(rep['drift'])}):")
         for d in rep["drift"][:20]:
             print(f"  · {d['file']} :: {d['id']}: recorded {d['recorded']} ≠ computed {d['computed']}")
+    if rep["misplaced"]:
+        print(f"\nMISPLACED ({len(rep['misplaced'])}) — ratios must sit on first AND last line:")
+        for m in rep["misplaced"][:20]:
+            print(f"  · {m['file']}: first_line={m['first_line']} last_line={m['last_line']}")
     if strict and rep["gaps"]:
         print(f"\nGAPS ({len(rep['gaps'])}):")
         for g in rep["gaps"][:30]:
             print(f"  · {g}")
-    return 1 if rep["drift_count"] or (strict and rep["gaps_count"]) else 0
+    fail = rep["drift_count"] or rep["misplaced_count"] or (strict and rep["gaps_count"])
+    return 1 if fail else 0
 
 
 if __name__ == "__main__":
@@ -257,19 +284,4 @@ if __name__ == "__main__":
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 165:41
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 5:7
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 60:9
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=199:52 imports_exports=6:7 calls_definitions=73:10

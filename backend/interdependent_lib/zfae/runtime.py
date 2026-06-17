@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 196:58
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 8:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 28:9
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=638:100 imports_exports=21:3 calls_definitions=117:18
 # === MODULE_BUILD ===
 # id: zfae_runtime
 #   module_name: runtime
@@ -807,19 +792,4 @@ def _verdict_to_dict(verdict: Optional[Verdict13]) -> Optional[dict]:
             for v in verdict.verdicts
         ],
     }
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 196:58
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 8:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 28:9
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=638:100 imports_exports=21:3 calls_definitions=117:18

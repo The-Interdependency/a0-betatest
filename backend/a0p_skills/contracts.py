@@ -1,23 +1,10 @@
+# ratios: loc_comments=1151:253 imports_exports=171:91 calls_definitions=448:106
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
 
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 786:180
-#   basis: ratios_runner.compute_loc_comments
 #
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 133:69
-#   basis: ratios_runner.compute_imports_exports
 #
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 297:72
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
 # === MODULE_BUILD ===
 # id: a0p_contracts
 #   module_name: contracts
@@ -1508,19 +1495,8 @@ def pcea_kernel_chain_holds() -> None:
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 786:180
-#   basis: ratios_runner.compute_loc_comments
 #
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 133:69
-#   basis: ratios_runner.compute_imports_exports
 #
-# id: calls_definitions
-#   summary: call sites to definitions
 
 
 # ─── Tools / MCP / Skills contracts ──────────────────────────────────────
@@ -1762,7 +1738,4 @@ async def _skills_sync_pull_async() -> None:
     assert r["ok"] is False
     assert r["pulled"] == 0
     assert r["errors"]
-
-#   value: 297:72
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=1151:253 imports_exports=171:91 calls_definitions=448:106

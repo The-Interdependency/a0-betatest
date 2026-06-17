@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 32:44
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:2
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 15:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=32:44 imports_exports=2:2 calls_definitions=15:3
 # === MODULE_BUILD ===
 # id: pcea_cipher
 #   module_name: cipher
@@ -96,19 +81,4 @@ def decrypt_state(enc: list[int], last_state: list[int]) -> list[int]:
         unshifted = _shift(digits, keys, p, sign=-1)
         out.append(from_bijective(unshifted, p))
     return out
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 32:44
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 2:2
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 15:3
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=32:44 imports_exports=2:2 calls_definitions=15:3

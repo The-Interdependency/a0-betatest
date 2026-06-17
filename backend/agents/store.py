@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 109:46
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 8:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 41:16
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=119:48 imports_exports=9:1 calls_definitions=45:18
 # === MODULE_BUILD ===
 # id: agents_store
 #   module_name: store
@@ -208,19 +193,4 @@ class AgentStore:
             {"$set": {"zfae_metrics": metrics, "updated_at": _utc_now_iso()}},
         )
         return metrics
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 109:46
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 8:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 41:16
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=119:48 imports_exports=9:1 calls_definitions=45:18

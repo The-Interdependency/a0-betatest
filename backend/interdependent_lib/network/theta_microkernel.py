@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 53:54
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 11:6
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=53:54 imports_exports=6:3 calls_definitions=11:6
 # === MODULE_BUILD ===
 # id: theta_microkernel
 #   module_name: theta_microkernel
@@ -135,19 +120,4 @@ def carrier_disk_signature_only() -> dict:
         }
     except CarrierDiskUnavailable as e:
         return {"error": str(e), "available": False}
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 53:54
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 11:6
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=53:54 imports_exports=6:3 calls_definitions=11:6

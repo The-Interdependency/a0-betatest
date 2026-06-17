@@ -1,15 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   value: hmmm
-#   basis: ratios_runner.compute_loc_comments (recorded on next run)
-# id: imports_exports
-#   value: hmmm
-#   basis: ratios_runner.compute_imports_exports
-# id: calls_definitions
-#   value: hmmm
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
-
+# ratios: loc_comments=179:48 imports_exports=4:6 calls_definitions=60:8
 # === MODULE_BUILD ===
 # id: carrier_gonal
 #   module_name: gonal
@@ -271,11 +260,4 @@ __all__ = [
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# === RATIOS ===
-# id: loc_comments
-#   value: hmmm
-# id: imports_exports
-#   value: hmmm
-# id: calls_definitions
-#   value: hmmm
-# === END RATIOS ===
+# ratios: loc_comments=179:48 imports_exports=4:6 calls_definitions=60:8

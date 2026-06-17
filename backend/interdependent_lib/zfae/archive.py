@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 42:47
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:5
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 18:6
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=42:47 imports_exports=6:5 calls_definitions=18:6
 # === MODULE_BUILD ===
 # id: zfae_archive
 #   module_name: archive
@@ -118,19 +103,4 @@ def archive_session(agent_id: str, session_id: str, content: dict) -> str:
                "archived_ms": int(time.time() * 1000), **content}
     path.write_text(json.dumps(payload, default=str, indent=2), encoding="utf-8")
     return str(path)
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 42:47
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 6:5
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 18:6
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=42:47 imports_exports=6:5 calls_definitions=18:6

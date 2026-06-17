@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 29:59
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 7:4
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=29:59 imports_exports=3:3 calls_definitions=7:4
 # === MODULE_BUILD ===
 # id: fiq_tick_schedule
 #   module_name: tick_schedule
@@ -118,19 +103,4 @@ class RealtimeToggle:
     """
     enabled: bool = False
     base_unit_ms: int = 1
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 29:59
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 3:3
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 7:4
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=29:59 imports_exports=3:3 calls_definitions=7:4

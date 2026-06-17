@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 20:47
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 1:4
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 1:4
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=20:47 imports_exports=1:4 calls_definitions=1:4
 # === MODULE_BUILD ===
 # id: carrier_faces
 #   module_name: faces
@@ -90,19 +75,4 @@ def n_plus(k: int) -> int:
 def n_minus(k: int) -> int:
     """Counterclockwise neighbor."""
     return (k - 1) % ARITY
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 20:47
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 1:4
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 1:4
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=20:47 imports_exports=1:4 calls_definitions=1:4

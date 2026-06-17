@@ -1,19 +1,4 @@
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 74:48
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 8:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 24:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=74:48 imports_exports=8:1 calls_definitions=24:8
 # === MODULE_BUILD ===
 # id: fiq_audit_log
 #   module_name: audit
@@ -148,19 +133,4 @@ class AuditLog:
                 return False
             prev = d.get("this_hash", "")
         return True
-# === RATIOS ===
-# id: loc_comments
-#   summary: lines of code to lines commented
-#   value: 74:48
-#   basis: ratios_runner.compute_loc_comments
-#
-# id: imports_exports
-#   summary: import statements to public exports
-#   value: 8:1
-#   basis: ratios_runner.compute_imports_exports
-#
-# id: calls_definitions
-#   summary: call sites to definitions
-#   value: 24:8
-#   basis: ratios_runner.compute_calls_definitions
-# === END RATIOS ===
+# ratios: loc_comments=74:48 imports_exports=8:1 calls_definitions=24:8
