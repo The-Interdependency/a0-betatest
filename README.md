@@ -3,7 +3,7 @@
 > _changes constant. refinements welcome._
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-17 09:03:22 UTC._
+_Living spec — auto-regenerated on backend startup at 2026-06-18 00:20:35 UTC._
 _157 modules across 17 kinds._
 
 Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
