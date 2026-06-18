@@ -3,12 +3,12 @@
 > _changes constant. refinements welcome._
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-18 00:20:35 UTC._
-_157 modules across 17 kinds._
+_Living spec — auto-regenerated on backend startup at 2026-06-18 01:13:29 UTC._
+_157 modules across 13 kinds._
 
 Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 
-## adapter · 10
+## adapter · 12
 
 | module | path | summary |
 |---|---|---|
@@ -16,33 +16,23 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `anthropic_provider` | `backend/providers/anthropic_provider.py` | Anthropic BYOK adapter — list models, messages via httpx |
 | `base` | `backend/providers/base.py` | common Protocol + TypedDict contract for BYOK LLM provider adapters |
 | `gemini_provider` | `backend/providers/gemini_provider.py` | Google Gemini BYOK adapter — list models, generateContent via httpx |
+| `mcp_relay` | `backend/tools/mcp_relay.py` | relay tool invocations to external MCP servers registered per user — Streamable HTTP JSON-RPC client (Model Context Protocol over HTTP) with bearer-token auth; outbound only, the server-side surfac… |
 | `openai_provider` | `backend/providers/openai_provider.py` | OpenAI BYOK adapter — list models, chat completion via httpx |
 | `providers` | `backend/providers/__init__.py` | BYOK adapter registry — openai, anthropic, gemini, xai (Emergent removed; build is platform-free) |
 | `sigma_source` | `backend/interdependent_lib/network/sigma_source.py` | Σ ring data source — read-only host-integrity digest over OS files + installed program manifests; provides tamper-evidence baseline (pen-test resistance) |
 | `teacher` | `backend/interdependent_lib/zfae/teacher.py` | TeacherClient — invokes a configured teacher model via the BYOK provider REGISTRY; emits training records; never substitutes its output as native zfae inference |
 | `ucns_bridge` | `backend/interdependent_lib/ucns_bridge.py` | thin A0-safe wrapper around the ucns package — will route through ucns.a0_safe when v1.0 ships on PyPI |
+| `webhook` | `backend/tools/webhook.py` | invoke user-registered webhook tools — POSTs the JSON params to the user's URL with an HMAC-SHA256 signature header (X-A0P-Signature) so the user can verify the call came from a0p |
 | `xai_provider` | `backend/providers/xai_provider.py` | xAI Grok BYOK adapter — OpenAI-compatible /v1 via httpx |
 
-## api_router · 5
-
-| module | path | summary |
-|---|---|---|
-| `api_tools_mcp_skills` | `backend/api_tools_mcp_skills.py` | REST surface for the tools / MCP-client / skills layer — /api/tools (list, register user-webhook tool, invoke), /api/mcp/servers (CRUD external MCP servers, refresh their tools), /api/skills (list,… |
-| `app_settings` | `backend/app_settings.py` | admin-editable runtime settings — single Mongo doc with key/value overrides for non-secret URLs (Emergent Google OAuth widget URL, etc.); /api/settings GET for everyone, PATCH for admin only; value… |
-| `extensions` | `backend/api_extensions.py` | post-auth API extensions — custom keys vault (user-defined GitHub/GCP/AWS-style keys), Emergent demo quota (per-user daily token budget), living spec endpoint (auto-parses MODULE_BUILD/BOUNDARIES/C… |
-| `mcp_server` | `backend/tools/mcp_server.py` | expose a0p AS an MCP server — JSON-RPC 2.0 over HTTP at /api/mcp; methods: initialize, tools/list, tools/call (sentinel-gated), resources/list (living-spec modules), resources/read; bearer-token au… |
-| `routes` | `backend/auth/__init__.py` | hybrid JWT auth + OAuth (Emergent Google, GitHub) — /api/auth/{register,login,logout,me,refresh,oauth/*}; username (unique) + email (unique) + ≥16-char passphrase; bcrypt; httpOnly cookies; brute-f… |
-
-## client · 4
+## client · 2
 
 | module | path | summary |
 |---|---|---|
 | `api` | `frontend/src/lib/api.js` | axios-based REST client for every /api endpoint — health, BYOK keys, env vault, inventory, sessions, drafts, skill reports, fanout/daisy/synthesize chat, inspector, agents+slugs, instances CRUD, ch… |
 | `api_tools` | `frontend/src/lib/api_tools.js` | axios client for the tools / mcp servers / skills REST surface — list/register/invoke tools, MCP server CRUD with refresh, skills CRUD with overlap check, skill-lib sync, MCP publish token |
-| `mcp_relay` | `backend/tools/mcp_relay.py` | relay tool invocations to external MCP servers registered per user — Streamable HTTP JSON-RPC client (Model Context Protocol over HTTP) with bearer-token auth; outbound only, the server-side surfac… |
-| `webhook` | `backend/tools/webhook.py` | invoke user-registered webhook tools — POSTs the JSON params to the user's URL with an HMAC-SHA256 signature header (X-A0P-Signature) so the user can verify the call came from a0p |
 
-## engine · 59
+## engine · 60
 
 | module | path | summary |
 |---|---|---|
@@ -67,6 +57,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `ficks` | `backend/interdependent_lib/fiq/ficks.py` | ficks — gradient term D_r(Φ_a − Φ_b) in the fiq flux equation; named after Fick's law of diffusion; resolves "tics-per-tok" framing as the gradient of fiq tics per LLM token |
 | `fiq` | `backend/interdependent_lib/fiq/__init__.py` | fiq motion canon — boundary law for audited motion between PCNA/PCTA/PTCA strata; tick schedule (3/5/7); χ indicators; FIQ_TRANSFER/BUFFERED/BLOCKED events; sentinels S1-S9, R0, fiques_time |
 | `gated_invoke` | `backend/tools/gated_invoke.py` | per-tool-call sentinel gate — evaluates the 13 sentinels against the tool name + serialized params, halts on any flag (creates a PendingOverride and emits zfae_override_created), only proceeds when… |
+| `gonal` | `backend/interdependent_lib/gonal/gonal.py` | builds and validates a gonal character carrier arrangement from a declarative spec (user-provided canonical module) |
 | `gonal_inscription` | `backend/interdependent_lib/zfae/gonal_inscription.py` | ZFAE Native Decoder Route A — Gonal Inscription. A per-agent PrivateGonal (secret phase + permutation, seeded at instantiation) inscribes the continuous Φ/Ψ/Ω tensor field onto polygon vertices to … |
 | `group` | `backend/interdependent_lib/pcna/group.py` | "all seven together is a tensor" — aggregate composition op that lifts 7 Tensors to 1 Tensor (the 8th referent, the projection upward into the next layer) |
 | `inference` | `backend/interdependent_lib/zfae/inference.py` | a0(ZFAE) inference engine — native deterministic symbolic/state engine; no LLM dependency; returns {assistantText, nextSnapshot, trace} |
@@ -114,31 +105,17 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `public_fixture` | `backend/interdependent_lib/gonal/public_fixture.py` | public fixture disk generator — binary-order rule per user spec; deterministic, committable, satisfies hard invariants, NOT the canon |
 | `test_zfae_gonal_inscription` | `backend/tests/test_zfae_gonal_inscription.py` | regression for ZFAE Route A — PrivateGonal determinism, 53→32 whitening bridge, engine PCEA-digest + non-flat tensors, gonal-seed safetensors persistence |
 
-## library · 1
+## route · 7
 
 | module | path | summary |
 |---|---|---|
-| `gonal` | `backend/interdependent_lib/gonal/gonal.py` | builds and validates a gonal character carrier arrangement from a declarative spec (user-provided canonical module) |
-
-## package · 2
-
-| module | path | summary |
-|---|---|---|
-| `skills` | `backend/skills/__init__.py` | skills subpackage entry — re-exports registry + sync helpers |
-| `tools` | `backend/tools/__init__.py` | tools subpackage entry — re-exports the registry public surface and triggers register_builtins() so native tools are available immediately on import |
-
-## route · 2
-
-| module | path | summary |
-|---|---|---|
+| `api_tools_mcp_skills` | `backend/api_tools_mcp_skills.py` | REST surface for the tools / MCP-client / skills layer — /api/tools (list, register user-webhook tool, invoke), /api/mcp/servers (CRUD external MCP servers, refresh their tools), /api/skills (list,… |
+| `app_settings` | `backend/app_settings.py` | admin-editable runtime settings — single Mongo doc with key/value overrides for non-secret URLs (Emergent Google OAuth widget URL, etc.); /api/settings GET for everyone, PATCH for admin only; value… |
+| `extensions` | `backend/api_extensions.py` | post-auth API extensions — custom keys vault (user-defined GitHub/GCP/AWS-style keys), Emergent demo quota (per-user daily token budget), living spec endpoint (auto-parses MODULE_BUILD/BOUNDARIES/C… |
+| `mcp_server` | `backend/tools/mcp_server.py` | expose a0p AS an MCP server — JSON-RPC 2.0 over HTTP at /api/mcp; methods: initialize, tools/list, tools/call (sentinel-gated), resources/list (living-spec modules), resources/read; bearer-token au… |
 | `routes` | `backend/agents/routes.py` | /api/instances/* CRUD + /api/chat/instance/{id} mode-aware; surface-3 teacher context preview endpoint |
+| `routes` | `backend/auth/__init__.py` | hybrid JWT auth + OAuth (Emergent Google, GitHub) — /api/auth/{register,login,logout,me,refresh,oauth/*}; username (unique) + email (unique) + ≥16-char passphrase; bcrypt; httpOnly cookies; brute-f… |
 | `server` | `backend/server.py` | FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report |
-
-## runner · 1
-
-| module | path | summary |
-|---|---|---|
-| `frontend_module_build_runner` | `backend/a0p_skills/frontend_module_build_runner.py` | walks /app/frontend/src/**/*.{js,jsx,ts,tsx} and validates each module has a MODULE_BUILD block; reports COVERED / MISSING / INVALID per file |
 
 ## schema · 14
 
@@ -159,7 +136,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `tick_schedule` | `backend/interdependent_lib/fiq/tick_schedule.py` | ψ/φ/ω consciousness-prime tick constants (3/5/7); orthogonal stratum + core attention axes; logical default with optional real-time toggle |
 | `topology` | `backend/interdependent_lib/network/topology.py` | ring topology spec — names, per-ring N (Φ Ψ Ω 157, Θ 29, Σ 53, MemL 19, MemS 17), heptagram routing slots (lock-step avoidance via unique step+direction), ring weights for coherence scoring |
 
-## service · 13
+## service · 15
 
 | module | path | summary |
 |---|---|---|
@@ -174,10 +151,12 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `overrides` | `backend/interdependent_lib/zfae/overrides.py` | PendingOverride dataclass + lifecycle helpers for sentinel halt-and-override; backed by MongoDB pending_overrides_col |
 | `readme_writer` | `backend/readme_writer.py` | regenerates /app/README.md on every backend startup from the living spec (scan_repo_blocks); idempotent, deterministic, never raises |
 | `registry` | `backend/interdependent_lib/gonal/registry.py` | three-gonal registry — default (EXAMPLE_157), mirror (mirror_of default), private (per-agent built via build_gonal from spec); resolves an agent's per-core gonal triplet |
+| `skills` | `backend/skills/__init__.py` | skills subpackage entry — re-exports registry + sync helpers |
 | `store` | `backend/agents/store.py` | full CRUD over MongoDB metadata + filesystem per-agent checkpoint dir; agents treated as users (persistent semi-permanent instances) |
 | `sync` | `backend/skills/sync.py` | pulls canonical skills from The-Interdependency/skill-lib GitHub repo — fetches the index.json, validates each entry, upserts global skills (owner_user_id=None); reverse direction (publish-back) is… |
+| `tools` | `backend/tools/__init__.py` | tools subpackage entry — re-exports the registry public surface and triggers register_builtins() so native tools are available immediately on import |
 
-## skill · 10
+## skill · 11
 
 | module | path | summary |
 |---|---|---|
@@ -185,6 +164,7 @@ Don't edit by hand; edit a module's `# === MODULE_BUILD ===` block instead.
 | `a0p_skills` | `backend/a0p_skills/__init__.py` | this project's three msdmd skill executors — msdmd / test-build / meta-module-build |
 | `boundaries_runner` | `backend/a0p_skills/boundaries_runner.py` | risk-boundary-build skill executor — validates BOUNDARIES blocks against canon schema; reports gaps + hmmm |
 | `capabilities_runner` | `backend/a0p_skills/capabilities_runner.py` | cap-build skill executor — parses CAPABILITIES blocks, builds capability map, flags duplicates/hmmm/gaps |
+| `frontend_module_build_runner` | `backend/a0p_skills/frontend_module_build_runner.py` | walks /app/frontend/src/**/*.{js,jsx,ts,tsx} and validates each module has a MODULE_BUILD block; reports COVERED / MISSING / INVALID per file |
 | `interdependent_lib` | `backend/interdependent_lib/__init__.py` | meta-package exposing pcea, ptca, pcna, aimmh, zfae submodules |
 | `module_build_runner` | `backend/a0p_skills/module_build_runner.py` | meta-module-build skill executor — validates MODULE_BUILD schema + gap report |
 | `parser` | `backend/interdependent_lib/_msdmd/parser.py` | canonical msdmd block parser + single-line RATIOS reader (loc_comments/imports_exports/calls_definitions on first & last line) |

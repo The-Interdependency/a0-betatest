@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: tools_mcp_relay
 #   module_name: mcp_relay
-#   module_kind: client
+#   module_kind: adapter
 #   summary: relay tool invocations to external MCP servers registered per user — Streamable HTTP JSON-RPC client (Model Context Protocol over HTTP) with bearer-token auth; outbound only, the server-side surface lives in tools.mcp_server
 #   owner: Erin Spencer
 #   public_surface: invoke, list_remote_tools, ping_server

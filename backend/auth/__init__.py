@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: auth_routes
 #   module_name: routes
-#   module_kind: api_router
+#   module_kind: route
 #   summary: hybrid JWT auth + OAuth (Emergent Google, GitHub) — /api/auth/{register,login,logout,me,refresh,oauth/*}; username (unique) + email (unique) + ≥16-char passphrase; bcrypt; httpOnly cookies; brute-force lockout
 #   owner: Erin Spencer
 #   public_surface: router, get_current_user, get_current_user_or_demo, init_auth, seed_admin

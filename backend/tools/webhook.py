@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: tools_webhook
 #   module_name: webhook
-#   module_kind: client
+#   module_kind: adapter
 #   summary: invoke user-registered webhook tools — POSTs the JSON params to the user's URL with an HMAC-SHA256 signature header (X-A0P-Signature) so the user can verify the call came from a0p
 #   owner: Erin Spencer
 #   public_surface: invoke

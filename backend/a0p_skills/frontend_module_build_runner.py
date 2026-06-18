@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: a0p_skills_frontend_module_build_runner
 #   module_name: frontend_module_build_runner
-#   module_kind: runner
+#   module_kind: skill
 #   summary: walks /app/frontend/src/**/*.{js,jsx,ts,tsx} and validates each module has a MODULE_BUILD block; reports COVERED / MISSING / INVALID per file
 #   owner: Erin Spencer
 #   public_surface: main, scan_frontend

@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: tools_mcp_server
 #   module_name: mcp_server
-#   module_kind: api_router
+#   module_kind: route
 #   summary: expose a0p AS an MCP server — JSON-RPC 2.0 over HTTP at /api/mcp; methods: initialize, tools/list, tools/call (sentinel-gated), resources/list (living-spec modules), resources/read; bearer-token authenticated against a per-user MCP_PUBLISH_TOKEN
 #   owner: Erin Spencer
 #   public_surface: router, get_or_create_publish_token

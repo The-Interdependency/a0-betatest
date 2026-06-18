@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: tools_pkg
 #   module_name: tools
-#   module_kind: package
+#   module_kind: service
 #   summary: tools subpackage entry — re-exports the registry public surface and triggers register_builtins() so native tools are available immediately on import
 #   owner: Erin Spencer
 #   public_surface: Tool, ToolError, register, lookup, list_tools, invoke, register_builtins, TOOL_KIND_NATIVE, TOOL_KIND_WEBHOOK, TOOL_KIND_MCP

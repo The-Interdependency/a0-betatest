@@ -2,7 +2,7 @@
 # === MODULE_BUILD ===
 # id: carrier_gonal
 #   module_name: gonal
-#   module_kind: library
+#   module_kind: engine
 #   summary: builds and validates a gonal character carrier arrangement from a declarative spec (user-provided canonical module)
 #   owner: Erin Spencer
 #   public_surface: GonalSpec, build_gonal, validate_gonal, print_gonal, EXAMPLE_157, make_example_157

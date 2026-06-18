@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
-#   module_kind: api_router
+#   module_kind: route
 #   summary: REST surface for the tools / MCP-client / skills layer — /api/tools (list, register user-webhook tool, invoke), /api/mcp/servers (CRUD external MCP servers, refresh their tools), /api/skills (list, register w/ overlap warning, delete, sync from skill-lib)
 #   owner: Erin Spencer
 #   public_surface: router

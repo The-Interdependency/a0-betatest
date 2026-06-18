@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: skills_pkg
 #   module_name: skills
-#   module_kind: package
+#   module_kind: service
 #   summary: skills subpackage entry — re-exports registry + sync helpers
 #   owner: Erin Spencer
 #   public_surface: Skill, SkillExistsWarning, register_skill, list_skills, get_skill, delete_skill, check_overlap, pull_from_skill_lib

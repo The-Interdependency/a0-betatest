@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: app_settings
 #   module_name: app_settings
-#   module_kind: api_router
+#   module_kind: route
 #   summary: admin-editable runtime settings — single Mongo doc with key/value overrides for non-secret URLs (Emergent Google OAuth widget URL, etc.); /api/settings GET for everyone, PATCH for admin only; values shadow env vars at runtime
 #   owner: Erin Spencer
 #   public_surface: router, get_setting

@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: api_extensions_routes
 #   module_name: extensions
-#   module_kind: api_router
+#   module_kind: route
 #   summary: post-auth API extensions — custom keys vault (user-defined GitHub/GCP/AWS-style keys), Emergent demo quota (per-user daily token budget), living spec endpoint (auto-parses MODULE_BUILD/BOUNDARIES/CAPABILITIES/CONTRACTS/RATIOS blocks from the repo and serves them as JSON), audit feed (hash-chained FIQ events for the Tool/CoT Tape)
 #   owner: Erin Spencer
 #   public_surface: router, record_demo_usage, check_demo_quota
