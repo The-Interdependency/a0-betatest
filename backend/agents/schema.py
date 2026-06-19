@@ -1,11 +1,11 @@
-# ratios: loc_comments=59:75 imports_exports=6:5 calls_definitions=32:6
+# ratios: loc_comments=93:81 imports_exports=6:7 calls_definitions=45:9
 # === MODULE_BUILD ===
 # id: agents_schema
 #   module_name: schema
 #   module_kind: schema
-#   summary: Pydantic models — AgentInstance, CharacterSheet, AgentMode (the 5-lattice modes), PXResolution; covers the full character sheet editable surface
+#   summary: Pydantic models — AgentInstance, CharacterSheet, AgentMode (the 6-lattice modes incl. bare a0(<model>)), PXResolution; plus the canonical agent-name composer (a0(<energy>)<auditor>, owner-namespaced)
 #   owner: Erin Spencer
-#   public_surface: AgentInstance, CharacterSheet, AgentMode, PXResolution, ALL_MODES, new_agent_id
+#   public_surface: AgentInstance, CharacterSheet, AgentMode, PXResolution, ALL_MODES, new_agent_id, compose_agent_name, compose_canonical_name
 #   internal_surface: _utc_now_iso
 #   auth_boundary: none
 #   storage_boundary: none
@@ -59,22 +59,68 @@ def new_agent_id() -> str:
 
 
 class AgentMode(str, Enum):
-    """The 5-mode lattice for a0:
+    """The lattice of a0 agent shapes — name pattern is a0(<energy>)<auditor>:
 
-    a0(zfae)              native only (zfae alone)
-    a0(zfae)<model>       teacher_assisted (model assists zfae)
-    a0(<model>)zfae       teacher_observes (model teaches; zfae watches/learns)
-    a0(<model>)<model>    two external models, one as agent identity + one as critic
-    <model>               bare external model, no a0 wrapping
+    a0(zfae)              native only (zfae is the energy, no auditor)
+    a0(zfae)<model>       teacher_assisted (zfae energy; <model> is the teacher/auditor)
+    a0(<model>)zfae       model is the energy; zfae observes/audits
+    a0(<model>)<model>    model energy + a second model as critic/auditor
+    a0(<model>)           bare model — a single model as pure energy, no auditor
+    <model>               raw external model, no a0 wrapping
     """
     ZFAE_NATIVE = "a0(zfae)"
     ZFAE_ASSISTED = "a0(zfae)<model>"
     MODEL_OBSERVED_BY_ZFAE = "a0(<model>)zfae"
     MODEL_PLUS_CRITIC = "a0(<model>)<model>"
+    MODEL_ONLY = "a0(<model>)"
     BARE_MODEL = "<model>"
 
 
 ALL_MODES: tuple[AgentMode, ...] = tuple(AgentMode)
+
+
+def _short_model(model_id: Optional[str]) -> str:
+    """Strip the `provider:` prefix for display — `openai:gpt-4o` → `gpt-4o`."""
+    if not model_id:
+        return ""
+    return model_id.split(":", 1)[1] if ":" in model_id else model_id
+
+
+def compose_canonical_name(
+    mode: "AgentMode | str",
+    base_model: Optional[str] = None,
+    outer_model: Optional[str] = None,
+) -> str:
+    """Compose the canonical agent identity `a0(<energy>)<auditor>` from the
+    mode + model fields. `base_model` is the energy except in the zfae-assisted
+    mode where zfae is the energy and base_model is the teacher/auditor."""
+    m = mode.value if isinstance(mode, AgentMode) else str(mode)
+    b = _short_model(base_model)
+    o = _short_model(outer_model)
+    if m == AgentMode.ZFAE_NATIVE.value:
+        return "a0(zfae)"
+    if m == AgentMode.ZFAE_ASSISTED.value:
+        return f"a0(zfae){b or '<model>'}"
+    if m == AgentMode.MODEL_OBSERVED_BY_ZFAE.value:
+        return f"a0({b or '<model>'})zfae"
+    if m == AgentMode.MODEL_PLUS_CRITIC.value:
+        return f"a0({b or '<model>'}){o or '<model>'}"
+    if m == AgentMode.MODEL_ONLY.value:
+        return f"a0({b or '<model>'})"
+    if m == AgentMode.BARE_MODEL.value:
+        return b or "<model>"
+    return "a0(zfae)"
+
+
+def compose_agent_name(
+    username: Optional[str],
+    mode: "AgentMode | str",
+    base_model: Optional[str] = None,
+    outer_model: Optional[str] = None,
+) -> str:
+    """Owner-namespaced semi-unique name: `<username>(a0(<energy>)<auditor>)`."""
+    canonical = compose_canonical_name(mode, base_model, outer_model)
+    return f"{(username or 'agent')}({canonical})"
 
 
 class PXResolution(BaseModel):
@@ -169,4 +215,4 @@ class AgentInstance(BaseModel):
 
     # Cached metrics from ZFAE weight bank (refreshed on read; canonical lives in safetensors)
     zfae_metrics: dict[str, Any] = Field(default_factory=dict)
-# ratios: loc_comments=59:75 imports_exports=6:5 calls_definitions=32:6
+# ratios: loc_comments=93:81 imports_exports=6:7 calls_definitions=45:9

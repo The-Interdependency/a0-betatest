@@ -36,7 +36,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, X } from "@phosphor-icons/react";
-import { MODE_OPTIONS } from "../lib/sentinels";
+import { MODE_OPTIONS, composeAgentName } from "../lib/sentinels";
+import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 
 const BOUNDARY_OPTIONS = {
@@ -161,7 +162,10 @@ function ModelSelect({ value, onChange, inventory, inventoryLoaded, testid, plac
 }
 
 export default function CharacterSheetForm({ initial, onSubmit, onCancel, submitLabel = "Create agent", busy }) {
+  const { user } = useAuth();
+  const username = user?.username || "agent";
   const [name, setName] = useState(initial?.name ?? "");
+  const [nameDirty, setNameDirty] = useState(Boolean(initial?.name));
   const [mode, setMode] = useState(initial?.mode ?? "a0(zfae)");
   const [baseModel, setBaseModel] = useState(initial?.base_model ?? "");
   const [outerModel, setOuterModel] = useState(initial?.outer_model ?? "");
@@ -186,6 +190,16 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
 
   const { tools: availableTools, err: toolsErr } = useTools();
   const { inv: inventory, loaded: invLoaded } = useInventory();
+
+  // Canonical owner-namespaced name a0(<energy>)<auditor>. Prefills the name
+  // field (editable free-text) until the user manually overrides it.
+  const suggestedName = useMemo(
+    () => composeAgentName(username, mode, baseModel, outerModel),
+    [username, mode, baseModel, outerModel],
+  );
+  useEffect(() => {
+    if (!nameDirty) setName(suggestedName);
+  }, [suggestedName, nameDirty]);
 
   const needsBase = useMemo(() => /<model>/.test(mode), [mode]);
   const needsOuter = useMemo(() => /a0\(<model>\)<model>|a0\(zfae\)<model>/.test(mode), [mode]);
@@ -230,14 +244,23 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
       className="space-y-4"
     >
       <div className="grid md:grid-cols-2 gap-4">
-        <Field label="agent name" testid="csf-name">
-          <input
-            data-testid="csf-name-input"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="w-full bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-sm text-white"
-            placeholder="Ada-zfae-01"
-          />
+        <Field label="agent name" hint={`nomenclature: <user>(a0(<energy>)<auditor>) — auto: ${suggestedName}`} testid="csf-name">
+          <div className="flex gap-2">
+            <input
+              data-testid="csf-name-input"
+              value={name}
+              onChange={e => { setName(e.target.value); setNameDirty(true); }}
+              className="flex-1 bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-sm text-white"
+              placeholder={suggestedName}
+            />
+            {nameDirty && name !== suggestedName && (
+              <button type="button" data-testid="csf-name-auto"
+                      onClick={() => { setName(suggestedName); setNameDirty(false); }}
+                      className="px-2 py-1 border border-white/10 font-mono text-[0.6rem] uppercase tracking-wider text-neutral-300 hover:bg-bg-surface whitespace-nowrap">
+                auto
+              </button>
+            )}
+          </div>
         </Field>
         <Field label="lattice mode" hint="The 5-mode lattice — controls who teaches and who answers." testid="csf-mode">
           <select

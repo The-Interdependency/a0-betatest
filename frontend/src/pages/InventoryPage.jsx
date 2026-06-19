@@ -63,7 +63,7 @@ export default function InventoryPage() {
     try {
       const agent = await api.createInstance({
         sheet: {
-          name: `${m.id}`,
+          name: "",                  // blank → backend composes <user>(a0(zfae)<model>)
           mode: "a0(zfae)<model>",   // teacher-assisted: this model teaches the a0(zfae) core
           base_model: modelId,
         },

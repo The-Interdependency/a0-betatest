@@ -1,4 +1,4 @@
-# ratios: loc_comments=224:78 imports_exports=14:16 calls_definitions=84:18
+# ratios: loc_comments=228:75 imports_exports=14:16 calls_definitions=86:19
 # === MODULE_BUILD ===
 # id: agents_routes
 #   module_name: routes
@@ -71,18 +71,19 @@ def get_agent_store() -> AgentStore:
 
 
 async def _resolve_user_id(request: Request, fallback: str = "local") -> str:
-    """Derive the acting user from the auth cookie; fall back to the supplied id
-    when there is no valid session (keeps legacy/unauthenticated callers working).
+    """Derive the acting user id from the auth cookie; fall back when unauth."""
+    uid, _ = await _resolve_user(request, fallback)
+    return uid
 
-    All agent instances are stored under the authenticated user's id, so the
-    client-supplied ``user_id`` is only a fallback for unauthenticated calls.
-    """
+
+async def _resolve_user(request: Request, fallback: str = "local") -> tuple[str, Optional[str]]:
+    """Derive (user_id, username) from the auth cookie; (fallback, None) when unauth."""
     from auth import get_current_user
     try:
         user = await get_current_user(request)
-        return user["id"]
+        return user["id"], user.get("username")
     except Exception:
-        return fallback
+        return fallback, None
 
 
 def init_routes(mongo_collection, runtime=None, get_key_fn=None):
@@ -156,8 +157,8 @@ async def list_instances(request: Request, user_id: str = "local", include_archi
 @router.post("/instances")
 async def create_instance(body: CreateAgentRequest, request: Request):
     store = get_agent_store()
-    uid = await _resolve_user_id(request, body.user_id)
-    agent = await store.create(body.sheet, user_id=uid)
+    uid, uname = await _resolve_user(request, body.user_id)
+    agent = await store.create(body.sheet, user_id=uid, username=uname)
     return agent.model_dump()
 
 
@@ -246,7 +247,8 @@ async def chat_instance(agent_id: str, body: ChatInstanceRequest, request: Reque
     if mode == AgentMode.ZFAE_NATIVE:
         rmode = RuntimeMode.ZFAE_NATIVE
     elif mode in (AgentMode.ZFAE_ASSISTED, AgentMode.MODEL_OBSERVED_BY_ZFAE,
-                  AgentMode.MODEL_PLUS_CRITIC, AgentMode.BARE_MODEL):
+                  AgentMode.MODEL_PLUS_CRITIC, AgentMode.MODEL_ONLY,
+                  AgentMode.BARE_MODEL):
         rmode = RuntimeMode.TEACHER_ASSISTED
     else:
         rmode = RuntimeMode.ZFAE_NATIVE
@@ -363,4 +365,4 @@ async def teacher_context_preview(agent_id: str, body: TeacherPreviewRequest, re
         "surface_3_teacher_context": messages,
         "context_distinct_from_prompt": len(messages) > 1 or (messages and messages[-1].get("content") != body.prompt or messages[0].get("role") != "user"),
     }
-# ratios: loc_comments=224:78 imports_exports=14:16 calls_definitions=84:18
+# ratios: loc_comments=228:75 imports_exports=14:16 calls_definitions=86:19

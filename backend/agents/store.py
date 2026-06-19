@@ -1,4 +1,4 @@
-# ratios: loc_comments=119:48 imports_exports=9:1 calls_definitions=45:18
+# ratios: loc_comments=136:52 imports_exports=9:1 calls_definitions=52:19
 # === MODULE_BUILD ===
 # id: agents_store
 #   module_name: store
@@ -49,7 +49,7 @@ from typing import Optional
 
 from interdependent_lib.zfae.weights import A0ZFAEWeightBank
 
-from .schema import AgentInstance, CharacterSheet, new_agent_id
+from .schema import AgentInstance, CharacterSheet, new_agent_id, compose_agent_name
 
 
 _AGENTS_ROOT_ENV: str = "A0P_AGENTS_ROOT"
@@ -122,7 +122,29 @@ class AgentStore:
         doc["id"] = doc.pop("_id")
         return AgentInstance.model_validate(doc)
 
-    async def create(self, sheet: CharacterSheet, user_id: str = "local") -> AgentInstance:
+    async def _unique_name(self, name: str, user_id: str) -> str:
+        """Make `name` semi-unique within the owner by appending ` 2`, ` 3`, …
+        only when it collides with an existing agent's name for that user."""
+        existing: set[str] = set()
+        async for d in self._col.find({"user_id": user_id}, {"sheet.name": 1}):
+            n = (d.get("sheet") or {}).get("name")
+            if n:
+                existing.add(n)
+        if name not in existing:
+            return name
+        i = 2
+        while f"{name} {i}" in existing:
+            i += 1
+        return f"{name} {i}"
+
+    async def create(self, sheet: CharacterSheet, user_id: str = "local",
+                     username: Optional[str] = None) -> AgentInstance:
+        # Auto-compose the canonical owner-namespaced name when none was supplied,
+        # then guarantee it is semi-unique within the owner.
+        if not (sheet.name or "").strip():
+            sheet.name = compose_agent_name(username or user_id, sheet.mode,
+                                            sheet.base_model, sheet.outer_model)
+        sheet.name = await self._unique_name(sheet.name.strip(), user_id)
         agent = AgentInstance(user_id=user_id, sheet=sheet)
         # Fresh ZFAE weight bank — saved to per-agent checkpoint
         bank = A0ZFAEWeightBank.fresh(agent.id)
@@ -193,4 +215,4 @@ class AgentStore:
             {"$set": {"zfae_metrics": metrics, "updated_at": _utc_now_iso()}},
         )
         return metrics
-# ratios: loc_comments=119:48 imports_exports=9:1 calls_definitions=45:18
+# ratios: loc_comments=136:52 imports_exports=9:1 calls_definitions=52:19

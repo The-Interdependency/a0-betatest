@@ -2,9 +2,9 @@
 // id: fe_lib_sentinels
 //   module_name: sentinels
 //   module_kind: ui_lib
-//   summary: client-side helpers + canonical metadata for the 13 sentinels and the 5 lattice modes; pure, no I/O
+//   summary: client-side helpers + canonical metadata for the 13 sentinels and the 6 lattice modes, plus the canonical agent-name composer (a0(<energy>)<auditor>, owner-namespaced); pure, no I/O
 //   owner: Erin Spencer
-//   public_surface: SENTINEL_CANON, MODE_OPTIONS, MODE_LABELS, sentinelClass, modeBadgeClass
+//   public_surface: SENTINEL_CANON, MODE_OPTIONS, MODE_LABELS, sentinelClass, modeBadgeClass, canonicalAgentName, composeAgentName
 //   internal_surface: none
 //   auth_boundary: none
 //   storage_boundary: none
@@ -55,14 +55,34 @@ export const SENTINEL_CANON = [
   { name: "S13", title: "Continuity",        cut: "Same agent vs Drift",      cliff: false },
 ];
 
-// The 5 lattice modes — exact strings used by the backend AgentMode enum
+// The lattice modes — exact strings used by the backend AgentMode enum
 export const MODE_OPTIONS = [
   { value: "a0(zfae)",          label: "a0(zfae) — native only" },
   { value: "a0(zfae)<model>",   label: "a0(zfae)<model> — teacher-assisted" },
   { value: "a0(<model>)zfae",   label: "a0(<model>)zfae — model teaches, zfae watches" },
   { value: "a0(<model>)<model>",label: "a0(<model>)<model> — model + critic" },
-  { value: "<model>",           label: "<model> — bare external model" },
+  { value: "a0(<model>)",       label: "a0(<model>) — bare model (model as pure energy)" },
+  { value: "<model>",           label: "<model> — raw external model" },
 ];
+
+// Compose the canonical agent identity a0(<energy>)<auditor> from mode + models.
+const shortModel = (m) => { if (!m) return ""; const i = m.indexOf(":"); return i >= 0 ? m.slice(i + 1) : m; };
+export function canonicalAgentName(mode, baseModel, outerModel) {
+  const b = shortModel(baseModel), o = shortModel(outerModel);
+  switch (mode) {
+    case "a0(zfae)":            return "a0(zfae)";
+    case "a0(zfae)<model>":     return `a0(zfae)${b || "<model>"}`;
+    case "a0(<model>)zfae":     return `a0(${b || "<model>"})zfae`;
+    case "a0(<model>)<model>":  return `a0(${b || "<model>"})${o || "<model>"}`;
+    case "a0(<model>)":         return `a0(${b || "<model>"})`;
+    case "<model>":             return b || "<model>";
+    default:                    return "a0(zfae)";
+  }
+}
+// Owner-namespaced semi-unique name: <username>(a0(<energy>)<auditor>)
+export function composeAgentName(username, mode, baseModel, outerModel) {
+  return `${username || "agent"}(${canonicalAgentName(mode, baseModel, outerModel)})`;
+}
 
 export const MODE_LABELS = Object.fromEntries(MODE_OPTIONS.map(m => [m.value, m.label]));
 

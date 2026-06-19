@@ -3,7 +3,7 @@
 > _changes constant. refinements welcome._  
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-19 21:07:10 UTC._  
+_Living spec — auto-regenerated on backend startup at 2026-06-19 21:18:49 UTC._  
 _157 modules · 13 kinds · 23 subsystems._
 
 > This file is generated from the codebase's own documentation. Don't edit it by hand — edit a module's `# === MODULE_BUILD ===` block (its `summary` is the narrative you read below) and it regenerates on the next backend start.
@@ -71,7 +71,7 @@ Agents are treated as users: semi-permanent, character-sheet-bound instances tha
   `backend/agents/__init__.py`
 - **`routes`** — /api/instances/* CRUD + /api/chat/instance/{id} mode-aware; surface-3 teacher context preview endpoint  
   `backend/agents/routes.py`
-- **`schema`** — Pydantic models — AgentInstance, CharacterSheet, AgentMode (the 5-lattice modes), PXResolution; covers the full character sheet editable surface  
+- **`schema`** — Pydantic models — AgentInstance, CharacterSheet, AgentMode (the 6-lattice modes incl. bare a0(<model>)), PXResolution; plus the canonical agent-name composer (a0(<energy>)<auditor>, owner-namespaced)  
   `backend/agents/schema.py`
 - **`store`** — full CRUD over MongoDB metadata + filesystem per-agent checkpoint dir; agents treated as users (persistent semi-permanent instances)  
   `backend/agents/store.py`
@@ -416,7 +416,7 @@ The axios REST clients for every API surface, the auth context / ProtectedRoute,
   `frontend/src/lib/api_tools.js`
 - **`auth`** — AuthContext + useAuth hook + ProtectedRoute — manages JWT-cookie session, exposes user/loading/login/register/logout/refresh, redirects unauthenticated traffic to /login while keeping the splash & login routes public  
   `frontend/src/lib/auth.jsx`
-- **`sentinels`** — client-side helpers + canonical metadata for the 13 sentinels and the 5 lattice modes; pure, no I/O  
+- **`sentinels`** — client-side helpers + canonical metadata for the 13 sentinels and the 6 lattice modes, plus the canonical agent-name composer (a0(<energy>)<auditor>, owner-namespaced); pure, no I/O  
   `frontend/src/lib/sentinels.js`
 
 ### Frontend — root · 1
