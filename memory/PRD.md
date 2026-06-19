@@ -30,6 +30,38 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-19b (Agent naming nomenclature a0(<energy>)<auditor>)
+
+- **Canonical agent identity implemented.** An agent's name now follows the
+  owner-namespaced nomenclature **`<username>(a0(<energy>)<auditor>)`**, composed
+  from the existing `mode` / `base_model` / `outer_model` fields:
+  - `a0(zfae)` → `a0(zfae)`; `a0(zfae)<model>` → `a0(zfae)<model>` (zfae energy,
+    model is teacher/auditor); `a0(<model>)zfae` → `a0(<model>)zfae`;
+    `a0(<model>)<model>` → energy + critic; **new** `a0(<model>)` → bare model as
+    pure energy (no auditor); `<model>` → raw model. Provider prefix stripped
+    (`openai:gpt-4o` → `gpt-4o`).
+- **New lattice mode `a0(<model>)`** (`AgentMode.MODEL_ONLY`) — model as energy,
+  no auditor. Added to backend enum, frontend `MODE_OPTIONS` (now 6), and the
+  chat dispatch (teacher-assisted branch).
+- **Backend** (`agents/schema.py`): `compose_canonical_name` +
+  `compose_agent_name`. (`agents/store.py`): `create(...)` auto-composes the name
+  when blank and `_unique_name` appends ` 2`/` 3`… on collision within the owner.
+  (`agents/routes.py`): `create_instance` resolves the username and passes it in.
+- **Frontend** (`CharacterSheetForm.jsx`): the name field is **prefilled** with
+  the live canonical suggestion (re-derived from mode/models via `composeAgentName`)
+  and stays in sync until the user overrides it; an `auto` button (`csf-name-auto`)
+  resets to the suggestion. (`InventoryPage.jsx`): "create agent" sends a blank
+  name so the backend composes the canonical form. (`lib/sentinels.js`): exports
+  `canonicalAgentName` / `composeAgentName`.
+- **Migration**: all 13 existing agents renamed to canonical form.
+- **Auth**: admin login changed to **wayseer / `nospecialcharacters`** (`.env`
+  `ADMIN_PASSWORD`; re-seeded on boot). `test_credentials.md` updated.
+- **Verified**: ratios 121/121 · 0 drift; module-build 121 valid; test-build 135
+  pass; 35 unit tests pass; testing-agent iteration_11 → **8/8 frontend checks
+  pass** (prefill, live update, 6-mode dropdown, dirty+auto-reset, uniqueness
+  suffix, Inventory canonical-name create).
+
+
 ## Changelog — 2026-06-19 (msdmd compliance closed + narrative README)
 
 - **100% RATIOS compliance**: injected the single-line `# ratios: ...`

@@ -6,13 +6,13 @@
 |---|---|
 | username | `wayseer` |
 | email | `wayseer@interdependentway.org` |
-| passphrase | `ChangeMeOnFirstLogin2026` |
+| passphrase | `nospecialcharacters` |
 | role | `admin` |
 
 The admin user is re-seeded on every backend start from these `.env` vars:
 - `ADMIN_USERNAME=wayseer`
 - `ADMIN_EMAIL=wayseer@interdependentway.org`
-- `ADMIN_PASSWORD=ChangeMeOnFirstLogin2026`
+- `ADMIN_PASSWORD=nospecialcharacters`
 
 ## Test user (created by testing-agent flows)
 

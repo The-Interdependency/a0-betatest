@@ -262,7 +262,7 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
             )}
           </div>
         </Field>
-        <Field label="lattice mode" hint="The 5-mode lattice — controls who teaches and who answers." testid="csf-mode">
+        <Field label="lattice mode" hint="The 6-mode lattice — controls who teaches and who answers." testid="csf-mode">
           <select
             data-testid="csf-mode-select"
             value={mode}

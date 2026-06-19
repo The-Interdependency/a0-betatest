@@ -34,7 +34,7 @@
 // === END CAPABILITIES ===
 
 /**
- * Canonical metadata for the 13 sentinels and the 5 lattice modes.
+ * Canonical metadata for the 13 sentinels and the 6 lattice modes.
  * Server is the source of truth (GET /api/sentinels/canon); this file
  * is just for offline-safe defaults and pretty colour-coding.
  */
