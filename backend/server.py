@@ -1,4 +1,4 @@
-# ratios: loc_comments=790:107 imports_exports=45:56 calls_definitions=273:64
+# ratios: loc_comments=820:115 imports_exports=47:56 calls_definitions=288:65
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -63,7 +63,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
 
-from fastapi import FastAPI, APIRouter, HTTPException, Body
+from fastapi import FastAPI, APIRouter, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Any
@@ -140,8 +140,24 @@ async def health():
 
 
 # ---------- BYOK keys ----------
+async def _auth_uid(request: Request, fallback: str = "local") -> str:
+    """Resolve the acting user id from the auth cookie; fall back when unauth.
+
+    The BYOK key vault, env vault and inventory are per authenticated user — the
+    chat runtime looks keys up under the same id, so these routes must NOT trust
+    the client-supplied ``user_id`` (which legacy clients hardcode to 'local').
+    """
+    from auth import get_current_user
+    try:
+        user = await get_current_user(request)
+        return user["id"]
+    except Exception:
+        return fallback
+
+
 @api.get("/keys")
-async def list_keys(user_id: str = "local"):
+async def list_keys(request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     out: list[KeyPublic] = []
     async for doc in keys_col.find({"user_id": user_id}).sort("provider", 1):
         try:
@@ -163,14 +179,15 @@ async def list_keys(user_id: str = "local"):
 
 
 @api.put("/keys")
-async def upsert_key(body: KeyUpsert):
+async def upsert_key(body: KeyUpsert, request: Request):
+    uid = await _auth_uid(request, body.user_id)
     if body.provider not in PROVIDERS:
         raise HTTPException(400, f"provider must be one of {PROVIDERS}")
     if not body.api_key or len(body.api_key) < 8:
         raise HTTPException(400, "api_key looks invalid")
     now = _utc_now_iso()
     enc = cv.encrypt(body.api_key)
-    existing = await keys_col.find_one({"user_id": body.user_id, "provider": body.provider})
+    existing = await keys_col.find_one({"user_id": uid, "provider": body.provider})
     if existing:
         await keys_col.update_one(
             {"_id": existing["_id"]},
@@ -181,7 +198,7 @@ async def upsert_key(body: KeyUpsert):
         _id = new_id()
         await keys_col.insert_one({
             "_id": _id,
-            "user_id": body.user_id,
+            "user_id": uid,
             "provider": body.provider,
             "label": body.label,
             "enc_api_key": enc,
@@ -193,7 +210,8 @@ async def upsert_key(body: KeyUpsert):
 
 
 @api.delete("/keys/{key_id}")
-async def delete_key(key_id: str, user_id: str = "local"):
+async def delete_key(key_id: str, request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     r = await keys_col.delete_one({"_id": key_id, "user_id": user_id})
     return {"ok": r.deleted_count == 1}
 
@@ -210,7 +228,8 @@ async def _get_key(user_id: str, provider: str) -> str:
 
 # ---------- Site .env vault ----------
 @api.get("/vault")
-async def list_vault(user_id: str = "local"):
+async def list_vault(request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     out: list[SiteAccountPublic] = []
     async for doc in vault_col.find({"user_id": user_id}).sort([("site", 1), ("account_label", 1)]):
         # do not return encrypted values; just keys
@@ -228,10 +247,11 @@ async def list_vault(user_id: str = "local"):
 
 
 @api.put("/vault")
-async def upsert_vault(body: SiteAccountUpsert):
+async def upsert_vault(body: SiteAccountUpsert, request: Request):
+    uid = await _auth_uid(request, body.user_id)
     now = _utc_now_iso()
     enc_env = {k: cv.encrypt(v) for k, v in body.env.items() if v}
-    existing = await vault_col.find_one({"user_id": body.user_id, "site": body.site, "account_label": body.account_label})
+    existing = await vault_col.find_one({"user_id": uid, "site": body.site, "account_label": body.account_label})
     if existing:
         merged = {**(existing.get("enc_env") or {}), **enc_env}
         await vault_col.update_one(
@@ -243,7 +263,7 @@ async def upsert_vault(body: SiteAccountUpsert):
         _id = new_id()
         await vault_col.insert_one({
             "_id": _id,
-            "user_id": body.user_id,
+            "user_id": uid,
             "site": body.site,
             "account_label": body.account_label,
             "enc_env": enc_env,
@@ -261,8 +281,9 @@ class VaultRevealRequest(BaseModel):
 
 
 @api.post("/vault/reveal")
-async def reveal_vault(body: VaultRevealRequest):
-    doc = await vault_col.find_one({"_id": body.id, "user_id": body.user_id})
+async def reveal_vault(body: VaultRevealRequest, request: Request):
+    uid = await _auth_uid(request, body.user_id)
+    doc = await vault_col.find_one({"_id": body.id, "user_id": uid})
     if not doc:
         raise HTTPException(404, "vault entry not found")
     env = doc.get("enc_env") or {}
@@ -270,15 +291,17 @@ async def reveal_vault(body: VaultRevealRequest):
 
 
 @api.delete("/vault/{vault_id}")
-async def delete_vault(vault_id: str, user_id: str = "local"):
+async def delete_vault(vault_id: str, request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     r = await vault_col.delete_one({"_id": vault_id, "user_id": user_id})
     return {"ok": r.deleted_count == 1}
 
 
 # ---------- Model inventory ----------
 @api.get("/models/inventory")
-async def model_inventory(user_id: str = "local"):
+async def model_inventory(request: Request, user_id: str = "local"):
     """Aggregate live model inventory across BYOK providers the user has keys for."""
+    user_id = await _auth_uid(request, user_id)
     inv: list[dict] = []
     errors: dict[str, str] = {}
 
@@ -1019,6 +1042,24 @@ async def _on_startup():
         if r.modified_count:
             import logging as _lg
             _lg.getLogger("a0p").info("migrated %d legacy local agents to admin", r.modified_count)
+        # Migrate legacy user_id='local' BYOK keys + env vault to admin so the
+        # authenticated chat runtime can find them (idempotent). Avoid clobbering
+        # an existing admin key for the same provider.
+        for _col, _label in ((keys_col, "byok keys"), (vault_col, "vault entries")):
+            _moved = 0
+            async for _doc in _col.find({"user_id": "local"}):
+                _q = {"user_id": admin["_id"], "provider": _doc.get("provider")} \
+                    if _label == "byok keys" else \
+                    {"user_id": admin["_id"], "site": _doc.get("site"),
+                     "account_label": _doc.get("account_label")}
+                if await _col.find_one(_q):
+                    continue  # admin already has this one; leave the local orphan
+                await _col.update_one({"_id": _doc["_id"]},
+                                      {"$set": {"user_id": admin["_id"]}})
+                _moved += 1
+            if _moved:
+                import logging as _lgk
+                _lgk.getLogger("a0p").info("migrated %d legacy local %s to admin", _moved, _label)
     # Regenerate README.md from the living spec
     try:
         from readme_writer import write_readme
@@ -1061,4 +1102,4 @@ async def _on_startup():
         for a in starters:
             await agents_col.insert_one({"_id": new_id(), **a.model_dump(),
                                          "created_at": now, "updated_at": now})
-# ratios: loc_comments=790:107 imports_exports=45:56 calls_definitions=273:64
+# ratios: loc_comments=820:115 imports_exports=47:56 calls_definitions=288:65

@@ -30,6 +30,25 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-19c (Fix: Workspace chat "no response" — BYOK keys orphaned under user_id='local')
+
+- **Root cause**: the BYOK key vault / env vault / inventory routes defaulted to
+  `user_id="local"` and were NOT auth-scoped, but the chat runtime looks keys up
+  under the *authenticated* user (e.g. `wayseer`'s uuid). Legacy keys lived under
+  `"local"`, so every teacher-assisted turn returned `"no BYOK key for '<prov>' …"`
+  — which read as "no response" in the Workspace.
+- **Fix** (`server.py`): added `_auth_uid(request)` and auth-scoped `GET/PUT/DELETE
+  /api/keys`, `GET /api/models/inventory`, and the four `/api/vault` routes so they
+  read/write under the cookie-resolved user (the chat runtime already did). Added a
+  **startup migration** that moves legacy `user_id='local'` `byok_keys` + `site_vault`
+  → the admin user (idempotent; skips a provider the admin already has).
+- **Verified**: after the fix, `GET /api/keys` returns the keys under `wayseer`'s
+  id and chatting an `a0(zfae)<model>` (openai) agent returns a real answer
+  (`"Hello!"`, `teacher_called=true`). Native `a0(zfae)` agents still correctly
+  *refuse until trained* (use the Training Room). Compliance unchanged: ratios
+  121/121 · 0 drift, module-build 121 valid, test-build 135 pass.
+
+
 ## Changelog — 2026-06-19b (Agent naming nomenclature a0(<energy>)<auditor>)
 
 - **Canonical agent identity implemented.** An agent's name now follows the
