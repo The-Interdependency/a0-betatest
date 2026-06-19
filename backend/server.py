@@ -1,4 +1,4 @@
-# ratios: loc_comments=820:115 imports_exports=47:56 calls_definitions=288:65
+# ratios: loc_comments=837:115 imports_exports=47:56 calls_definitions=305:65
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -326,7 +326,8 @@ async def model_inventory(request: Request, user_id: str = "local"):
 
 # ---------- Sessions (editable context) ----------
 @api.get("/sessions")
-async def list_sessions(user_id: str = "local"):
+async def list_sessions(request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     out = []
     async for d in sessions_col.find({"user_id": user_id}).sort("updated_at", -1).limit(50):
         out.append({
@@ -344,12 +345,13 @@ async def list_sessions(user_id: str = "local"):
 
 
 @api.post("/sessions")
-async def create_session(body: SessionUpsert):
+async def create_session(body: SessionUpsert, request: Request):
+    uid = await _auth_uid(request, body.user_id)
     now = _utc_now_iso()
     _id = new_id()
     doc = {
         "_id": _id,
-        "user_id": body.user_id,
+        "user_id": uid,
         "title": body.title or f"session-{_id[:8]}",
         "system_context": body.system_context or "",
         "persona": body.persona,
@@ -372,7 +374,8 @@ async def get_session(session_id: str, user_id: str = "local"):
 
 
 @api.patch("/sessions/{session_id}")
-async def update_session(session_id: str, body: SessionUpsert):
+async def update_session(session_id: str, body: SessionUpsert, request: Request):
+    uid = await _auth_uid(request, body.user_id)
     now = _utc_now_iso()
     upd = {
         "title": body.title,
@@ -384,7 +387,7 @@ async def update_session(session_id: str, body: SessionUpsert):
     }
     upd = {k: v for k, v in upd.items() if v is not None or k == "updated_at"}
     r = await sessions_col.update_one(
-        {"_id": session_id, "user_id": body.user_id},
+        {"_id": session_id, "user_id": uid},
         {"$set": upd},
     )
     if r.matched_count == 0:
@@ -393,14 +396,16 @@ async def update_session(session_id: str, body: SessionUpsert):
 
 
 @api.delete("/sessions/{session_id}")
-async def delete_session(session_id: str, user_id: str = "local"):
+async def delete_session(session_id: str, request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     r = await sessions_col.delete_one({"_id": session_id, "user_id": user_id})
     return {"ok": r.deleted_count == 1}
 
 
 # ---------- Drafts ----------
 @api.get("/drafts")
-async def list_drafts(user_id: str = "local"):
+async def list_drafts(request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     out = []
     async for d in drafts_col.find({"user_id": user_id}).sort("updated_at", -1).limit(100):
         out.append({"id": d["_id"], **{k: d[k] for k in d if k != "_id"}})
@@ -408,12 +413,13 @@ async def list_drafts(user_id: str = "local"):
 
 
 @api.post("/drafts")
-async def create_draft(body: DraftUpsert):
+async def create_draft(body: DraftUpsert, request: Request):
+    uid = await _auth_uid(request, body.user_id)
     now = _utc_now_iso()
     _id = new_id()
     doc = {
         "_id": _id,
-        "user_id": body.user_id,
+        "user_id": uid,
         "title": body.title,
         "content": body.content,
         "tags": body.tags,
@@ -425,12 +431,13 @@ async def create_draft(body: DraftUpsert):
 
 
 @api.patch("/drafts/{draft_id}")
-async def update_draft(draft_id: str, body: DraftUpsert):
+async def update_draft(draft_id: str, body: DraftUpsert, request: Request):
+    uid = await _auth_uid(request, body.user_id)
     now = _utc_now_iso()
     upd = {k: v for k, v in body.model_dump().items() if k != "user_id"}
     upd["updated_at"] = now
     r = await drafts_col.update_one(
-        {"_id": draft_id, "user_id": body.user_id},
+        {"_id": draft_id, "user_id": uid},
         {"$set": upd},
     )
     if r.matched_count == 0:
@@ -439,7 +446,8 @@ async def update_draft(draft_id: str, body: DraftUpsert):
 
 
 @api.delete("/drafts/{draft_id}")
-async def delete_draft(draft_id: str, user_id: str = "local"):
+async def delete_draft(draft_id: str, request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     r = await drafts_col.delete_one({"_id": draft_id, "user_id": user_id})
     return {"ok": r.deleted_count == 1}
 
@@ -716,7 +724,8 @@ async def delete_agent(slug: str):
 
 # ---------- Usage log ----------
 @api.get("/usage")
-async def list_usage(user_id: str = "local", limit: int = 100):
+async def list_usage(request: Request, user_id: str = "local", limit: int = 100):
+    user_id = await _auth_uid(request, user_id)
     out = []
     async for d in usage_col.find({"user_id": user_id}).sort("created_at", -1).limit(limit):
         out.append({"id": d["_id"], **{k: d[k] for k in d if k != "_id"}})
@@ -859,7 +868,8 @@ async def sentinels_canon():
 
 
 @sentinels_api.get("/instances/{agent_id}/sentinel-modes")
-async def get_sentinel_modes(agent_id: str, user_id: str = "local"):
+async def get_sentinel_modes(agent_id: str, request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     doc = await agent_instances_col.find_one({"_id": agent_id, "user_id": user_id})
     if not doc:
         raise HTTPException(404, f"agent {agent_id} not found")
@@ -878,13 +888,14 @@ class SentinelModesPatch(BaseModel):
 
 
 @sentinels_api.patch("/instances/{agent_id}/sentinel-modes")
-async def patch_sentinel_modes(agent_id: str, body: SentinelModesPatch):
+async def patch_sentinel_modes(agent_id: str, body: SentinelModesPatch, request: Request):
+    uid = await _auth_uid(request, body.user_id)
     try:
         zfae_sentinel_modes.validate_modes(body.modes)
     except ValueError as e:
         raise HTTPException(400, str(e))
     r = await agent_instances_col.update_one(
-        {"_id": agent_id, "user_id": body.user_id},
+        {"_id": agent_id, "user_id": uid},
         {"$set": {"sheet.sentinel_modes": body.modes, "updated_at": _utc_now_iso()}},
     )
     if r.matched_count == 0:
@@ -898,14 +909,15 @@ class SentinelBulkMode(BaseModel):
 
 
 @sentinels_api.post("/instances/{agent_id}/sentinel-modes/bulk")
-async def bulk_sentinel_modes(agent_id: str, body: SentinelBulkMode):
+async def bulk_sentinel_modes(agent_id: str, body: SentinelBulkMode, request: Request):
+    uid = await _auth_uid(request, body.user_id)
     try:
         bulk = zfae_sentinel_modes.bulk_set(body.mode)
     except ValueError as e:
         raise HTTPException(400, str(e))
     modes = {k: v.value for k, v in bulk.items()}
     r = await agent_instances_col.update_one(
-        {"_id": agent_id, "user_id": body.user_id},
+        {"_id": agent_id, "user_id": uid},
         {"$set": {"sheet.sentinel_modes": modes, "updated_at": _utc_now_iso()}},
     )
     if r.matched_count == 0:
@@ -914,7 +926,8 @@ async def bulk_sentinel_modes(agent_id: str, body: SentinelBulkMode):
 
 
 @sentinels_api.get("/instances/{agent_id}/sentinel-weights")
-async def get_sentinel_weights(agent_id: str, user_id: str = "local"):
+async def get_sentinel_weights(agent_id: str, request: Request, user_id: str = "local"):
+    user_id = await _auth_uid(request, user_id)
     doc = await agent_instances_col.find_one({"_id": agent_id, "user_id": user_id})
     if not doc:
         raise HTTPException(404, f"agent {agent_id} not found")
@@ -937,13 +950,14 @@ class SentinelWeightsPatch(BaseModel):
 
 
 @sentinels_api.patch("/instances/{agent_id}/sentinel-weights")
-async def patch_sentinel_weights(agent_id: str, body: SentinelWeightsPatch):
+async def patch_sentinel_weights(agent_id: str, body: SentinelWeightsPatch, request: Request):
+    uid = await _auth_uid(request, body.user_id)
     try:
         zfae_sentinel_weights.validate_weights(body.weights)
     except ValueError as e:
         raise HTTPException(400, str(e))
     r = await agent_instances_col.update_one(
-        {"_id": agent_id, "user_id": body.user_id},
+        {"_id": agent_id, "user_id": uid},
         {"$set": {"sheet.sentinel_weights": body.weights, "updated_at": _utc_now_iso()}},
     )
     if r.matched_count == 0:
@@ -953,7 +967,8 @@ async def patch_sentinel_weights(agent_id: str, body: SentinelWeightsPatch):
 
 # ---------- Pending overrides endpoints ----------
 @sentinels_api.get("/overrides")
-async def list_overrides(user_id: str = "local", status: str = "pending", limit: int = 100):
+async def list_overrides(request: Request, user_id: str = "local", status: str = "pending", limit: int = 100):
+    user_id = await _auth_uid(request, user_id)
     if status == "pending":
         records = await zfae_overrides.list_pending(pending_overrides_col, user_id=user_id, limit=limit)
         return {"overrides": [r.__dict__ for r in records], "count": len(records)}
@@ -980,8 +995,9 @@ class OverrideApprove(BaseModel):
 
 
 @sentinels_api.post("/overrides/{override_id}/approve")
-async def approve_override(override_id: str, body: OverrideApprove):
-    rec = await zfae_overrides.approve(pending_overrides_col, override_id, body.user_id, body.justification)
+async def approve_override(override_id: str, body: OverrideApprove, request: Request):
+    uid = await _auth_uid(request, body.user_id)
+    rec = await zfae_overrides.approve(pending_overrides_col, override_id, uid, body.justification)
     if rec is None:
         raise HTTPException(404, f"override {override_id} not found or not pending")
     return {"ok": True, "status": rec.status, "id": rec.id, "resolved_ms": rec.resolved_ms}
@@ -993,8 +1009,9 @@ class OverrideReject(BaseModel):
 
 
 @sentinels_api.post("/overrides/{override_id}/reject")
-async def reject_override(override_id: str, body: OverrideReject):
-    rec = await zfae_overrides.reject(pending_overrides_col, override_id, body.user_id, body.reason)
+async def reject_override(override_id: str, body: OverrideReject, request: Request):
+    uid = await _auth_uid(request, body.user_id)
+    rec = await zfae_overrides.reject(pending_overrides_col, override_id, uid, body.reason)
     if rec is None:
         raise HTTPException(404, f"override {override_id} not found or not pending")
     return {"ok": True, "status": rec.status, "id": rec.id, "resolved_ms": rec.resolved_ms}
@@ -1102,4 +1119,4 @@ async def _on_startup():
         for a in starters:
             await agents_col.insert_one({"_id": new_id(), **a.model_dump(),
                                          "created_at": now, "updated_at": now})
-# ratios: loc_comments=820:115 imports_exports=47:56 calls_definitions=288:65
+# ratios: loc_comments=837:115 imports_exports=47:56 calls_definitions=305:65

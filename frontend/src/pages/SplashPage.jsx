@@ -96,8 +96,8 @@ export default function SplashPage() {
         </div>
 
         <aside className="space-y-4 lg:pt-12" data-testid="splash-features">
-          <Feature icon={<Lightning size={18} />} title="Five lattice modes"
-                   body="From bare model to native a0(zfae) — pick how much canon you want in the loop, per turn." />
+          <Feature icon={<Lightning size={18} />} title="Six lattice modes"
+                   body="From a raw model to bare a0(<model>) to native a0(zfae) — pick how much canon you want in the loop, per turn." />
           <Feature icon={<ShieldCheck size={18} />} title="Thirteen sentinels"
                    body="Provenance, drift, safety, reversibility — each one is editable, halts on its own threshold, and waits for your override." />
           <Feature icon={<GoogleLogo size={18} />} title="Sign in your way"

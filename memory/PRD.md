@@ -30,6 +30,28 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-19d (Systemic per-user auth-scoping + Workspace mode label)
+
+- **Root cause (systemic)**: many `server.py` endpoints defaulted to
+  `user_id="local"` and ignored the auth cookie, while agents/chat run under the
+  authenticated user id. This broke the **Sentinels page** ("agent … not found"),
+  and would orphan **sessions / drafts / usage / overrides** under `local`.
+- **Fix**: auth-scoped (via `_auth_uid(request)`) all per-user endpoints —
+  sentinel modes/weights (get/patch/bulk), overrides (list/approve/reject),
+  sessions (CRUD), drafts (CRUD), and usage. Verified: sentinel-modes/weights now
+  return 200 for the user's agents; training run returns `weights_updated=true`
+  with the teacher actually called (was "no BYOK key" — that was pre key-migration).
+- **Workspace mode label** (`WorkspacePage.jsx`): the per-turn mode dropdown and
+  the "use agent default (…)" label now **resolve the `<model>` placeholder** to
+  the agent's real model via `canonicalAgentName` (e.g. shows
+  `a0(zfae)gpt-3.5-turbo`, not `a0(zfae)<model>`).
+- **Copy drift**: SplashPage "Five lattice modes" → "Six lattice modes".
+- **Known/external**: "SYNC FROM SKILL-LIB" 404s because
+  `github.com/The-Interdependency/skill-lib/main/index.json` isn't published yet
+  (the index URL is admin-configurable in Settings); error is surfaced gracefully.
+  The "EMERGENT DEMO" daily-budget banner is the documented free-tier display.
+
+
 ## Changelog — 2026-06-19c (Fix: Workspace chat "no response" — BYOK keys orphaned under user_id='local')
 
 - **Root cause**: the BYOK key vault / env vault / inventory routes defaulted to
