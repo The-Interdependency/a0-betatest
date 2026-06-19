@@ -1,3 +1,4 @@
+# ratios: loc_comments=55:47 imports_exports=3:2 calls_definitions=18:2
 # === MODULE_BUILD ===
 # id: living_spec_scanner
 #   module_name: living_spec
@@ -111,3 +112,4 @@ __all__ = ["scan_repo_blocks", "REPO_ROOTS"]
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
 
+# ratios: loc_comments=55:47 imports_exports=3:2 calls_definitions=18:2

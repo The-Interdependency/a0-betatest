@@ -1,3 +1,4 @@
+# ratios: loc_comments=357:79 imports_exports=21:17 calls_definitions=146:29
 # === MODULE_BUILD ===
 # id: auth_routes
 #   module_name: routes
@@ -502,3 +503,4 @@ __all__ = [
     "router", "init_auth", "seed_admin",
     "get_current_user", "get_current_user_or_demo",
 ]
+# ratios: loc_comments=357:79 imports_exports=21:17 calls_definitions=146:29

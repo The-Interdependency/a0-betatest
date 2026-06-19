@@ -1,3 +1,4 @@
+# ratios: loc_comments=94:57 imports_exports=7:2 calls_definitions=26:5
 # === MODULE_BUILD ===
 # id: tools_builtin
 #   module_name: builtin
@@ -164,3 +165,4 @@ def register_builtins() -> list[Tool]:
 
 
 __all__ = ["register_builtins"]
+# ratios: loc_comments=94:57 imports_exports=7:2 calls_definitions=26:5

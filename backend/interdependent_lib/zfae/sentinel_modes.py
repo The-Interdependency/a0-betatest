@@ -1,3 +1,4 @@
+# ratios: loc_comments=43:54 imports_exports=2:4 calls_definitions=10:3
 # === MODULE_BUILD ===
 # id: zfae_sentinel_modes
 #   module_name: sentinel_modes
@@ -109,3 +110,4 @@ __all__ = [
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
 
+# ratios: loc_comments=43:54 imports_exports=2:4 calls_definitions=10:3

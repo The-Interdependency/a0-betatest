@@ -1,3 +1,4 @@
+# ratios: loc_comments=176:106 imports_exports=6:3 calls_definitions=30:9
 # === MODULE_BUILD ===
 # id: zfae_sentinel_eval
 #   module_name: sentinel_eval
@@ -320,3 +321,4 @@ def _cliff_markers_regression_holds() -> None:
 
 
 __all__ = ["evaluate", "EventContext", "S4_CLIFF_MARKERS", "S12_CLIFF_MARKERS"]
+# ratios: loc_comments=176:106 imports_exports=6:3 calls_definitions=30:9

@@ -3,7 +3,7 @@
 # id: pcea_pkg
 #   module_name: pcea
 #   module_kind: engine
-#   summary: prime-circular bijective base encryption over first 53 primes (this state / last state)
+#   summary: PCEA — prime-circular bijective base encryption over the first 53 primes, keyed by the previous state (the 'this-state / last-state' cross-cut); the substrate that binds one inference tick to the next and seeds the decoder's deterministic generation
 #   owner: a0p maintainer
 #   public_surface: encrypt_state, decrypt_state, PCEAInstance, PRIME_CIRCLE
 #   internal_surface: none

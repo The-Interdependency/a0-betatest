@@ -3,7 +3,7 @@
 # id: pcea_cipher
 #   module_name: cipher
 #   module_kind: engine
-#   summary: prime-circular bijective encrypt/decrypt over a previous-state key
+#   summary: PCEA core cipher — prime-circular bijective encrypt/decrypt where each state element is recoded in bijective base-p (p the i-th of the first 53 primes) and circularly shifted by key digits derived from the previous state, so the transform is keyed entirely by last_state and is exactly invertible
 #   owner: a0p maintainer
 #   public_surface: encrypt_state, decrypt_state
 #   internal_surface: _shift

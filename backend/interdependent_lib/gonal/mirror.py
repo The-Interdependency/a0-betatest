@@ -1,8 +1,9 @@
+# ratios: loc_comments=10:50 imports_exports=1:2 calls_definitions=4:1
 # === MODULE_BUILD ===
 # id: carrier_mirror
 #   module_name: mirror
 #   module_kind: engine
-#   summary: position-reflection mirror of a gonal arrangement (invariant-preserving)
+#   summary: position-reflection mirror of a gonal arrangement across the diameter through position 0 — an involution (mirror_of(mirror_of(x)) == x) that inverts upper and lower arcs while preserving every hard adjacency invariant (no L-L / N-N adjacency survives the reflection)
 #   owner: Erin Spencer
 #   public_surface: mirror_of
 #   internal_surface: none
@@ -66,3 +67,4 @@ __all__ = ["mirror_of"]
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
 
+# ratios: loc_comments=10:50 imports_exports=1:2 calls_definitions=4:1

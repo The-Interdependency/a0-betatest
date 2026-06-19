@@ -1,3 +1,4 @@
+# ratios: loc_comments=126:48 imports_exports=15:5 calls_definitions=45:7
 # === MODULE_BUILD ===
 # id: tools_mcp_server
 #   module_name: mcp_server
@@ -200,3 +201,4 @@ async def mcp_rpc(request: Request) -> dict:
 
 
 __all__ = ["router", "get_or_create_publish_token"]
+# ratios: loc_comments=126:48 imports_exports=15:5 calls_definitions=45:7

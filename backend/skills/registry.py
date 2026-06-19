@@ -1,3 +1,4 @@
+# ratios: loc_comments=106:49 imports_exports=6:10 calls_definitions=29:11
 # === MODULE_BUILD ===
 # id: skills_registry
 #   module_name: registry
@@ -178,3 +179,4 @@ __all__ = [
     "get_skill", "delete_skill", "check_overlap",
     "tokenize_scope", "tokenize_logic", "OVERLAP_THRESHOLD",
 ]
+# ratios: loc_comments=106:49 imports_exports=6:10 calls_definitions=29:11

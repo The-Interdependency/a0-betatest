@@ -3,7 +3,7 @@
 # id: aimmh_pkg
 #   module_name: aimmh
 #   module_kind: engine
-#   summary: async multi-model orchestration patterns over a call_fn(model_id, messages)
+#   summary: AIMMH — async multi-model orchestration over a single call_fn(model_id, messages) abstraction; the five patterns (single, fan-out, daisy-chain, synthesize, council) are what let the workspace compare or compose frontier models on one prompt without coupling to any vendor SDK
 #   owner: a0p maintainer
 #   public_surface: fan_out, daisy_chain, room_all, room_synthesized, council, ModelResult
 #   internal_surface: none

@@ -3,7 +3,7 @@
 # id: pcea_codec
 #   module_name: codec
 #   module_kind: engine
-#   summary: bijective base-p codec — digits in {1..p}, plus standard key-digit stream
+#   summary: bijective base-p codec — encodes an integer into digits drawn from {1..p} (the bijective numeration that has no leading-zero ambiguity) and back, plus the key-digit stream PCEA shifts by; this is the reversible number representation the cipher operates on
 #   owner: a0p maintainer
 #   public_surface: to_bijective, from_bijective, key_digits
 #   internal_surface: none

@@ -1,3 +1,4 @@
+# ratios: loc_comments=10:43 imports_exports=2:1 calls_definitions=1:0
 # === MODULE_BUILD ===
 # id: tools_pkg
 #   module_name: tools
@@ -53,3 +54,4 @@ __all__ = [
     "Tool", "ToolError", "register", "lookup", "list_tools", "invoke",
     "register_builtins", "TOOL_KIND_NATIVE", "TOOL_KIND_WEBHOOK", "TOOL_KIND_MCP",
 ]
+# ratios: loc_comments=10:43 imports_exports=2:1 calls_definitions=1:0

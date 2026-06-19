@@ -1,3 +1,4 @@
+# ratios: loc_comments=50:51 imports_exports=7:5 calls_definitions=19:4
 # === MODULE_BUILD ===
 # id: carrier_registry
 #   module_name: registry
@@ -117,3 +118,4 @@ __all__ = [
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
 
+# ratios: loc_comments=50:51 imports_exports=7:5 calls_definitions=19:4

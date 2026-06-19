@@ -3,7 +3,7 @@
 # id: pcea_primes
 #   module_name: primes
 #   module_kind: schema
-#   summary: first 53 primes — the prime circle used by PCEA
+#   summary: the first 53 primes — the fixed prime circle PCEA indexes into, one prime per state position, defining the per-digit modulus for the bijective base-p codec
 #   owner: a0p maintainer
 #   public_surface: PRIME_CIRCLE
 #   internal_surface: none

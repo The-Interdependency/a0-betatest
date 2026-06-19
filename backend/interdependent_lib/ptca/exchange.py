@@ -3,7 +3,7 @@
 # id: ptca_exchange
 #   module_name: exchange
 #   module_kind: engine
-#   summary: deterministic prime-circular state-exchange protocol
+#   summary: deterministic prime-circular state-exchange protocol — advances a PTCA state against a counterpart using the prime circle so two engines can hand state back and forth reproducibly, with no randomness and a verifiable round-trip
 #   owner: a0p maintainer
 #   public_surface: exchange
 #   internal_surface: none

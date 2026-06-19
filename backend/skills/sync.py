@@ -1,3 +1,4 @@
+# ratios: loc_comments=118:54 imports_exports=6:3 calls_definitions=38:3
 # === MODULE_BUILD ===
 # id: skills_sync
 #   module_name: sync
@@ -185,3 +186,4 @@ async def push_to_skill_lib_stub(col, *, user_id: str) -> dict:
 
 
 __all__ = ["pull_from_skill_lib", "push_to_skill_lib_stub", "_SKILL_LIB_URL"]
+# ratios: loc_comments=118:54 imports_exports=6:3 calls_definitions=38:3

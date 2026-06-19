@@ -1,3 +1,4 @@
+# ratios: loc_comments=210:60 imports_exports=16:11 calls_definitions=68:16
 # === MODULE_BUILD ===
 # id: api_extensions_routes
 #   module_name: extensions
@@ -313,3 +314,4 @@ async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = ""):
 
 
 __all__ = ["router", "record_demo_usage", "check_demo_quota"]
+# ratios: loc_comments=210:60 imports_exports=16:11 calls_definitions=68:16

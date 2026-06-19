@@ -1,3 +1,4 @@
+# ratios: loc_comments=10:42 imports_exports=2:1 calls_definitions=0:0
 # === MODULE_BUILD ===
 # id: skills_pkg
 #   module_name: skills
@@ -51,3 +52,4 @@ __all__ = [
     "delete_skill", "check_overlap", "tokenize_scope", "tokenize_logic",
     "OVERLAP_THRESHOLD", "pull_from_skill_lib", "push_to_skill_lib_stub",
 ]
+# ratios: loc_comments=10:42 imports_exports=2:1 calls_definitions=0:0

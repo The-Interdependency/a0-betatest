@@ -3,7 +3,7 @@
 # id: carrier_classes
 #   module_name: classes
 #   module_kind: schema
-#   summary: public type-class enumeration (L, N, P, X) for the carrier slots; literal-type vs aggregate-slot distinction
+#   summary: public type-class enumeration (L literal, N aggregate, P, X) for the 157 carrier slots — the distinction between literal-type positions and aggregate-slot positions that the adjacency and face invariants are defined over
 #   owner: Erin Spencer
 #   public_surface: ClassTag, FACE_PLUS_CLASSES, FACE_MINUS_CLASSES, LITERAL_TYPES, AGGREGATE_SLOTS
 #   internal_surface: none

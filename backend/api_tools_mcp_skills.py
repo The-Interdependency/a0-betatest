@@ -1,3 +1,4 @@
+# ratios: loc_comments=223:52 imports_exports=14:20 calls_definitions=87:21
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -322,3 +323,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
+# ratios: loc_comments=223:52 imports_exports=14:20 calls_definitions=87:21

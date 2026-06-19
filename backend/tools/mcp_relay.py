@@ -1,3 +1,4 @@
+# ratios: loc_comments=48:46 imports_exports=6:4 calls_definitions=18:4
 # === MODULE_BUILD ===
 # id: tools_mcp_relay
 #   module_name: mcp_relay
@@ -104,3 +105,4 @@ async def invoke(tool: Tool, params: dict, *, user: dict) -> Any:
 
 
 __all__ = ["invoke", "list_remote_tools", "ping_server"]
+# ratios: loc_comments=48:46 imports_exports=6:4 calls_definitions=18:4

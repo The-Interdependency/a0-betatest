@@ -1,3 +1,4 @@
+# ratios: loc_comments=26:42 imports_exports=7:2 calls_definitions=9:2
 # === MODULE_BUILD ===
 # id: tools_webhook
 #   module_name: webhook
@@ -74,3 +75,4 @@ async def invoke(tool: Tool, params: dict, *, user: dict) -> Any:
 
 
 __all__ = ["invoke"]
+# ratios: loc_comments=26:42 imports_exports=7:2 calls_definitions=9:2

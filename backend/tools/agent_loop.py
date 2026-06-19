@@ -1,3 +1,4 @@
+# ratios: loc_comments=195:62 imports_exports=4:4 calls_definitions=66:11
 # === MODULE_BUILD ===
 # id: tools_agent_loop
 #   module_name: agent_loop
@@ -288,3 +289,4 @@ async def run_tool_loop(
 
 
 __all__ = ["run_tool_loop", "tool_to_schema", "ToolLoopHalt", "MAX_ITERS_DEFAULT"]
+# ratios: loc_comments=195:62 imports_exports=4:4 calls_definitions=66:11

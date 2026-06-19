@@ -1,3 +1,4 @@
+# ratios: loc_comments=97:52 imports_exports=11:2 calls_definitions=21:2
 # === MODULE_BUILD ===
 # id: tools_gated_invoke
 #   module_name: gated_invoke
@@ -161,3 +162,4 @@ async def gated_invoke(
 
 
 __all__ = ["gated_invoke"]
+# ratios: loc_comments=97:52 imports_exports=11:2 calls_definitions=21:2

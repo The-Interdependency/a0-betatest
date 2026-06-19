@@ -1,3 +1,4 @@
+# ratios: loc_comments=45:44 imports_exports=8:5 calls_definitions=17:5
 # === MODULE_BUILD ===
 # id: app_settings
 #   module_name: app_settings
@@ -102,3 +103,4 @@ async def patch_settings(body: PatchBody, user=Depends(get_current_user)):
 
 
 __all__ = ["router", "get_setting"]
+# ratios: loc_comments=45:44 imports_exports=8:5 calls_definitions=17:5

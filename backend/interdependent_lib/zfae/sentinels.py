@@ -1,3 +1,4 @@
+# ratios: loc_comments=104:62 imports_exports=4:9 calls_definitions=25:13
 # === MODULE_BUILD ===
 # id: zfae_sentinels_13
 #   module_name: sentinels
@@ -197,3 +198,4 @@ __all__ = [
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
 
+# ratios: loc_comments=104:62 imports_exports=4:9 calls_definitions=25:13

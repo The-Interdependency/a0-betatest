@@ -1,3 +1,4 @@
+# ratios: loc_comments=49:43 imports_exports=5:2 calls_definitions=10:3
 # === MODULE_BUILD ===
 # id: zfae_fiq_emit
 #   module_name: fiq_emit
@@ -100,3 +101,4 @@ async def emit(
 
 
 __all__ = ["emit", "ZFAE_EVENT_TYPES"]
+# ratios: loc_comments=49:43 imports_exports=5:2 calls_definitions=10:3

@@ -1,3 +1,4 @@
+# ratios: loc_comments=82:62 imports_exports=4:7 calls_definitions=20:8
 # === MODULE_BUILD ===
 # id: tools_registry
 #   module_name: registry
@@ -167,3 +168,4 @@ __all__ = [
     "Tool", "ToolError", "register", "lookup", "list_tools", "invoke",
     "TOOL_KIND_NATIVE", "TOOL_KIND_WEBHOOK", "TOOL_KIND_MCP",
 ]
+# ratios: loc_comments=82:62 imports_exports=4:7 calls_definitions=20:8

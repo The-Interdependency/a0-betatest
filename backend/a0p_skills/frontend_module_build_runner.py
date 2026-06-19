@@ -1,3 +1,4 @@
+# ratios: loc_comments=73:50 imports_exports=7:3 calls_definitions=23:5
 # === MODULE_BUILD ===
 # id: a0p_skills_frontend_module_build_runner
 #   module_name: frontend_module_build_runner
@@ -140,3 +141,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+# ratios: loc_comments=73:50 imports_exports=7:3 calls_definitions=23:5

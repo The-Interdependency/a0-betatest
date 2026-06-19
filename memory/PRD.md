@@ -30,6 +30,33 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-19 (msdmd compliance closed + narrative README)
+
+- **100% RATIOS compliance**: injected the single-line `# ratios: ...`
+  declaration (first + last line) into the **26 gap files** flagged by
+  `ratios_runner`, computed via the runner's own `COMPUTERS` so they verify
+  clean. Result: `ratios · 121 files · 121 covered / 0 gaps · 726 verified ·
+  0 drift · 0 misplaced`. `meta-module-build 121 valid / 0 invalid`;
+  `test-build 135 pass / 0 fail / 0 error / 3 skipped`; 35 offline unit tests
+  pass.
+- **`readme_writer.py` rebuilt to a narrative README** (per user request:
+  "expand the narratives … so the living-spec README reads like a README").
+  The auto-generated `/app/README.md` now opens with an **Overview**, then an
+  **Architecture** walkthrough that introduces each of 23 subsystems
+  (core, auth, providers, agents, zfae, pcea/ptca/pcta/pcna, network, fiq,
+  gonal, aimmh, tools, skills, a0p_skills, msdmd, frontend pages/components/
+  lib/root, tests) in prose before listing that subsystem's modules with their
+  **full, untruncated** narratives, and closes with a by-kind module index.
+  New internals `_subsystem`, `_render_modules`, `_format_kind_index`.
+- **Enriched 8 thin module summaries** (single-line, ratio-safe) so the
+  narrative reads fuller: `gonal/mirror`, `gonal/classes`, `pcea/cipher`,
+  `pcea/codec`, `pcea/primes`, `pcea/__init__`, `ptca/exchange`,
+  `aimmh/__init__`. (Fixed an accidental drop of `owner`/`public_surface`
+  lines in `pcea/cipher.py` introduced mid-edit.)
+- Verified: `/api/spec/living` → 200, 157 modules; backend healthy; README
+  regenerates to 157 modules · 13 kinds · 23 subsystems on boot.
+
+
 ## Changelog — 2026-06-16e (RATIOS reshaped to single-line first/last declarations — per msdmd intent)
 
 - **RATIOS is no longer a fenced block.** Per the original msdmd intent, each

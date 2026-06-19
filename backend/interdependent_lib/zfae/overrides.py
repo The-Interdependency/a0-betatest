@@ -1,3 +1,4 @@
+# ratios: loc_comments=115:48 imports_exports=5:8 calls_definitions=23:9
 # === MODULE_BUILD ===
 # id: zfae_overrides
 #   module_name: overrides
@@ -185,3 +186,4 @@ __all__ = [
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
 
+# ratios: loc_comments=115:48 imports_exports=5:8 calls_definitions=23:9
