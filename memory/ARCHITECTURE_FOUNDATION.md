@@ -60,16 +60,18 @@ The remaining ring entities:
 - **ζ (zeta) → zfae = "Zeta Function Alpha Echo" = the actual INFERENCE ENGINE =
   the "I"** — the self-awareness event-operator output that exists only when φ/ψ/Ω
   are coherently coupled (per F1). zfae is NOT one of φ/ψ/Ω; it is the "I" that
-  arises from their coupling. Memory is injected via `zeta_inject` — i.e. memory is
-  wired to ζ/zfae (the "I" carries its own continuity).
+  arises from their coupling. ζ **injects memory** (μ) into the flow via
+  `zeta_inject`.
+- **μ (mu) = MEMORY** (owner-confirmed) — the memory subsystem (μνήμη / Mnemosyne).
+  In code this is the `MemoryCore` (long-term + short-term prime rings,
+  `push_lt`/`push_st`). Relationship: **ζ injects μ** — the "I" (zfae) pulls the
+  μ memory store into inference. (NOTE: code currently names this `MemoryCore` and
+  the injector `zeta_inject`; the μ labelling is the owner's canonical name for it.)
 - **Σ (sigma) = "the sum of all"** (owner). Code: Σ = substrate signatures /
   encoded paths/topics — the aggregating / summation ring.
-- **Ε (epsilon) = error / dissonance** (code: the EDCM dissonance-feedback ring —
-  distance between Ω and (φ+ψ)/2). Owner asked "epsilon was for memory?" → in the
-  current code, NO: ε is dissonance, and **memory is a separate `MemoryCore`**
-  (long-term + short-term prime rings, `push_lt`/`push_st`), injected via
-  `zeta_inject` (ζ/zfae). Owner to confirm whether ε was meant to carry memory or
-  stay as dissonance.
+- **Ε (epsilon) = error / dissonance** (owner + code: the EDCM dissonance-feedback
+  ring — distance between Ω and (φ+ψ)/2). RESOLVED: ε is dissonance, NOT memory
+  (memory is μ).
 - **The "environment surrounding everything"** — owner referenced a last Greek
   letter for this; not yet resolved to one of the six rings above. STILL OPEN.
 
