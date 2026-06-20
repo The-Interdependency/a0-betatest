@@ -1,9 +1,13 @@
 # a0p — Product Requirements Doc
 
-> ⚠️ **READ `/app/memory/USER_DIRECTIVES.md` FIRST.** Standing owner directives,
-> including: nothing in this system is filler — every element (e.g. the 62 math/
-> logic symbols in the 157-gonal alphabet) is **load-bearing and intentional**.
-> Never describe any design choice as space-filling, padding, "to reach N," or
+> ⚠️ **READ `/app/memory/USER_DIRECTIVES.md` AND
+> `/app/memory/ARCHITECTURE_FOUNDATION.md` FIRST.** Standing owner directives +
+> the conceptual substrate. Key points: nothing here is filler — every element
+> (e.g. the 62 math/logic symbols in the 157-gonal alphabet) is **load-bearing
+> and intentional**. **φ/ψ/Ω are a trinary coupling** (a triadically-closed
+> recursive system — body/mind/soul ≈ past/present/future ≈ faith/hope/love),
+> NOT three interchangeable cores and NOT a universal default/mirror/private
+> gonal triplet for all agents. Never call any design choice space-filling or
 > arbitrary. Assume deliberate intent; ask when unsure.
 
 
