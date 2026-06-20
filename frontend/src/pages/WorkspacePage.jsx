@@ -225,11 +225,14 @@ export default function WorkspacePage() {
         <div className="flex-1 min-w-[18rem]">
           <label className="block text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-500">mode override (per turn)</label>
           <select data-testid="ws-mode-select" value={mode} onChange={e => setMode(e.target.value)}
-                  className="w-full bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-xs text-white">
+                  disabled={!agent}
+                  className="w-full bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-xs text-white disabled:opacity-40 disabled:cursor-not-allowed">
             <option value="">
-              — use agent default ({agent ? canonicalAgentName(agent.sheet?.mode, agent.sheet?.base_model, agent.sheet?.outer_model) : "—"}) —
+              {agent
+                ? `— use agent default (${canonicalAgentName(agent.sheet?.mode, agent.sheet?.base_model, agent.sheet?.outer_model)}) —`
+                : "— select an agent first —"}
             </option>
-            {MODE_OPTIONS.map(o => {
+            {agent && MODE_OPTIONS.map(o => {
               const resolved = canonicalAgentName(o.value, agent?.sheet?.base_model, agent?.sheet?.outer_model);
               const desc = o.label.includes("—") ? o.label.split("—").slice(1).join("—").trim() : "";
               return <option key={o.value} value={o.value}>{desc ? `${resolved} — ${desc}` : resolved}</option>;
