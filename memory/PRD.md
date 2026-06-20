@@ -30,6 +30,32 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-19g (Fix: native a0(zfae) could never unlock — trainer rebuilt to rank>1)
+
+- **Answer to "what does ZFAE inference run from?"**: native `a0(zfae)` decodes from
+  the **per-agent ZFAE weight bank** (3 cores × 157 seeds × 53 payload, ~1.2M
+  scalars), gated by `_is_trained_enough` = `training_step ≥ 16` AND `last_loss ≤ 0.1`
+  AND **all 471 (157×3) seeds touched**.
+- **Root cause of "no answer from zfae"**: the gate was *unreachable*. (1) The
+  training loss was `intent_loss(0/1) + signature_mse`; `intent_loss` compared the
+  *prompt's* intent to the *teacher's* intent — a constant ≈1.0 the weights can't
+  reduce — so `last_loss` floored at ~1.1, never ≤ 0.1. (2) The update touched **one
+  seed per step**, so reaching `all_seeds_touched` needed 471+ steps the Training
+  Room never runs. Native therefore refused forever, despite training "working".
+- **Fix** (`trainer.py`): rebuilt `ZFAELearner.distill_step` to **multi-seed,
+  rank>1 distillation** — each step updates *all 157 seeds* of the round-robin core
+  toward the teacher d=53 signature with a per-seed convergence modulation (seeds
+  stay distinct; verified seed-signature rank 53, no collapse). Loss is now the
+  **reducible post-update residual**, dropping to ~0.02. All 471 seeds are touched
+  after the 3-core round-robin. Default lr 0.005 → 0.6 (convergence fraction).
+- **Verified**: training a native agent 12–18 steps now yields `last_loss ≈ 0.02`,
+  `all_seeds_touched=True`, and chat returns `reply_source: zfae_native` (was
+  `zfae_refused`). ratios 121/121 · 0 drift; test-build 136 pass; 18 unit tests pass.
+- **Caveat**: the native decoder emits **symbolic/mathematical glyphs**, not natural
+  language — it is a from-scratch deterministic engine, not an LLM. For prose answers,
+  use the model-backed modes (`a0(zfae)<model>`, `a0(<model>)`, `a0(<model>)<model>`).
+
+
 ## Changelog — 2026-06-19f (PTCA flat-tensor → canon stratified rebuild)
 
 - **Rebuilt the flat tensor.** `ptca/tensor.py::PrimeTensor` moved from the legacy

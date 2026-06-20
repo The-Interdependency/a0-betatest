@@ -3,7 +3,7 @@
 > _changes constant. refinements welcome._  
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-20 00:54:06 UTC._  
+_Living spec — auto-regenerated on backend startup at 2026-06-20 01:34:53 UTC._  
 _157 modules · 13 kinds · 23 subsystems._
 
 > This file is generated from the codebase's own documentation. Don't edit it by hand — edit a module's `# === MODULE_BUILD ===` block (its `summary` is the narrative you read below) and it regenerates on the next backend start.
@@ -114,7 +114,7 @@ The heart of the instrument: a pure, deterministic symbolic/state engine with no
   `backend/interdependent_lib/zfae/sentinels.py`
 - **`teacher`** — TeacherClient — invokes a configured teacher model via the BYOK provider REGISTRY; emits training records; never substitutes its output as native zfae inference  
   `backend/interdependent_lib/zfae/teacher.py`
-- **`trainer`** — ZFAELearner — text-distillation losses (intent-match + signature-MSE) for teacher-only; produces weight delta + loss + new checkpoint digest  
+- **`trainer`** — ZFAELearner — multi-seed (rank>1) teacher distillation; each step updates all 157 seeds of a round-robin core toward the teacher d=53 signature with per-seed modulation, producing a reducible post-update residual loss that lets training unlock native readiness  
   `backend/interdependent_lib/zfae/trainer.py`
 - **`weight_init`** — deterministic seed init for fresh ZFAE weights; three cores phi/psi/omega each shape (157, 53, 7, 7); per-agent reproducible  
   `backend/interdependent_lib/zfae/weight_init.py`

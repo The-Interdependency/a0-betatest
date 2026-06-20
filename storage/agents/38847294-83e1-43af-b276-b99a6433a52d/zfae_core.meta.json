@@ -6,14 +6,16 @@
     "weight_count_per_core": "407729",
     "weight_count_total": "1223187",
     "weight_count": "407729",
-    "training_step": "1",
-    "seeds_touched_phi": "1",
-    "seeds_touched_psi": "0",
-    "seeds_touched_omega": "0",
+    "training_step": "7",
+    "seeds_touched_phi": "3",
+    "seeds_touched_psi": "2",
+    "seeds_touched_omega": "2",
     "agent_id": "38847294-83e1-43af-b276-b99a6433a52d",
     "created_from": "seed_init_then_teacher_distillation",
-    "teacher_models_seen": "[\"openai:gpt-3.5-turbo\"]",
-    "seeds_touched_phi_idx": "[87]"
+    "teacher_models_seen": "[\"openai:gpt-3.5-turbo\", \"openai:gpt-5-chat-latest\", \"openai:gpt-5.3-chat-latest\", \"xai:grok-4.20-0309-non-reasoning\"]",
+    "seeds_touched_phi_idx": "[63, 87, 119]",
+    "seeds_touched_psi_idx": "[99, 142]",
+    "seeds_touched_omega_idx": "[112, 141]"
   },
-  "last_loss": 1.1070711314678192
+  "last_loss": 1.0802602022886276
 }
