@@ -6,13 +6,14 @@
     "weight_count_per_core": "407729",
     "weight_count_total": "1223187",
     "weight_count": "407729",
-    "training_step": "0",
-    "seeds_touched_phi": "0",
+    "training_step": "1",
+    "seeds_touched_phi": "1",
     "seeds_touched_psi": "0",
     "seeds_touched_omega": "0",
     "agent_id": "bf60b5cf-5d10-4032-8cee-8cb1d7adb685",
     "created_from": "seed_init_then_teacher_distillation",
-    "teacher_models_seen": "[]"
+    "teacher_models_seen": "[\"openai:gpt-5-nano\"]",
+    "seeds_touched_phi_idx": "[150]"
   },
-  "last_loss": null
+  "last_loss": 0.1010902151465416
 }

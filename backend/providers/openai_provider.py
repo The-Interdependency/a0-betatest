@@ -1,4 +1,4 @@
-# ratios: loc_comments=74:43 imports_exports=3:1 calls_definitions=17:3
+# ratios: loc_comments=85:47 imports_exports=3:1 calls_definitions=21:3
 # === MODULE_BUILD ===
 # id: provider_openai
 #   module_name: openai_provider
@@ -85,15 +85,30 @@ class OpenAIProvider:
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
         async with httpx.AsyncClient(timeout=120.0) as c:
-            r = await c.post(
-                f"{self.base}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
+            # Newer OpenAI models (gpt-5*, o-series) reject `max_tokens` (want
+            # `max_completion_tokens`) and only allow the default temperature.
+            # Retry, adapting the payload to whatever the API complains about, so
+            # one adapter serves both legacy and current models.
+            r = await c.post(f"{self.base}/chat/completions", headers=headers, json=payload)
+            for _ in range(2):
+                if r.status_code < 400:
+                    break
+                err = r.text
+                adjusted = False
+                if "max_completion_tokens" in err and "max_tokens" in payload:
+                    payload["max_completion_tokens"] = payload.pop("max_tokens")
+                    adjusted = True
+                if "temperature" in err and "temperature" in payload:
+                    payload.pop("temperature", None)
+                    adjusted = True
+                if not adjusted:
+                    break
+                r = await c.post(f"{self.base}/chat/completions", headers=headers, json=payload)
             if r.status_code >= 400:
                 return ChatResult(
                     content="", error=f"openai {r.status_code}: {r.text[:400]}",
@@ -121,4 +136,4 @@ class OpenAIProvider:
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# ratios: loc_comments=74:43 imports_exports=3:1 calls_definitions=17:3
+# ratios: loc_comments=85:47 imports_exports=3:1 calls_definitions=21:3

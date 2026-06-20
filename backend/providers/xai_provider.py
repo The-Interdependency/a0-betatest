@@ -1,4 +1,4 @@
-# ratios: loc_comments=67:42 imports_exports=3:1 calls_definitions=15:3
+# ratios: loc_comments=78:44 imports_exports=3:1 calls_definitions=19:3
 # === MODULE_BUILD ===
 # id: provider_xai
 #   module_name: xai_provider
@@ -77,15 +77,28 @@ class XAIProvider:
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
         async with httpx.AsyncClient(timeout=120.0) as c:
-            r = await c.post(
-                f"{self.base}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
+            # xAI is OpenAI-compatible; adapt the payload if a model rejects
+            # `max_tokens` or a non-default temperature, then retry.
+            r = await c.post(f"{self.base}/chat/completions", headers=headers, json=payload)
+            for _ in range(2):
+                if r.status_code < 400:
+                    break
+                err = r.text
+                adjusted = False
+                if "max_completion_tokens" in err and "max_tokens" in payload:
+                    payload["max_completion_tokens"] = payload.pop("max_tokens")
+                    adjusted = True
+                if "temperature" in err and "temperature" in payload:
+                    payload.pop("temperature", None)
+                    adjusted = True
+                if not adjusted:
+                    break
+                r = await c.post(f"{self.base}/chat/completions", headers=headers, json=payload)
             if r.status_code >= 400:
                 return ChatResult(
                     content="", error=f"xai {r.status_code}: {r.text[:400]}",
@@ -113,4 +126,4 @@ class XAIProvider:
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# ratios: loc_comments=67:42 imports_exports=3:1 calls_definitions=15:3
+# ratios: loc_comments=78:44 imports_exports=3:1 calls_definitions=19:3

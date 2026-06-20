@@ -30,6 +30,22 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-19e (Fix: "no response from any model" — OpenAI max_tokens incompatibility)
+
+- **Root cause**: the OpenAI (and xAI) BYOK adapters hardcoded `max_tokens`.
+  Newer models (gpt-5 family, o-series) **reject** it with `openai 400: Unsupported
+  parameter: 'max_tokens' … use 'max_completion_tokens'`, and only allow the
+  default temperature. So every turn against a gpt-5-* / reasoning model returned a
+  400 error string instead of an answer — i.e. "no response".
+- **Fix** (`providers/openai_provider.py`, `providers/xai_provider.py`): the chat
+  call now **auto-adapts** — on a 400 it swaps `max_tokens → max_completion_tokens`
+  and/or drops a non-default `temperature` based on the API's own error text, then
+  retries. One adapter serves both legacy (gpt-4o, gpt-3.5) and current models.
+- **Verified**: the `a0(<model>)` gpt-5-nano agent now answers ("Hello there,
+  friend", teacher_called=true). Compliance green (ratios 121/121, test-build 135
+  pass). Note: native `a0(zfae)` agents still refuse until trained (by design).
+
+
 ## Changelog — 2026-06-19d (Systemic per-user auth-scoping + Workspace mode label)
 
 - **Root cause (systemic)**: many `server.py` endpoints defaulted to
