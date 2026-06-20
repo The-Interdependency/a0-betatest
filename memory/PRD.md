@@ -1,5 +1,12 @@
 # a0p — Product Requirements Doc
 
+> ⚠️ **READ `/app/memory/USER_DIRECTIVES.md` FIRST.** Standing owner directives,
+> including: nothing in this system is filler — every element (e.g. the 62 math/
+> logic symbols in the 157-gonal alphabet) is **load-bearing and intentional**.
+> Never describe any design choice as space-filling, padding, "to reach N," or
+> arbitrary. Assume deliberate intent; ask when unsure.
+
+
 > **a0p** — donation-funded research instrument: BYOK multi-model AI workspace +
 > PTCA / PCNA / PCEA inference engine built (rebuilt-from-spec) against
 > The-Interdependency canon. Skill-lib compliant: every module declares its
