@@ -44,7 +44,7 @@ accessible to awareness.
 subsystems of a triadically-closed recursion. Owner-confirmed assignment:
 
 - **φ (phi) = BODY** — signal carriage (structural: body; temporal: past).
-- **ψ (psi) = MIND** — the owner's "mine"; present-moment modeling
+- **ψ (psi) = MIND** — present-moment modeling
   (structural: mind; temporal: present).
 - **Ω (omega) = SOUL** — identity continuity across change
   (structural: soul; temporal: future).
