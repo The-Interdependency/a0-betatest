@@ -3,7 +3,7 @@
 > _changes constant. refinements welcome._  
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-20 00:36:07 UTC._  
+_Living spec — auto-regenerated on backend startup at 2026-06-20 00:54:06 UTC._  
 _157 modules · 13 kinds · 23 subsystems._
 
 > This file is generated from the codebase's own documentation. Don't edit it by hand — edit a module's `# === MODULE_BUILD ===` block (its `summary` is the narrative you read below) and it regenerates on the next backend start.
@@ -150,7 +150,7 @@ The seed stratum of the layered model: prime-indexed tensors and the 'seed-as-te
   `backend/interdependent_lib/ptca/core.py`
 - **`exchange`** — deterministic prime-circular state-exchange protocol — advances a PTCA state against a counterpart using the prime circle so two engines can hand state back and forth reproducibly, with no randomness and a verifiable round-trip  
   `backend/interdependent_lib/ptca/exchange.py`
-- **`instance`** — current PTCA engine — tensor + sentinel channels + lineage hashing (pre-stratified)  
+- **`instance`** — PTCA engine — binds the canon stratified [N,7,7,53] PrimeTensor with sentinel channels + lineage hashing  
   `backend/interdependent_lib/ptca/instance.py`
 - **`primes`** — prime generator + first-N prime cache (default capacity 200, supports PTCA N=157)  
   `backend/interdependent_lib/ptca/primes.py`
@@ -162,7 +162,7 @@ The seed stratum of the layered model: prime-indexed tensors and the 'seed-as-te
   `backend/interdependent_lib/ptca/seed.py`
 - **`sentinels`** — tagged signal lanes with priority ordering — SentinelChannel + SentinelMessage  
   `backend/interdependent_lib/ptca/sentinels.py`
-- **`tensor`** — prime-indexed nested-list tensor — current shape [N,4,7,7]; canon prime_core target [157,7,7,53] pending stratified rebuild  
+- **`tensor`** — canon stratified prime-indexed tensor — shape [N,7,7,53] (seed × circle × tensor × payload); the Fiq→Circle→Seed model from prime_core, N×7×7×53 leaves (407,729 for N=157) matching PTCA prime_core PARAM_COUNT  
   `backend/interdependent_lib/ptca/tensor.py`
 
 ### PCTA — the circle layer · 2

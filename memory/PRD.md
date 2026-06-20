@@ -30,6 +30,27 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
+## Changelog — 2026-06-19f (PTCA flat-tensor → canon stratified rebuild)
+
+- **Rebuilt the flat tensor.** `ptca/tensor.py::PrimeTensor` moved from the legacy
+  pre-stratified **[N,4,7,7]** (dim×phase×hepta) to the canon prime_core
+  **[N,7,7,53]** stratification — seed × circle × tensor × payload (the
+  Fiq→Circle→Seed model). Leaf count N×7×7×53 = **407,729** for N=157, matching
+  PTCA prime_core `PARAM_COUNT` verbatim. New `param_count()`; `set/get/slice_node/
+  seed_from_int/summary` re-axed; routing folds in {7/3} (circle) and {7/2}
+  (tensor) steps.
+- **Fixed the PCNA normalizer** (`pcna/pcna.py`): ring-signal energy denominator
+  was hardcoded to the old leaf count `N×4×7×7`; now `N×7×7×53`, so φ/ψ/ω signals
+  stay in [0,1] (verified: phi 0.56, psi 0.59, omega 0.57 — no saturation).
+- Dropped the "pre-stratified / pending rebuild" `unresolved` notes from
+  `tensor.py` and `instance.py`; added correctness contract
+  `ptca_tensor_canon_shape` (shape + 407,729 param count + set/get round-trip).
+- **Perf**: the canon shape is 13× larger but the engine (`ZFAEAgent`) is a
+  startup singleton (~0.27s one-time), so no per-turn cost.
+- **Verified**: ratios 121/121 · 0 drift; module-build 121 valid; test-build
+  **139 contracts · 136 pass**; 15 zfae unit tests pass; backend healthy.
+
+
 ## Changelog — 2026-06-19e (Fix: "no response from any model" — OpenAI max_tokens incompatibility)
 
 - **Root cause**: the OpenAI (and xAI) BYOK adapters hardcoded `max_tokens`.

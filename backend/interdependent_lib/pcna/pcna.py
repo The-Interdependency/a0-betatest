@@ -1,4 +1,4 @@
-# ratios: loc_comments=73:67 imports_exports=9:1 calls_definitions=17:7
+# ratios: loc_comments=73:68 imports_exports=9:1 calls_definitions=17:7
 # === MODULE_BUILD ===
 # id: pcna_engine_impl
 #   module_name: pcna
@@ -90,8 +90,9 @@ class PCNAEngine:
         # phi / psi / omega — energy from the PTCA tensor
         for label in ("phi", "psi", "omega"):
             e = self.cores[label].tensor.energy()
-            # normalise to [0,1] with a soft cap
-            self.ring_signals[label] = round(min(1.0, e / (self.n_primes * 4 * 7 * 7) ** 0.5), 6)
+            # normalise to [0,1] with a soft cap — denominator is the canon
+            # stratified leaf count per core (N × 7 circles × 7 tensors × 53).
+            self.ring_signals[label] = round(min(1.0, e / (self.n_primes * 7 * 7 * 53) ** 0.5), 6)
 
         # theta — modulated mix of phi & psi
         mix = 0.5 * (self.ring_signals["phi"] + self.ring_signals["psi"])
@@ -157,4 +158,4 @@ class PCNAEngine:
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# ratios: loc_comments=73:67 imports_exports=9:1 calls_definitions=17:7
+# ratios: loc_comments=73:68 imports_exports=9:1 calls_definitions=17:7

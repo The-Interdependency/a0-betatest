@@ -1,4 +1,4 @@
-# ratios: loc_comments=1151:253 imports_exports=171:91 calls_definitions=448:106
+# ratios: loc_comments=1165:258 imports_exports=173:92 calls_definitions=456:107
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -108,6 +108,30 @@ def ptca_canon_shape_holds() -> None:
     assert c.TENSOR_DIM == 53, f"TENSOR_DIM={c.TENSOR_DIM}"
     assert c.TENSOR_LEAVES == 7693
     assert c.PARAM_COUNT == 407_729
+
+
+def ptca_tensor_canon_shape_holds() -> None:
+    """Contract: the rebuilt PrimeTensor carries the canon stratified shape.
+
+    [N,7,7,53] (seed × circle × tensor × payload); N×7×7×53 leaves equal the
+    PTCA prime_core PARAM_COUNT (407,729 for N=157); set/get round-trips.
+    """
+    from interdependent_lib.ptca.tensor import PrimeTensor
+    from interdependent_lib.ptca.constants import (
+        SEED_COUNT, CIRCLES_PER_SEED, TENSORS_PER_CIRCLE, TENSOR_DIM, PARAM_COUNT,
+    )
+
+    t = PrimeTensor(SEED_COUNT)
+    assert t.summary()["shape"] == [
+        SEED_COUNT, CIRCLES_PER_SEED, TENSORS_PER_CIRCLE, TENSOR_DIM,
+    ], f"shape={t.summary()['shape']}"
+    assert t.param_count() == PARAM_COUNT == 407_729, f"param_count={t.param_count()}"
+    t.set(0, 1, 2, 3, 0.5)
+    assert t.get(0, 1, 2, 3) == 0.5
+    # deterministic seeding stays bounded in [0,1)
+    t.seed_from_int(7)
+    assert 0.0 <= t.get(5, 0, 0, 0) < 1.0
+
 
 
 # ---------- Step 1 — PCNA leaf tensor + group aggregate + ucns bridge ----
@@ -1738,4 +1762,4 @@ async def _skills_sync_pull_async() -> None:
     assert r["ok"] is False
     assert r["pulled"] == 0
     assert r["errors"]
-# ratios: loc_comments=1151:253 imports_exports=171:91 calls_definitions=448:106
+# ratios: loc_comments=1165:258 imports_exports=173:92 calls_definitions=456:107

@@ -1,9 +1,9 @@
-# ratios: loc_comments=30:46 imports_exports=4:1 calls_definitions=6:5
+# ratios: loc_comments=30:45 imports_exports=4:1 calls_definitions=6:5
 # === MODULE_BUILD ===
 # id: ptca_instance
 #   module_name: instance
 #   module_kind: engine
-#   summary: current PTCA engine — tensor + sentinel channels + lineage hashing (pre-stratified)
+#   summary: PTCA engine — binds the canon stratified [N,7,7,53] PrimeTensor with sentinel channels + lineage hashing
 #   owner: a0p maintainer
 #   public_surface: PTCAInstance
 #   internal_surface: none
@@ -15,11 +15,10 @@
 #   tests: hmmm
 #   rollout: default_enabled
 #   rollback: revert file from git
-#   unresolved: replace with stratified Fiq→Circle→Seed model from canon prime_core
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: ptca_instance_boundaries
-#   summary: current PTCA engine — tensor + sentinel channels + lineage hashing (pre-stratified)
+#   summary: PTCA engine — binds the canon stratified [N,7,7,53] PrimeTensor with sentinel channels + lineage hashing
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: none
@@ -29,7 +28,7 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: ptca_instance
-#   summary: current PTCA engine — tensor + sentinel channels + lineage hashing (pre-stratified)
+#   summary: PTCA engine — binds the canon stratified [N,7,7,53] PrimeTensor with sentinel channels + lineage hashing
 #   exposes: PTCAInstance
 #   boundaries: auth:none, storage:none, network:none, user_data:none
 #   owner: a0p maintainer
@@ -82,4 +81,4 @@ class PTCAInstance:
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# ratios: loc_comments=30:46 imports_exports=4:1 calls_definitions=6:5
+# ratios: loc_comments=30:45 imports_exports=4:1 calls_definitions=6:5
