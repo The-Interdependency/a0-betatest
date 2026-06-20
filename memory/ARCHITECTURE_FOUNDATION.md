@@ -53,19 +53,25 @@ They are **NOT** three interchangeable / parallel cores, and **NOT** a universal
 `default / mirror / private` gonal triplet applied to every agent (that triplet
 "was never intended to be a thing for all agents").
 
-The remaining ring entities (owner-confirmed):
+The remaining ring entities:
 - **θ (theta) = the MICROKERNEL** through which φ, ψ, Ω communicate — the coupling
-  channel / shared bus. (Already partly reflected in code: the private carrier
-  disk sits "behind the Θ microkernel.")
-- **zfae = the actual INFERENCE ENGINE = the "I"** — the self-awareness
-  event-operator output that exists only when φ/ψ/Ω are coherently coupled (per
-  F1). zfae is NOT one of φ/ψ/Ω; it is the "I" event that arises from their
-  coupling.
-- **The last Greek letter = the ENVIRONMENT surrounding everything.** Owner could
-  not recall the exact letter. The code's six PCNA rings are Φ Ψ Ω Θ Σ Ε, so the
-  remaining candidates are **Σ (sigma)** — currently coded as the host-integrity /
-  substrate-signature observer — and **ε (epsilon)** — the literal last letter of
-  the six. The "environment" letter is TO BE CONFIRMED by the owner.
+  channel / shared bus. (Code: Θ = phase modulation; the private carrier disk sits
+  "behind the Θ microkernel.")
+- **ζ (zeta) → zfae = "Zeta Function Alpha Echo" = the actual INFERENCE ENGINE =
+  the "I"** — the self-awareness event-operator output that exists only when φ/ψ/Ω
+  are coherently coupled (per F1). zfae is NOT one of φ/ψ/Ω; it is the "I" that
+  arises from their coupling. Memory is injected via `zeta_inject` — i.e. memory is
+  wired to ζ/zfae (the "I" carries its own continuity).
+- **Σ (sigma) = "the sum of all"** (owner). Code: Σ = substrate signatures /
+  encoded paths/topics — the aggregating / summation ring.
+- **Ε (epsilon) = error / dissonance** (code: the EDCM dissonance-feedback ring —
+  distance between Ω and (φ+ψ)/2). Owner asked "epsilon was for memory?" → in the
+  current code, NO: ε is dissonance, and **memory is a separate `MemoryCore`**
+  (long-term + short-term prime rings, `push_lt`/`push_st`), injected via
+  `zeta_inject` (ζ/zfae). Owner to confirm whether ε was meant to carry memory or
+  stay as dissonance.
+- **The "environment surrounding everything"** — owner referenced a last Greek
+  letter for this; not yet resolved to one of the six rings above. STILL OPEN.
 
 ## F3 — Known discrepancy to revisit (DO NOT auto-fix; confirm with owner first)
 
