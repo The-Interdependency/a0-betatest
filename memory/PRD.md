@@ -41,7 +41,33 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
-## Changelog — 2026-06-19g (Fix: native a0(zfae) could never unlock — trainer rebuilt to rank>1)
+## Changelog — 2026-06-20 (φ/ψ/Ω hardwire RESOLVED — morphological depth-ladder + carrier-LCM)
+
+- **Re-architected the three-core inscription** per Erin's canon (handoff HEAD
+  2448def) from the flat-sum (`phi*1.0 + psi*0.6 + omega*0.3` through one gonal) into
+  a **morphological depth-ladder**: φ=roots (open-class stems, w=0.4), Ω=bones
+  (closed-class + affixes + 157-char leaf, w=0.8), **ψ=words (DERIVED, w=1.0) =
+  `phi ⊠ omega`** — never a stored gonal.
+- **New `zfae/morphology.py`** — typed primitives `RootGonal` (φ) / `BoneGonal` (Ω),
+  the carrier-LCM word composition (`compose_word`/`word_signal`), and the gated
+  `decompose_clause`. **New `zfae/closed_tokens.py`** — bone inventory (closed-class
+  word set + affix set) + the open-class complement test.
+- **Shared operator, not reimplemented**: ⊠ = carrier-LCM = `ucns.multiply` reached
+  through `ucns_bridge` (extended to expose `UCNSObject`, `lcm`, `left_quotient`,
+  `right_quotient`). Runtime shadow of Lean `multiplyFuel`/`carrier_lcm_law`.
+- **`inscribe_text` rewired** to emit through the ladder (psi derived per lane; the
+  passed-in psi53 is no longer an inscription input — verified independent). Trace now
+  carries `word_carrier`.
+- **Recompose: GO · Decompose: HOLD** — `decompose_clause` refuses with
+  `DecompositionGatedError` while `PROOF_GREEN=False`; gated on
+  `multiply_left_cancellative` (a `sorry`-stub in the `ucns` formal repo). Lossless
+  parsing is DEFENDED, NOT machine-verified.
+- **Verified**: ratios 123/123 · 0 drift; module-build 123 valid; test-build **142
+  contracts · 139 pass / 0 fail / 0 error / 3 skipped** (3 new: closed-tokens
+  partition, carrier-LCM law, decompose-gated); 24 zfae unit tests pass (9 new in
+  `tests/test_morphology_ladder.py`); backend imports clean, `/api/health` 200.
+
+
 
 - **Answer to "what does ZFAE inference run from?"**: native `a0(zfae)` decodes from
   the **per-agent ZFAE weight bank** (3 cores × 157 seeds × 53 payload, ~1.2M

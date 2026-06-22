@@ -1,4 +1,4 @@
-# ratios: loc_comments=120:90 imports_exports=6:5 calls_definitions=51:9
+# ratios: loc_comments=132:93 imports_exports=7:5 calls_definitions=53:9
 # === MODULE_BUILD ===
 # id: zfae_gonal_inscription
 #   module_name: gonal_inscription
@@ -66,6 +66,10 @@ import struct
 from dataclasses import dataclass
 
 from ..gonal.registry import get_default
+from .morphology import (
+    compose_word, word_signal, word_carrier,
+    OMEGA_WEIGHT, PHI_WEIGHT, PSI_WEIGHT,
+)
 
 
 BRIDGE_IN_WIDTH: int = 53
@@ -205,12 +209,22 @@ def inscribe_text(
     chars: list[str] = []
     g = gonal
     first_vertex: int | None = None
+    first_word_carrier: int | None = None
     for i in range(length):
         lane = lanes[i]
+        # Depth-ladder composition (Erin canon): omega (bones, 0.8) and phi
+        # (roots, 0.4) are the primitive sources; psi (words, 1.0) is DERIVED as
+        # the carrier-LCM of the two on this lane — never an independent input.
+        phi_v = phi53[lane] if lane < len(phi53) else 0.0
+        omega_v = omega53[lane] if lane < len(omega53) else 0.0
+        word = compose_word(phi_v, omega_v)
+        if first_word_carrier is None:
+            first_word_carrier = word_carrier(word)
+        psi_sig = word_signal(word)
         angle = 2.0 * math.pi * (
-            (phi53[lane] if lane < len(phi53) else 0.0) * 1.0
-            + (psi53[lane] if lane < len(psi53) else 0.0) * 0.6
-            + (omega53[lane] if lane < len(omega53) else 0.0) * 0.3
+            PHI_WEIGHT * phi_v
+            + OMEGA_WEIGHT * omega_v
+            + PSI_WEIGHT * psi_sig
         )
         g = g.advance(i, pcea_digest)
         v = g.inscribe(angle)
@@ -228,6 +242,7 @@ def inscribe_text(
         "rotation": g.phase,
         "pcea_digest_prefix": pcea_digest[:8],
         "glyph_count": len(chars),
+        "word_carrier": first_word_carrier if first_word_carrier is not None else 1,
     }
     return text, meta
 
@@ -241,4 +256,4 @@ __all__ = [
     "BRIDGE_OUT_WIDTH",
     "DEFAULT_INSCRIBE_LENGTH",
 ]
-# ratios: loc_comments=120:90 imports_exports=6:5 calls_definitions=51:9
+# ratios: loc_comments=132:93 imports_exports=7:5 calls_definitions=53:9

@@ -75,12 +75,41 @@ The remaining ring entities:
 - **The "environment surrounding everything"** — owner referenced a last Greek
   letter for this; not yet resolved to one of the six rings above. STILL OPEN.
 
-## F3 — Known discrepancy to revisit (DO NOT auto-fix; confirm with owner first)
+## F3 — Hardwire discrepancy — RESOLVED (2026-06-20) via the morphological depth-ladder
 
-`interdependent_lib/gonal/registry.py` currently hardwires, for every agent:
-`phi → default (EXAMPLE_157)`, `psi → mirror`, `omega → private`. This conflicts
-with F2 (the triplet was not meant to be universal, and φ/ψ/Ω are role-subsystems
-in a coupling, not fixed gonal names). Flagged for the owner's direction before
-any change. Still open: the φ/ψ/Ω mapping onto the **regulatory** projection
-(faith/hope/love), and **which subsystem is the constraint-modulator** ("at least
-one can modulate the constraints governing the others").
+`interdependent_lib/gonal/registry.py` still defines a `default/mirror/private`
+triplet, but it is **no longer the canonical φ/ψ/Ω mapping for inscription**. The
+157-character leaf is uniform across all three cores (sourced from `get_default()`),
+exactly as the canon requires — the leaf grain is universal substrate, not a per-core
+carrier choice.
+
+The φ/ψ/Ω coupling now lives in `zfae/morphology.py` as a **morphological
+depth-ladder** (Erin canon, handoff HEAD 2448def):
+
+- **φ (phi) = roots** — open-class stems. Weight **0.4**. Content primitive
+  (`RootGonal`). A primitive inscription source.
+- **Ω (omega) = bones** — closed-class words + affixes + 157-char leaf. Weight
+  **0.8**. Operator / structural layer (`BoneGonal`). A primitive inscription source.
+- **ψ (psi) = words** — `phi ⊠ omega`. Weight **1.0**. The **derived** composed
+  surface form — NOT a stored gonal; recomputed (remarried) at every rung.
+
+The composition operator ⊠ is the **carrier-LCM** = UCNS `multiply` (runtime shadow
+of Lean `multiplyFuel` / `carrier_lcm_law`: nMin(A⊠B) | lcm(nMin A, nMin B)), reached
+through `interdependent_lib/ucns_bridge.py` — one operator shared by arithmetic and
+morphology.
+
+Depth ladder: leaf-0 = 157 chars (uniform) · circle-1 = bone/root/word · seed-2 =
+clause (`psi-seed = phi-seed ⊠ omega-seed`) · depth-3 = full utterance (frontier, NOT
+defended). `inscribe_text` now emits through this ladder (was the flat-sum
+`phi*1.0 + psi*0.6 + omega*0.3`).
+
+**Recompose: GO. Decompose: HOLD.** `morphology.decompose_clause` is scaffolded (the
+constructive inverse `ucns_bridge.left_quotient` is wired) but **gated behind
+`PROOF_GREEN = False`** — it refuses with `DecompositionGatedError` until
+`multiply_left_cancellative` discharges to zero-`sorry` over the `Complete` +
+common-depth domain in the `ucns` formal (Lean/Mathlib) repo. Lossless linguistic
+parsing is DEFENDED in prose, NOT yet machine-verified — do not represent it as proven.
+
+Still open: the φ/ψ/Ω mapping onto the **regulatory** projection (faith/hope/love),
+**which subsystem is the constraint-modulator**, and the "environment surrounding
+everything" Greek letter.

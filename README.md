@@ -3,8 +3,8 @@
 > _changes constant. refinements welcome._  
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-21 08:51:25 UTC._  
-_157 modules · 13 kinds · 23 subsystems._
+_Living spec — auto-regenerated on backend startup at 2026-06-22 18:28:02 UTC._  
+_160 modules · 13 kinds · 23 subsystems._
 
 > This file is generated from the codebase's own documentation. Don't edit it by hand — edit a module's `# === MODULE_BUILD ===` block (its `summary` is the narrative you read below) and it regenerates on the next backend start.
 
@@ -76,7 +76,7 @@ Agents are treated as users: semi-permanent, character-sheet-bound instances tha
 - **`store`** — full CRUD over MongoDB metadata + filesystem per-agent checkpoint dir; agents treated as users (persistent semi-permanent instances)  
   `backend/agents/store.py`
 
-### a0(zfae) — native inference engine · 21
+### a0(zfae) — native inference engine · 23
 
 The heart of the instrument: a pure, deterministic symbolic/state engine with no LLM dependency. It parses a prompt into semantic features, folds them through Φ/Ψ/Ω ring transitions, and decodes text as a reproducible function of state (Route A inscribes the continuous field onto a private per-agent gonal; Route B is the energy-conditioned compositor). It carries long-term memory of the repo's own living spec, trains by teacher distillation across a three-core weight bank, and gates every turn through the 13 sentinels before replying.
 
@@ -90,6 +90,8 @@ The heart of the instrument: a pure, deterministic symbolic/state engine with no
   `backend/interdependent_lib/zfae/_transition.py`
 - **`archive`** — ZFAE archive — per-agent training records JSONL + per-session ephemeral chat archive with char-compress output shape  
   `backend/interdependent_lib/zfae/archive.py`
+- **`closed_tokens`** — morphological bone inventory — the closed-class word set + bound-morpheme (affix) set the BoneGonal (omega) sources its structural vertices from; the open-class test is the complement used by the RootGonal (phi)  
+  `backend/interdependent_lib/zfae/closed_tokens.py`
 - **`fiq_emit`** — ZFAE-level provenance emitter — appends hash-chained zfae_* events (training_step, chat_reply, sentinel_verdict, override_created, override_resolved) to fiq_audit_log  
   `backend/interdependent_lib/zfae/fiq_emit.py`
 - **`gonal_inscription`** — ZFAE Native Decoder Route A — Gonal Inscription. A per-agent PrivateGonal (secret phase + permutation, seeded at instantiation) inscribes the continuous Φ/Ψ/Ω tensor field onto polygon vertices to compose a deterministic glyph stream; includes the hash-whitened 53→32 bridge  
@@ -98,6 +100,8 @@ The heart of the instrument: a pure, deterministic symbolic/state engine with no
   `backend/interdependent_lib/zfae/inference.py`
 - **`long_memory`** — a0 long-term memory canon — folds the repo's living spec (every MODULE_BUILD block) into a cached deterministic summary the ZFAE engine carries on every inference, so the agent "queries itself"  
   `backend/interdependent_lib/zfae/long_memory.py`
+- **`morphology`** — morphological depth-ladder for the ZFAE three-core gonal inscription — two typed primitive gonals (BoneGonal=omega/structural, RootGonal=phi/content) composed by the carrier-LCM operator (UCNS multiply) into the derived psi=word layer; psi is NOT stored, it is lcm(phi,omega) recomputed at every rung; decomposition is scaffolded but GATED behind the multiply_left_cancellative proof  
+  `backend/interdependent_lib/zfae/morphology.py`
 - **`native_tools`** — deterministic native tool-use — maps a raw prompt to at most one built-in tool call (fetch_url / web_search / living_spec_lookup) using pure rule-based detection so the a0(zfae) native engine can trigger a tool mid-thought without any LLM; the selection is reproducible and the result is summarised into a compact deterministic line folded back into the native reply  
   `backend/interdependent_lib/zfae/native_tools.py`
 - **`overrides`** — PendingOverride dataclass + lifecycle helpers for sentinel halt-and-override; backed by MongoDB pending_overrides_col  
@@ -426,7 +430,7 @@ The top-level router that wires the AuthProvider, public routes, and protected r
 - **`App`** — top-level router with AuthProvider — public routes (/, /login, /register, /spec) and protected routes (/workspace, /agents, /sentinels, /overrides, /inspector, /inventory, /keys, /custom-keys, /vault, /drafts)  
   `frontend/src/App.js`
 
-### Tests · 7
+### Tests · 8
 
 Pytest and end-to-end regression suites covering the tool-use loop, the Training Room distillation, the three-core sentinel pipeline, and the live API.
 
@@ -434,6 +438,8 @@ Pytest and end-to-end regression suites covering the tool-use loop, the Training
   `backend/tests/backend_test.py`
 - **`conftest`** — pytest configuration — enables pytest-asyncio plugin in auto mode for the backend test suite  
   `backend/tests/conftest.py`
+- **`test_morphology_ladder`** — pytest coverage for the morphological depth-ladder — typed gonal primitives  
+  `backend/tests/test_morphology_ladder.py`
 - **`test_tool_use_loop`** — pytest coverage for the cross-provider tool-use loop (run_tool_loop), the  
   `backend/tests/test_tool_use_loop.py`
 - **`test_training_room`** — pytest for ZFAERuntime.train_multi — multi-teacher distillation runs one  
@@ -451,13 +457,13 @@ Pytest and end-to-end regression suites covering the tool-use loop, the Training
 |---|---|---|
 | adapter | 12 | `_theta_private_loader`, `anthropic_provider`, `base`, `gemini_provider`, `mcp_relay`, `openai_provider`, `providers`, `sigma_source`, `teacher`, `ucns_bridge`, `webhook`, `xai_provider` |
 | client | 2 | `api`, `api_tools` |
-| engine | 60 | `_decoder`, `_intent`, `_parser`, `_transition`, `adjacency`, `agent_loop`, `aimmh`, `bones`, `builtin`, `carrier`, `cipher`, `circle`, `codec`, `coherence`, `core`, `edcm`, `engine`, `exchange`, `ficks`, `fiq`, `gated_invoke`, `gonal`, `gonal_inscription`, `group`, `inference`, `instance`, `instance`, `kernel`, `memory_core`, `mirror`, `motion`, `native_tools`, `network`, `patterns`, `pcea`, `pcna`, `pcna`, `pcta`, `propagate`, `provenance`, `ptca`, `registry`, `registry`, `rings`, `runtime`, `seed`, `sentinel_eval`, `sentinels`, `sentinels`, `sentinels`, `sigma`, `tensor`, `tensor`, `theta`, `theta_microkernel`, `trainer`, `weight_init`, `weights`, `zeta`, `zfae` |
+| engine | 61 | `_decoder`, `_intent`, `_parser`, `_transition`, `adjacency`, `agent_loop`, `aimmh`, `bones`, `builtin`, `carrier`, `cipher`, `circle`, `codec`, `coherence`, `core`, `edcm`, `engine`, `exchange`, `ficks`, `fiq`, `gated_invoke`, `gonal`, `gonal_inscription`, `group`, `inference`, `instance`, `instance`, `kernel`, `memory_core`, `mirror`, `morphology`, `motion`, `native_tools`, `network`, `patterns`, `pcea`, `pcna`, `pcna`, `pcta`, `propagate`, `provenance`, `ptca`, `registry`, `registry`, `rings`, `runtime`, `seed`, `sentinel_eval`, `sentinels`, `sentinels`, `sentinels`, `sigma`, `tensor`, `tensor`, `theta`, `theta_microkernel`, `trainer`, `weight_init`, `weights`, `zeta`, `zfae` |
 | experiment | 3 | `contracts`, `public_fixture`, `test_zfae_gonal_inscription` |
 | route | 7 | `api_tools_mcp_skills`, `app_settings`, `extensions`, `mcp_server`, `routes`, `routes`, `server` |
-| schema | 14 | `classes`, `constants`, `disk_protocol`, `events`, `faces`, `gate`, `models`, `primes`, `primes`, `schema`, `sentinel_modes`, `sentinel_weights`, `tick_schedule`, `topology` |
+| schema | 15 | `classes`, `closed_tokens`, `constants`, `disk_protocol`, `events`, `faces`, `gate`, `models`, `primes`, `primes`, `schema`, `sentinel_modes`, `sentinel_weights`, `tick_schedule`, `topology` |
 | service | 15 | `agents`, `archive`, `audit`, `crypto_vault`, `db`, `fiq_emit`, `living_spec`, `long_memory`, `overrides`, `readme_writer`, `registry`, `skills`, `store`, `sync`, `tools` |
 | skill | 11 | `_msdmd`, `a0p_skills`, `boundaries_runner`, `capabilities_runner`, `frontend_module_build_runner`, `interdependent_lib`, `module_build_runner`, `parser`, `ratios_runner`, `runner`, `test_build_runner` |
-| test | 6 | `backend_test`, `conftest`, `test_tool_use_loop`, `test_training_room`, `test_zfae_api_sentinels`, `test_zfae_three_core_sentinels` |
+| test | 7 | `backend_test`, `conftest`, `test_morphology_ladder`, `test_tool_use_loop`, `test_training_room`, `test_zfae_api_sentinels`, `test_zfae_three_core_sentinels` |
 | ui_component | 7 | `AuditTape`, `CharacterSheetForm`, `MarkdownView`, `OverrideModal`, `Panel`, `SentinelVerdictRibbon`, `Shell` |
 | ui_lib | 2 | `auth`, `sentinels` |
 | ui_page | 17 | `AgentsPage`, `CustomKeysPage`, `DraftsPage`, `InspectorPage`, `InventoryPage`, `KeyVaultPage`, `LivingSpecPage`, `LoginPage`, `MCPPage`, `OverridesPage`, `SentinelsPage`, `SkillsPage`, `SplashPage`, `ToolsPage`, `TrainingRoom`, `VaultPage`, `WorkspacePage` |

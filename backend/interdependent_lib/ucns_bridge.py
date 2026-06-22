@@ -1,11 +1,11 @@
-# ratios: loc_comments=45:67 imports_exports=3:7 calls_definitions=13:6
+# ratios: loc_comments=55:79 imports_exports=4:9 calls_definitions=16:8
 # === MODULE_BUILD ===
 # id: ucns_bridge
 #   module_name: ucns_bridge
 #   module_kind: adapter
 #   summary: thin A0-safe wrapper around the ucns package — will route through ucns.a0_safe when v1.0 ships on PyPI
 #   owner: a0p maintainer
-#   public_surface: is_unit, multiply, object_record, describe, seq_prime_safe, UNIT, has_a0_safe_facade
+#   public_surface: is_unit, multiply, left_quotient, right_quotient, object_record, describe, seq_prime_safe, UNIT, UCNSObject, lcm, has_a0_safe_facade
 #   internal_surface: _A0_SAFE_AVAILABLE
 #   auth_boundary: none
 #   storage_boundary: none
@@ -70,6 +70,11 @@ except ImportError:
 # UCNS "unit" identity — payload-None per upstream canon.
 UNIT = None
 
+# Re-export the core algebraic object + scalar lcm so consumers (the morphology
+# depth-ladder) construct carriers and read carrier widths through one surface.
+UCNSObject = ucns.UCNSObject
+from ucns_recursive.canonical import lcm
+
 
 def has_a0_safe_facade() -> bool:
     """Did the installed ucns version ship the a0_safe submodule?"""
@@ -84,8 +89,28 @@ def is_unit(obj) -> bool:
 
 
 def multiply(a, b):
-    """UCNS multiplication. Pure structural composition, non-differentiable."""
+    """UCNS multiplication. Pure structural composition, non-differentiable.
+
+    This is the carrier-LCM operator ⊠ (the runtime shadow of the Lean
+    `multiplyFuel` / `carrier_lcm_law`): nMin(A⊠B) divides lcm(nMin A, nMin B).
+    """
     return ucns.multiply(a, b)
+
+
+def left_quotient(p, a):
+    """Constructive left quotient: B such that A ⊠ B ≡_seq P (None if none).
+
+    Recoverability of this inverse is the `multiply_left_cancellative`
+    guarantee — DEFENDED in prose, NOT yet machine-verified (a `sorry`-stub
+    in `ucns/formal/Ucns/Core.lean`). Callers in the morphology decomposition
+    path stay gated behind that proof.
+    """
+    return ucns.left_quotient(p, a)
+
+
+def right_quotient(p, b):
+    """Constructive right quotient: A such that A ⊠ B ≡_seq P (None if none)."""
+    return ucns.right_quotient(p, b)
 
 
 def object_record(obj) -> dict | None:
@@ -126,11 +151,15 @@ def seq_prime_safe(obj, domain_label: str) -> bool | None:
 
 __all__ = [
     "UNIT",
+    "UCNSObject",
+    "lcm",
     "is_unit",
     "multiply",
+    "left_quotient",
+    "right_quotient",
     "object_record",
     "describe",
     "seq_prime_safe",
     "has_a0_safe_facade",
 ]
-# ratios: loc_comments=45:67 imports_exports=3:7 calls_definitions=13:6
+# ratios: loc_comments=55:79 imports_exports=4:9 calls_definitions=16:8

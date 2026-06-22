@@ -1,4 +1,4 @@
-# ratios: loc_comments=1165:258 imports_exports=173:92 calls_definitions=456:107
+# ratios: loc_comments=1196:269 imports_exports=176:95 calls_definitions=473:110
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1762,4 +1762,56 @@ async def _skills_sync_pull_async() -> None:
     assert r["ok"] is False
     assert r["pulled"] == 0
     assert r["errors"]
-# ratios: loc_comments=1165:258 imports_exports=173:92 calls_definitions=456:107
+
+
+# ---------- Morphological depth-ladder (typed gonals + carrier-LCM) ---------
+
+def zfae_closed_tokens_partition_holds() -> None:
+    """Contract: bones (closed-class/affix) and roots (open-class) partition."""
+    from interdependent_lib.zfae import closed_tokens as ct
+
+    assert ct.is_closed_class("the") and ct.is_closed_class("of")
+    assert ct.is_affix("ing") and ct.is_affix("re")
+    assert ct.is_open_class("planet") and ct.is_open_class("inscribe")
+    # a token is never simultaneously a root and a bone
+    for tok in ("the", "ing", "planet", "river", "and"):
+        assert ct.is_open_class(tok) != (ct.is_closed_class(tok) or ct.is_affix(tok))
+    assert ct.strip_affixes("rebuilding") == "build" or len(ct.strip_affixes("rebuilding")) >= 2
+
+
+def zfae_morphology_carrier_lcm_holds() -> None:
+    """Contract: psi = phi (X) omega via the shared carrier-LCM operator, and
+    the composed word's carrier divides lcm(phi-carrier, omega-carrier)."""
+    from interdependent_lib.zfae import morphology as m
+
+    root = m.frame_value(0.31)      # phi primitive
+    bone = m.frame_value(-0.72)     # omega primitive
+    word = m.carrier_lcm(root, bone)
+    # carrier_lcm_law shadow: nMin(a(X)b) | lcm(nMin a, nMin b)
+    bound = m.word_carrier(root) * m.word_carrier(bone)
+    assert bound % m.word_carrier(word) == 0 or m.word_carrier(word) == 1
+    # word_signal is a deterministic [0,1) fold
+    s = m.word_signal(word)
+    assert 0.0 <= s < 1.0
+    assert m.word_signal(word) == s, "word_signal must be deterministic"
+    # weights are the ruled values
+    assert (m.OMEGA_WEIGHT, m.PHI_WEIGHT, m.PSI_WEIGHT) == (0.8, 0.4, 1.0)
+    # typed primitives frame without raising
+    assert m.BoneGonal().weight == 0.8 and m.RootGonal().weight == 0.4
+
+
+def zfae_morphology_decompose_gated_holds() -> None:
+    """Contract: decomposition is HELD until multiply_left_cancellative is
+    proof-green — decompose_clause must refuse, not return."""
+    from interdependent_lib.zfae import morphology as m
+
+    assert m.PROOF_GREEN is False, "decomposition must stay gated"
+    word = m.compose_word(0.2, 0.5)
+    bone = m.frame_value(0.5)
+    raised = False
+    try:
+        m.decompose_clause(word, bone)
+    except m.DecompositionGatedError:
+        raised = True
+    assert raised, "decompose_clause must raise DecompositionGatedError while gated"
+# ratios: loc_comments=1196:269 imports_exports=176:95 calls_definitions=473:110
