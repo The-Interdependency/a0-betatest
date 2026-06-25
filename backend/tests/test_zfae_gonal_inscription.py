@@ -70,7 +70,38 @@ def test_inscribe_text_deterministic_and_digest_sensitive():
     assert {"vertex_idx", "rotation", "pcea_digest_prefix"} <= set(m1)
 
 
-def test_engine_route_a_with_gonal_seed():
+def test_seam_is_fixed_point_of_perm_and_phase():
+    # SPACE/ZERO at position 0 is the Möbius seam — never moved or hidden.
+    import math
+    for s in (b"seed-A", b"seed-B", b"seed-C", b"morphology"):
+        g = PrivateGonal.from_seed(s)
+        assert g.perm[0] == 0, "perm must fix the seam (position 0)"
+        assert g.arrangement[0] == " ", "position 0 must be SPACE/ZERO"
+        # rotation never displaces the seam
+        adv = g.advance(7, "deadbeef")
+        assert adv.perm[0] == 0
+        # an angle landing on the seam emits vertex 0 regardless of phase
+        assert g.inscribe(0.0) == 0
+        assert adv.inscribe(0.0) == 0
+        # the glyph "0" (digit) is NOT the seam — it lives elsewhere
+        assert g.arrangement.index("0") != 0
+
+
+def test_spaces_emitted_as_seam_events_not_deleted():
+    # Force a phi/omega field that lands on the seam often; spaces must survive.
+    g = PrivateGonal.from_seed(b"seam-emit")
+    phi = [0.0 for _ in range(53)]
+    omega = [0.0 for _ in range(53)]
+    text, meta = inscribe_text(g, phi, [0.0] * 53, omega, "0000", length=40)
+    assert "seam_emissions" in meta
+    if meta["seam_emissions"] > 0:
+        assert " " in text, "seam events must appear as spaces, not be deleted"
+    # determinism preserved
+    text2, _ = inscribe_text(g, phi, [0.0] * 53, omega, "0000", length=40)
+    assert text == text2
+
+
+
     bank = A0ZFAEWeightBank.fresh("route-a-agent")
     eng = A0ZFAEInferenceEngine()
     r = eng.infer(rawPrompt="describe the state", gonal_seed=bank.gonal_seed_bytes)

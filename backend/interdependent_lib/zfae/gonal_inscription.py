@@ -1,4 +1,4 @@
-# ratios: loc_comments=132:93 imports_exports=7:5 calls_definitions=53:9
+# ratios: loc_comments=140:109 imports_exports=7:5 calls_definitions=54:9
 # === MODULE_BUILD ===
 # id: zfae_gonal_inscription
 #   module_name: gonal_inscription
@@ -143,35 +143,54 @@ class PrivateGonal:
         The arrangement (vertex characters) is the public default 157-gonal;
         the secrecy lives entirely in ``phase`` and ``perm`` derived from the
         per-agent seed.
+
+        SEAM INVARIANT (canon): position 0 is SPACE/ZERO — the Möbius twist
+        point, seam and origin, the only always-known character. Private
+        rotations and permutations may obscure every *nonzero* glyph position
+        but MUST NOT move or hide position 0. So ``perm[0] == 0`` always, and
+        both the permutation and the phase rotation act only on positions
+        1..n-1 (the nonzero ring).
         """
         arr = tuple(arrangement) if arrangement is not None else tuple(get_default())
         n = len(arr)
+        # The phase rotates the nonzero ring (n-1 positions); the seam is fixed.
         phase = int.from_bytes(
             hashlib.blake2b(seed_bytes + b"::phase", digest_size=8).digest(), "big",
-        ) % n
-        # Deterministic Fisher–Yates from a blake2b keystream.
+        ) % (n - 1)
+        # Deterministic Fisher–Yates over the NONZERO positions 1..n-1 only;
+        # position 0 (SPACE/ZERO) stays fixed (perm[0] == 0).
         perm = list(range(n))
         state = hashlib.blake2b(seed_bytes + b"::perm", digest_size=8).digest()
-        for i in range(n - 1, 0, -1):
+        for i in range(n - 1, 1, -1):
             state = hashlib.blake2b(state, digest_size=8).digest()
-            j = int.from_bytes(state, "big") % (i + 1)
+            j = 1 + int.from_bytes(state, "big") % i
             perm[i], perm[j] = perm[j], perm[i]
         return cls(arrangement=arr, phase=phase, perm=tuple(perm))
 
     def advance(self, public: int, pcea_digest: str) -> "PrivateGonal":
         """Rotate the gonal deterministically against a public counter + the
-        PCEA ciphertext digest. Returns a new PrivateGonal (immutable)."""
+        PCEA ciphertext digest. Returns a new PrivateGonal (immutable).
+
+        The rotation advances the nonzero ring only (mod n-1); the seam at
+        position 0 is never displaced."""
         h = hashlib.blake2b(
             f"{self.phase}:{int(public)}:{pcea_digest}".encode("utf-8"), digest_size=8,
         ).digest()
-        new_phase = (self.phase + int.from_bytes(h, "big")) % self.n
+        new_phase = (self.phase + int.from_bytes(h, "big")) % (self.n - 1)
         return PrivateGonal(arrangement=self.arrangement, phase=new_phase, perm=self.perm)
 
     def inscribe(self, angle: float) -> int:
-        """Map a continuous angle (any real) to a permuted vertex index."""
+        """Map a continuous angle (any real) to a permuted vertex index.
+
+        Landing on the seam (base position 0) emits SPACE/ZERO unconditionally —
+        it is never rotated or permuted away. Every other angle rotates within,
+        and permutes across, the 156 nonzero positions only."""
         frac = (float(angle) / (2.0 * math.pi)) % 1.0
         base = int(frac * self.n) % self.n
-        return self.perm[(base + self.phase) % self.n]
+        if base == 0:
+            return self.perm[0]  # == 0 — the seam: SPACE/ZERO
+        rotated = ((base - 1 + self.phase) % (self.n - 1)) + 1
+        return self.perm[rotated]
 
     def char_at(self, vertex_idx: int) -> str:
         return self.arrangement[vertex_idx % self.n]
@@ -210,6 +229,7 @@ def inscribe_text(
     g = gonal
     first_vertex: int | None = None
     first_word_carrier: int | None = None
+    seam_emissions = 0
     for i in range(length):
         lane = lanes[i]
         # Depth-ladder composition (Erin canon): omega (bones, 0.8) and phi
@@ -231,10 +251,16 @@ def inscribe_text(
         if first_vertex is None:
             first_vertex = v
         ch = g.char_at(v)
-        if ch and not ch.startswith("\x00") and ch.strip():
+        # Landing on the seam (vertex 0 → SPACE/ZERO) is an emitted seam event,
+        # NOT a deletion. Only NUL/control glyphs are skipped.
+        if v == 0:
+            seam_emissions += 1
+            chars.append(" ")
+        elif ch and ch != "\x00" and not ch.startswith("\x00"):
             chars.append(ch)
 
-    text = "".join(chars).strip()
+    # Spaces are seam events — preserved, never trimmed away.
+    text = "".join(chars)
     if not text:
         text = "·"
     meta = {
@@ -243,6 +269,7 @@ def inscribe_text(
         "pcea_digest_prefix": pcea_digest[:8],
         "glyph_count": len(chars),
         "word_carrier": first_word_carrier if first_word_carrier is not None else 1,
+        "seam_emissions": seam_emissions,
     }
     return text, meta
 
@@ -256,4 +283,4 @@ __all__ = [
     "BRIDGE_OUT_WIDTH",
     "DEFAULT_INSCRIBE_LENGTH",
 ]
-# ratios: loc_comments=132:93 imports_exports=7:5 calls_definitions=53:9
+# ratios: loc_comments=140:109 imports_exports=7:5 calls_definitions=54:9

@@ -113,3 +113,25 @@ parsing is DEFENDED in prose, NOT yet machine-verified — do not represent it a
 Still open: the φ/ψ/Ω mapping onto the **regulatory** projection (faith/hope/love),
 **which subsystem is the constraint-modulator**, and the "environment surrounding
 everything" Greek letter.
+
+## F4 — The seam: position 0 is SPACE = ZERO (canon, 2026-06-20)
+
+The 157-gonal carrier's **position 0 is SPACE, and SPACE is ZERO** — the Möbius
+twist point, the seam, the origin, and the only always-known character.
+
+- The glyph **"0" (the digit) is NOT zero**; it is an ordinary digit glyph placed
+  elsewhere on the carrier.
+- Private rotations (`phase`) and permutations (`perm`) may obscure **all nonzero**
+  glyph positions, but they **MUST NOT move or hide SPACE/ZERO at position 0**.
+- A lossless text path is an **ordered lifted traversal** over this carrier;
+  repeated characters require a full **157-step revolution**; **spaces are emitted
+  seam events, NOT deletions**.
+
+Code state (`zfae/gonal_inscription.py`): `PrivateGonal.from_seed` now fixes
+`perm[0] == 0` and Fisher–Yates only the 156 nonzero positions; `phase` rotates the
+nonzero ring (mod n-1); `inscribe` returns the seam (vertex 0 → SPACE/ZERO)
+unconditionally when an angle lands on base 0; `inscribe_text` **emits seam landings
+as spaces** (no longer strips/deletes them) and reports `seam_emissions` in the
+decode meta. STILL OPEN: the full **lossless lifted traversal** (157-step revolution
+per repeated character) as an encode/decode path — connects to the HELD decomposition
+work; not yet built, awaiting direction.
