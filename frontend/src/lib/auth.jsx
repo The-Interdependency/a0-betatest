@@ -92,7 +92,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    try { await client.post("/auth/logout"); } catch {}
+    try {
+      await client.post("/auth/logout");
+    } catch (e) {
+      // Non-fatal: clear local session even if the network call fails.
+      console.debug("logout request failed; clearing local session anyway", e);
+    }
     setUser(null);
   }, []);
 
