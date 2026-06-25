@@ -1,4 +1,4 @@
-# ratios: loc_comments=357:79 imports_exports=21:17 calls_definitions=146:29
+# ratios: loc_comments=358:79 imports_exports=21:17 calls_definitions=147:29
 # === MODULE_BUILD ===
 # id: auth_routes
 #   module_name: routes
@@ -346,11 +346,12 @@ async def oauth_google(body: OAuthGoogleBody, response: Response):
 
 # ---- OAuth: GitHub ------------------------------------------------------
 @router.get("/oauth/github/start")
-async def oauth_github_start():
+async def oauth_github_start(request: Request):
     cid = os.environ.get("GITHUB_CLIENT_ID")
     if not cid:
         raise HTTPException(503, "GITHUB_CLIENT_ID not configured")
-    redirect = f"{os.environ['FRONTEND_URL']}/login?github_callback=1"
+    origin = request.headers.get("origin") or os.environ.get("FRONTEND_URL", "")
+    redirect = f"{origin}/login?github_callback=1"
     url = (
         "https://github.com/login/oauth/authorize"
         f"?client_id={cid}&scope=read:user%20user:email&redirect_uri={redirect}"
@@ -503,4 +504,4 @@ __all__ = [
     "router", "init_auth", "seed_admin",
     "get_current_user", "get_current_user_or_demo",
 ]
-# ratios: loc_comments=357:79 imports_exports=21:17 calls_definitions=146:29
+# ratios: loc_comments=358:79 imports_exports=21:17 calls_definitions=147:29
