@@ -3,8 +3,8 @@
 > _changes constant. refinements welcome._  
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-26 21:39:22 UTC._  
-_160 modules · 13 kinds · 23 subsystems._
+_Living spec — auto-regenerated on backend startup at 2026-06-26 21:58:45 UTC._  
+_162 modules · 13 kinds · 23 subsystems._
 
 > This file is generated from the codebase's own documentation. Don't edit it by hand — edit a module's `# === MODULE_BUILD ===` block (its `summary` is the narrative you read below) and it regenerates on the next backend start.
 
@@ -245,7 +245,7 @@ The boundary law for audited motion between strata: the smallest auditable gate,
 - **`tick_schedule`** — ψ/φ/ω consciousness-prime tick constants (3/5/7); orthogonal stratum + core attention axes; logical default with optional real-time toggle  
   `backend/interdependent_lib/fiq/tick_schedule.py`
 
-### Gonal — the 157-gonal carrier · 10
+### Gonal — the 157-gonal carrier · 11
 
 The structural carrier: public invariants (face, chirality, class tags, adjacency, bones) over a 157-position polygon, a position-reflection mirror, and a three-gonal registry (default / mirror / private) that resolves an agent's per-core triplet. Private disk material is only ever loaded behind the Θ microkernel, never inline.
 
@@ -263,6 +263,8 @@ The structural carrier: public invariants (face, chirality, class tags, adjacenc
   `backend/interdependent_lib/gonal/faces.py`
 - **`gonal`** — builds and validates a gonal character carrier arrangement from a declarative spec (user-provided canonical module)  
   `backend/interdependent_lib/gonal/gonal.py`
+- **`lifted_path`** — lossless lifted text traversal over the 157-gonal carrier — encode_text_path lifts a string to an ordered, strictly-monotonic path on the universal cover (vertex = pos mod 157); a repeated character costs a full 157-step revolution; SPACE is the seam at ORIGIN (vertex 0); the digit "0" is an ordinary glyph vertex; decode_text_path is the exact inverse (decode(encode(text)) == text over the carrier alphabet)  
+  `backend/interdependent_lib/gonal/lifted_path.py`
 - **`mirror`** — position-reflection mirror of a gonal arrangement across the diameter through position 0 — an involution (mirror_of(mirror_of(x)) == x) that inverts upper and lower arcs while preserving every hard adjacency invariant (no L-L / N-N adjacency survives the reflection)  
   `backend/interdependent_lib/gonal/mirror.py`
 - **`public_fixture`** — public fixture disk generator — binary-order rule per user spec; deterministic, committable, satisfies hard invariants, NOT the canon  
@@ -430,7 +432,7 @@ The top-level router that wires the AuthProvider, public routes, and protected r
 - **`App`** — top-level router with AuthProvider — public routes (/, /login, /register, /spec) and protected routes (/workspace, /agents, /sentinels, /overrides, /inspector, /inventory, /keys, /custom-keys, /vault, /drafts)  
   `frontend/src/App.js`
 
-### Tests · 8
+### Tests · 9
 
 Pytest and end-to-end regression suites covering the tool-use loop, the Training Room distillation, the three-core sentinel pipeline, and the live API.
 
@@ -438,6 +440,8 @@ Pytest and end-to-end regression suites covering the tool-use loop, the Training
   `backend/tests/backend_test.py`
 - **`conftest`** — pytest configuration — enables pytest-asyncio plugin in auto mode for the backend test suite  
   `backend/tests/conftest.py`
+- **`test_lifted_path`** — pytest round-trip coverage for the lossless lifted traversal over the  
+  `backend/tests/test_lifted_path.py`
 - **`test_morphology_ladder`** — pytest coverage for the morphological depth-ladder — typed gonal primitives  
   `backend/tests/test_morphology_ladder.py`
 - **`test_tool_use_loop`** — pytest coverage for the cross-provider tool-use loop (run_tool_loop), the  
@@ -457,13 +461,13 @@ Pytest and end-to-end regression suites covering the tool-use loop, the Training
 |---|---|---|
 | adapter | 12 | `_theta_private_loader`, `anthropic_provider`, `base`, `gemini_provider`, `mcp_relay`, `openai_provider`, `providers`, `sigma_source`, `teacher`, `ucns_bridge`, `webhook`, `xai_provider` |
 | client | 2 | `api`, `api_tools` |
-| engine | 61 | `_decoder`, `_intent`, `_parser`, `_transition`, `adjacency`, `agent_loop`, `aimmh`, `bones`, `builtin`, `carrier`, `cipher`, `circle`, `codec`, `coherence`, `core`, `edcm`, `engine`, `exchange`, `ficks`, `fiq`, `gated_invoke`, `gonal`, `gonal_inscription`, `group`, `inference`, `instance`, `instance`, `kernel`, `memory_core`, `mirror`, `morphology`, `motion`, `native_tools`, `network`, `patterns`, `pcea`, `pcna`, `pcna`, `pcta`, `propagate`, `provenance`, `ptca`, `registry`, `registry`, `rings`, `runtime`, `seed`, `sentinel_eval`, `sentinels`, `sentinels`, `sentinels`, `sigma`, `tensor`, `tensor`, `theta`, `theta_microkernel`, `trainer`, `weight_init`, `weights`, `zeta`, `zfae` |
+| engine | 62 | `_decoder`, `_intent`, `_parser`, `_transition`, `adjacency`, `agent_loop`, `aimmh`, `bones`, `builtin`, `carrier`, `cipher`, `circle`, `codec`, `coherence`, `core`, `edcm`, `engine`, `exchange`, `ficks`, `fiq`, `gated_invoke`, `gonal`, `gonal_inscription`, `group`, `inference`, `instance`, `instance`, `kernel`, `lifted_path`, `memory_core`, `mirror`, `morphology`, `motion`, `native_tools`, `network`, `patterns`, `pcea`, `pcna`, `pcna`, `pcta`, `propagate`, `provenance`, `ptca`, `registry`, `registry`, `rings`, `runtime`, `seed`, `sentinel_eval`, `sentinels`, `sentinels`, `sentinels`, `sigma`, `tensor`, `tensor`, `theta`, `theta_microkernel`, `trainer`, `weight_init`, `weights`, `zeta`, `zfae` |
 | experiment | 3 | `contracts`, `public_fixture`, `test_zfae_gonal_inscription` |
 | route | 7 | `api_tools_mcp_skills`, `app_settings`, `extensions`, `mcp_server`, `routes`, `routes`, `server` |
 | schema | 15 | `classes`, `closed_tokens`, `constants`, `disk_protocol`, `events`, `faces`, `gate`, `models`, `primes`, `primes`, `schema`, `sentinel_modes`, `sentinel_weights`, `tick_schedule`, `topology` |
 | service | 15 | `agents`, `archive`, `audit`, `crypto_vault`, `db`, `fiq_emit`, `living_spec`, `long_memory`, `overrides`, `readme_writer`, `registry`, `skills`, `store`, `sync`, `tools` |
 | skill | 11 | `_msdmd`, `a0p_skills`, `boundaries_runner`, `capabilities_runner`, `frontend_module_build_runner`, `interdependent_lib`, `module_build_runner`, `parser`, `ratios_runner`, `runner`, `test_build_runner` |
-| test | 7 | `backend_test`, `conftest`, `test_morphology_ladder`, `test_tool_use_loop`, `test_training_room`, `test_zfae_api_sentinels`, `test_zfae_three_core_sentinels` |
+| test | 8 | `backend_test`, `conftest`, `test_lifted_path`, `test_morphology_ladder`, `test_tool_use_loop`, `test_training_room`, `test_zfae_api_sentinels`, `test_zfae_three_core_sentinels` |
 | ui_component | 7 | `AuditTape`, `CharacterSheetForm`, `MarkdownView`, `OverrideModal`, `Panel`, `SentinelVerdictRibbon`, `Shell` |
 | ui_lib | 2 | `auth`, `sentinels` |
 | ui_page | 17 | `AgentsPage`, `CustomKeysPage`, `DraftsPage`, `InspectorPage`, `InventoryPage`, `KeyVaultPage`, `LivingSpecPage`, `LoginPage`, `MCPPage`, `OverridesPage`, `SentinelsPage`, `SkillsPage`, `SplashPage`, `ToolsPage`, `TrainingRoom`, `VaultPage`, `WorkspacePage` |

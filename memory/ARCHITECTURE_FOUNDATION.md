@@ -132,6 +132,14 @@ Code state (`zfae/gonal_inscription.py`): `PrivateGonal.from_seed` now fixes
 nonzero ring (mod n-1); `inscribe` returns the seam (vertex 0 → SPACE/ZERO)
 unconditionally when an angle lands on base 0; `inscribe_text` **emits seam landings
 as spaces** (no longer strips/deletes them) and reports `seam_emissions` in the
-decode meta. STILL OPEN: the full **lossless lifted traversal** (157-step revolution
-per repeated character) as an encode/decode path — connects to the HELD decomposition
-work; not yet built, awaiting direction.
+decode meta.
+
+The **lossless lifted traversal** is now built: `interdependent_lib/gonal/lifted_path.py` —
+`encode_text_path(text)` lifts a string to an ordered, strictly-monotonic path on the
+universal cover (vertex = `pos % 157`); a **repeated character costs a full 157-step
+revolution**; **SPACE is the seam at ORIGIN**, emitted (not deleted); the **digit "0" is an
+ordinary glyph vertex** (139), not the seam. `decode_text_path` is the exact inverse —
+`decode(encode(text)) == text` over the carrier alphabet (off-carrier chars raise
+`CarrierCharError`). Reuses the public carrier-invariant surface (`gonal/faces.py`:
+`ARITY`, `ORIGIN`). Round-trip verified for `aa`, `aaa`, `a a`, `  `, `0`, `10 01`. The
+`zfae_gonal_inscription_deterministic` contract now also asserts the seam invariants.

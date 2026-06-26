@@ -1,4 +1,4 @@
-# ratios: loc_comments=1196:269 imports_exports=176:95 calls_definitions=473:110
+# ratios: loc_comments=1227:279 imports_exports=177:96 calls_definitions=488:111
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1014,6 +1014,15 @@ def zfae_gonal_inscription_deterministic_holds() -> None:
     assert isinstance(g1.inscribe(1.234), int)
     assert 0 <= g1.inscribe(1.234) < g1.n, "inscribe must return a valid vertex index"
 
+    # SEAM INVARIANT (canon): position 0 is SPACE/ZERO — the Möbius seam/origin.
+    # Private rotation + permutation must NOT move or hide it.
+    assert g1.perm[0] == 0, "perm must fix the seam at position 0"
+    assert g1.arrangement[0] == " ", "position 0 must be SPACE/ZERO"
+    assert g1.char_at(0) == " "
+    assert g1.inscribe(0.0) == 0, "an angle landing on the seam must emit vertex 0"
+    assert a1.inscribe(0.0) == 0, "rotation must not displace the seam"
+    assert g1.arrangement.index("0") != 0, "the digit glyph '0' is NOT the seam"
+
     phi = [0.1 * ((i % 7) - 3) for i in range(53)]
     psi = [0.05 * ((i % 5) - 2) for i in range(53)]
     omega = [0.02 * ((i % 3) - 1) for i in range(53)]
@@ -1023,6 +1032,8 @@ def zfae_gonal_inscription_deterministic_holds() -> None:
     t3, _ = inscribe_text(g1, phi, psi, omega, "a-different-digest")
     assert t3 != t1, "different PCEA digest must change the inscription"
     assert "vertex_idx" in m1 and "rotation" in m1 and "pcea_digest_prefix" in m1
+    # spaces are emitted seam events, not deletions
+    assert "seam_emissions" in m1
 
 
 def zfae_engine_emits_pcea_digest_and_tensors_holds() -> None:
@@ -1814,4 +1825,42 @@ def zfae_morphology_decompose_gated_holds() -> None:
     except m.DecompositionGatedError:
         raised = True
     assert raised, "decompose_clause must raise DecompositionGatedError while gated"
-# ratios: loc_comments=1196:269 imports_exports=176:95 calls_definitions=473:110
+
+
+def gonal_lifted_path_round_trip_holds() -> None:
+    """Contract: the lifted traversal is lossless — decode(encode(t)) == t — with
+    repeats costing a full 157-step revolution, SPACE at the seam, '0' an ordinary
+    glyph, and seam events emitted (not deleted)."""
+    from interdependent_lib.gonal.lifted_path import (
+        encode_text_path, decode_text_path, vertex_of_char, is_seam_event,
+        path_vertices, ARITY, ORIGIN, CarrierCharError,
+    )
+
+    # canon anchors
+    assert ARITY == 157 and ORIGIN == 0
+    assert vertex_of_char(" ") == 0, "SPACE is the seam at the origin"
+    assert vertex_of_char("0") != 0, "the digit '0' is an ordinary glyph vertex"
+
+    for text in ("aa", "aaa", "a a", "  ", "0", "10 01"):
+        path = encode_text_path(text)
+        assert len(path) == len(text)
+        assert all(path[i] < path[i + 1] for i in range(len(path) - 1)), "path must be strictly monotonic"
+        assert decode_text_path(path) == text, f"round-trip must be lossless for {text!r}"
+
+    # a repeated character is a full 157-step revolution
+    p = encode_text_path("aa")
+    assert p[1] - p[0] == ARITY, "repeat must cost a full revolution"
+
+    # SPACE round-trips as a seam event, not a deletion
+    sp = encode_text_path(" ")
+    assert is_seam_event(sp[0]) and decode_text_path(sp) == " "
+
+    # off-carrier characters are refused (lossless over the carrier alphabet)
+    try:
+        vertex_of_char("\u2603")  # snowman — not on the carrier
+        raised = False
+    except CarrierCharError:
+        raised = True
+    assert raised, "off-carrier characters must raise CarrierCharError"
+    assert path_vertices([14, 139, 157]) == [14, 139, 0]
+# ratios: loc_comments=1227:279 imports_exports=177:96 calls_definitions=488:111
