@@ -1,4 +1,4 @@
-# ratios: loc_comments=209:102 imports_exports=13:4 calls_definitions=52:14
+# ratios: loc_comments=229:108 imports_exports=14:4 calls_definitions=59:15
 # === MODULE_BUILD ===
 # id: zfae_inference_engine
 #   module_name: inference
@@ -172,6 +172,30 @@ def _intent_hash_short(features: SemanticFeatures, intent: IntentLabel) -> str:
     return h.hexdigest()
 
 
+def _lifted_path_meta(text: str) -> dict:
+    """Lossless lifted traversal of a Route-A glyph stream over the carrier.
+
+    Text is unchanged; this attaches the ordered lifted path (vertex = pos mod
+    157), the count of full-revolution repeats, and the seam (SPACE/ZERO) events,
+    plus a decode(encode)==text self-check. Off-carrier glyphs (shouldn't occur
+    for Route A) degrade to ok=False rather than raising."""
+    from ..gonal.lifted_path import encode_text_path, decode_text_path, ARITY, ORIGIN
+    try:
+        path = encode_text_path(text)
+    except Exception as e:  # off-carrier glyph — never fatal
+        return {"enabled": True, "ok": False, "error": str(e)}
+    revolutions = sum(1 for i in range(1, len(path)) if path[i] - path[i - 1] == ARITY)
+    seam_events = sum(1 for p in path if p % ARITY == ORIGIN)
+    return {
+        "enabled": True,
+        "ok": decode_text_path(path) == text,
+        "length": len(path),
+        "revolutions": revolutions,
+        "seam_events": seam_events,
+        "path": path[:64],
+    }
+
+
 @dataclass
 class A0ZFAEInferenceEngine:
     """Native a0(ZFAE) inference engine — symbolic/state, no LLM.
@@ -205,6 +229,7 @@ class A0ZFAEInferenceEngine:
         edcmbone: Any = None,
         edcm: Any = None,
         gonal_seed: bytes | None = None,
+        lifted_path_trace: bool = False,
         **_ignored,
     ) -> InferenceResult:
         """Run one a0(zfae) inference step. Pure, deterministic.
@@ -281,6 +306,10 @@ class A0ZFAEInferenceEngine:
         # 6. Decode native (Route A if a PrivateGonal is present, else Route B).
         text = self.decoder.decode(intent, features, state)
 
+        # 6b. Optional lossless lifted traversal of the Route-A glyph stream.
+        if lifted_path_trace and state.get("private_gonal") is not None:
+            state["_lifted_path"] = _lifted_path_meta(text)
+
         # 7. nextSnapshot
         next_snap = snapshot_after(
             features,
@@ -340,6 +369,7 @@ class A0ZFAEInferenceEngine:
             "pcea_ciphertext_digest_prefix": str(state.get("pcea_ciphertext_digest", ""))[:12],
             "memory_long_canon": state.get("memory_long_canon"),
             "zfae_decode": state.get("_route_a_meta"),
+            "lifted_path": state.get("_lifted_path"),
         }
 
 
@@ -361,4 +391,4 @@ __all__ = [
     "ENGINE",
     "infer",
 ]
-# ratios: loc_comments=209:102 imports_exports=13:4 calls_definitions=52:14
+# ratios: loc_comments=229:108 imports_exports=14:4 calls_definitions=59:15

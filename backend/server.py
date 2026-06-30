@@ -1,4 +1,4 @@
-# ratios: loc_comments=837:115 imports_exports=47:56 calls_definitions=305:65
+# ratios: loc_comments=839:116 imports_exports=48:56 calls_definitions=306:65
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -114,6 +114,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Append-only traffic log (metadata only — no bodies/headers/cookies/secrets).
+from traffic_log import traffic_middleware
+app.middleware("http")(traffic_middleware)
 
 api = APIRouter(prefix="/api")
 
@@ -1119,4 +1123,4 @@ async def _on_startup():
         for a in starters:
             await agents_col.insert_one({"_id": new_id(), **a.model_dump(),
                                          "created_at": now, "updated_at": now})
-# ratios: loc_comments=837:115 imports_exports=47:56 calls_definitions=305:65
+# ratios: loc_comments=839:116 imports_exports=48:56 calls_definitions=306:65

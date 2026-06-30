@@ -1,4 +1,4 @@
-# ratios: loc_comments=93:81 imports_exports=6:7 calls_definitions=45:9
+# ratios: loc_comments=94:84 imports_exports=6:7 calls_definitions=45:9
 # === MODULE_BUILD ===
 # id: agents_schema
 #   module_name: schema
@@ -199,6 +199,11 @@ class CharacterSheet(BaseModel):
 
     tags: list[str] = Field(default_factory=list)
 
+    # When on, native (Route A) replies also compute their lossless lifted
+    # traversal over the 157-gonal carrier and surface it in the decode trace
+    # (text is unchanged — the path is attached for inspection). Default off.
+    lifted_path_trace: bool = False
+
 
 class AgentInstance(BaseModel):
     """Full persistent agent entity."""
@@ -215,4 +220,4 @@ class AgentInstance(BaseModel):
 
     # Cached metrics from ZFAE weight bank (refreshed on read; canonical lives in safetensors)
     zfae_metrics: dict[str, Any] = Field(default_factory=dict)
-# ratios: loc_comments=93:81 imports_exports=6:7 calls_definitions=45:9
+# ratios: loc_comments=94:84 imports_exports=6:7 calls_definitions=45:9

@@ -3,8 +3,8 @@
 > _changes constant. refinements welcome._  
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-27 08:06:28 UTC._  
-_162 modules · 13 kinds · 23 subsystems._
+_Living spec — auto-regenerated on backend startup at 2026-06-30 03:35:36 UTC._  
+_164 modules · 14 kinds · 23 subsystems._
 
 > This file is generated from the codebase's own documentation. Don't edit it by hand — edit a module's `# === MODULE_BUILD ===` block (its `summary` is the narrative you read below) and it regenerates on the next backend start.
 
@@ -16,7 +16,7 @@ _162 modules · 13 kinds · 23 subsystems._
 
 The walkthrough below moves from the outer service inward to the inference substrate, then out to the frontend. Each subsystem opens with what it is and why it exists, followed by its modules and their narratives.
 
-### Core service & API surface · 9
+### Core service & API surface · 10
 
 The FastAPI application and its REST surfaces — health, BYOK key vault, per-site env vault, model inventory, sessions, drafts, the AIMMH chat endpoints, the inspector, the tools/MCP/skills surface, admin-editable settings, and the living-spec endpoint. MongoDB (Motor) is the only datastore; credentials are Fernet-encrypted at rest.
 
@@ -38,6 +38,8 @@ The FastAPI application and its REST surfaces — health, BYOK key vault, per-si
   `backend/readme_writer.py`
 - **`server`** — FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report  
   `backend/server.py`
+- **`traffic_log`** — append-only traffic logger — an ASGI middleware that records one JSONL line of request METADATA per HTTP call (ts, method, path, status, latency_ms, client ip, user-agent, best-effort user id) to an append-only sink; never logs request/response bodies, headers, cookies, or any secret material  
+  `backend/traffic_log.py`
 
 ### Authentication · 1
 
@@ -432,7 +434,7 @@ The top-level router that wires the AuthProvider, public routes, and protected r
 - **`App`** — top-level router with AuthProvider — public routes (/, /login, /register, /spec) and protected routes (/workspace, /agents, /sentinels, /overrides, /inspector, /inventory, /keys, /custom-keys, /vault, /drafts)  
   `frontend/src/App.js`
 
-### Tests · 9
+### Tests · 10
 
 Pytest and end-to-end regression suites covering the tool-use loop, the Training Room distillation, the three-core sentinel pipeline, and the live API.
 
@@ -444,6 +446,8 @@ Pytest and end-to-end regression suites covering the tool-use loop, the Training
   `backend/tests/test_lifted_path.py`
 - **`test_morphology_ladder`** — pytest coverage for the morphological depth-ladder — typed gonal primitives  
   `backend/tests/test_morphology_ladder.py`
+- **`test_security`** — security regression suite — Fernet at-rest encryption round-trip + masking,  
+  `backend/tests/test_security.py`
 - **`test_tool_use_loop`** — pytest coverage for the cross-provider tool-use loop (run_tool_loop), the  
   `backend/tests/test_tool_use_loop.py`
 - **`test_training_room`** — pytest for ZFAERuntime.train_multi — multi-teacher distillation runs one  
@@ -467,9 +471,10 @@ Pytest and end-to-end regression suites covering the tool-use loop, the Training
 | schema | 15 | `classes`, `closed_tokens`, `constants`, `disk_protocol`, `events`, `faces`, `gate`, `models`, `primes`, `primes`, `schema`, `sentinel_modes`, `sentinel_weights`, `tick_schedule`, `topology` |
 | service | 15 | `agents`, `archive`, `audit`, `crypto_vault`, `db`, `fiq_emit`, `living_spec`, `long_memory`, `overrides`, `readme_writer`, `registry`, `skills`, `store`, `sync`, `tools` |
 | skill | 11 | `_msdmd`, `a0p_skills`, `boundaries_runner`, `capabilities_runner`, `frontend_module_build_runner`, `interdependent_lib`, `module_build_runner`, `parser`, `ratios_runner`, `runner`, `test_build_runner` |
-| test | 8 | `backend_test`, `conftest`, `test_lifted_path`, `test_morphology_ladder`, `test_tool_use_loop`, `test_training_room`, `test_zfae_api_sentinels`, `test_zfae_three_core_sentinels` |
+| test | 9 | `backend_test`, `conftest`, `test_lifted_path`, `test_morphology_ladder`, `test_security`, `test_tool_use_loop`, `test_training_room`, `test_zfae_api_sentinels`, `test_zfae_three_core_sentinels` |
 | ui_component | 7 | `AuditTape`, `CharacterSheetForm`, `MarkdownView`, `OverrideModal`, `Panel`, `SentinelVerdictRibbon`, `Shell` |
 | ui_lib | 2 | `auth`, `sentinels` |
 | ui_page | 17 | `AgentsPage`, `CustomKeysPage`, `DraftsPage`, `InspectorPage`, `InventoryPage`, `KeyVaultPage`, `LivingSpecPage`, `LoginPage`, `MCPPage`, `OverridesPage`, `SentinelsPage`, `SkillsPage`, `SplashPage`, `ToolsPage`, `TrainingRoom`, `VaultPage`, `WorkspacePage` |
 | ui_root | 1 | `App` |
+| worker | 1 | `traffic_log` |
 

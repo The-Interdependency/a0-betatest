@@ -183,6 +183,7 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
   });
   const [minSteps, setMinSteps] = useState(initial?.min_steps_for_native ?? 16);
   const [maxLoss, setMaxLoss] = useState(initial?.max_loss_for_native ?? 0.1);
+  const [liftedPathTrace, setLiftedPathTrace] = useState(Boolean(initial?.lifted_path_trace));
   const [phi, setPhi] = useState(initial?.gonal_assignment?.phi ?? "default");
   const [psi, setPsi] = useState(initial?.gonal_assignment?.psi ?? "mirror");
   const [omega, setOmega] = useState(initial?.gonal_assignment?.omega ?? "private");
@@ -237,6 +238,7 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
           boundaries,
           min_steps_for_native: Number(minSteps),
           max_loss_for_native: Number(maxLoss),
+          lifted_path_trace: liftedPathTrace,
           gonal_assignment: { phi, psi, omega },
           private_gonal_spec_path: privateSpecPath.trim() || null,
         });
@@ -403,6 +405,27 @@ export default function CharacterSheetForm({ initial, onSubmit, onCancel, submit
           placeholder="research, math, scratch"
         />
       </Field>
+
+      {/* ── Lifted-path traversal toggle ── */}
+      <label
+        className="flex items-center gap-2 border border-white/10 p-3 cursor-pointer"
+        data-testid="csf-lifted-path-toggle"
+      >
+        <input
+          type="checkbox"
+          data-testid="csf-lifted-path-checkbox"
+          checked={liftedPathTrace}
+          onChange={e => setLiftedPathTrace(e.target.checked)}
+          className="accent-accent"
+        />
+        <span className="text-[0.65rem] font-mono">
+          <span className="block text-white">lifted-path traversal trace</span>
+          <span className="block text-neutral-500">
+            native replies also compute their lossless lifted path over the 157-gonal carrier
+            (seam events + revolutions) — text unchanged; visible in the decode trace
+          </span>
+        </span>
+      </label>
 
       {/* ── Boundary declarations ── */}
       <div className="border border-white/10 p-3 space-y-2" data-testid="csf-boundaries">

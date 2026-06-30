@@ -1,4 +1,4 @@
-# ratios: loc_comments=638:100 imports_exports=21:3 calls_definitions=117:18
+# ratios: loc_comments=641:100 imports_exports=21:3 calls_definitions=117:18
 # === MODULE_BUILD ===
 # id: zfae_runtime
 #   module_name: runtime
@@ -150,6 +150,7 @@ class ZFAERuntime:
         sentinel_weights: Optional[dict] = None,
         override_id: Optional[str] = None,
         tools_allowed: Optional[list] = None,
+        lifted_path_trace: bool = False,
     ) -> RuntimeReply:
         """Produce one chat-turn reply per the requested mode.
 
@@ -641,6 +642,7 @@ class ZFAERuntime:
             zfaeSnapshot=zfae_snapshot,
             rings={"summary": ring_summary} if ring_summary else None,
             gonal_seed=bank.gonal_seed_bytes,
+            lifted_path_trace=lifted_path_trace,
         )
         snapshot_after = native_result["nextSnapshot"]
 
@@ -739,6 +741,7 @@ class ZFAERuntime:
             transcript=transcript,
             zfaeSnapshot=zfae_snapshot,
             gonal_seed=bank.gonal_seed_bytes,
+            lifted_path_trace=lifted_path_trace,
         )
         text = (native_result["assistantText"]
                 if native_result["assistantText"] != MISSING_NATIVE_MESSAGE
@@ -792,4 +795,4 @@ def _verdict_to_dict(verdict: Optional[Verdict13]) -> Optional[dict]:
             for v in verdict.verdicts
         ],
     }
-# ratios: loc_comments=638:100 imports_exports=21:3 calls_definitions=117:18
+# ratios: loc_comments=641:100 imports_exports=21:3 calls_definitions=117:18

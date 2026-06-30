@@ -1,4 +1,4 @@
-# ratios: loc_comments=1227:279 imports_exports=177:96 calls_definitions=488:111
+# ratios: loc_comments=1254:282 imports_exports=182:97 calls_definitions=500:112
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1863,4 +1863,37 @@ def gonal_lifted_path_round_trip_holds() -> None:
         raised = True
     assert raised, "off-carrier characters must raise CarrierCharError"
     assert path_vertices([14, 139, 157]) == [14, 139, 0]
-# ratios: loc_comments=1227:279 imports_exports=177:96 calls_definitions=488:111
+
+
+def traffic_log_append_only_holds() -> None:
+    """Contract: the traffic logger appends JSONL metadata lines (append-only)
+    and never records bodies/headers/cookies/secrets."""
+    import json
+    import os
+    import tempfile
+    import importlib
+
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "sub", "traffic.log")
+        prev = os.environ.get("A0P_TRAFFIC_LOG")
+        os.environ["A0P_TRAFFIC_LOG"] = path
+        try:
+            import traffic_log
+            importlib.reload(traffic_log)
+            traffic_log._append({"ts": "t1", "method": "GET", "path": "/api/health", "status": 200})
+            traffic_log._append({"ts": "t2", "method": "POST", "path": "/api/keys", "status": 401})
+            with open(path, encoding="utf-8") as fh:
+                lines = [ln for ln in fh.read().splitlines() if ln.strip()]
+            assert len(lines) == 2, "each call must append exactly one line"
+            r0 = json.loads(lines[0])
+            assert r0["method"] == "GET" and r0["status"] == 200
+            # never logs secret-bearing fields
+            blob = "\n".join(lines).lower()
+            for forbidden in ("authorization", "password", "passphrase", "api_key", "cookie", "set-cookie"):
+                assert forbidden not in blob, f"traffic log must not contain {forbidden}"
+        finally:
+            if prev is None:
+                os.environ.pop("A0P_TRAFFIC_LOG", None)
+            else:
+                os.environ["A0P_TRAFFIC_LOG"] = prev
+# ratios: loc_comments=1254:282 imports_exports=182:97 calls_definitions=500:112

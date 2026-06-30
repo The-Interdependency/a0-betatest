@@ -41,7 +41,34 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
-## Changelog — 2026-06-20 (φ/ψ/Ω hardwire RESOLVED — morphological depth-ladder + carrier-LCM)
+## Changelog — 2026-06-30 (lifted-path toggle · append-only traffic log · security suite)
+
+- **`lifted_path` wired as a per-agent toggle.** New `CharacterSheet.lifted_path_trace`
+  (default off) threads schema → `agents/routes` → `runtime.reply` → `inference.infer`.
+  When ON, native (Route A) replies additionally compute their **lossless lifted
+  traversal** over the 157-gonal carrier and attach `{ok, length, revolutions,
+  seam_events, path[:64]}` to `trace.lifted_path` (text unchanged; `decode(encode)==text`
+  self-check). Engine smoke: OFF→no path, ON→ok=True len 48, reply identical. Frontend
+  toggle added to `CharacterSheetForm` (`csf-lifted-path-toggle`); create→persist
+  round-trip verified via API.
+- **Append-only traffic log** (`backend/traffic_log.py` + `server.py` middleware): one
+  JSONL **metadata** line per request `{ts, method, path, query, status, latency_ms, ip,
+  ua, uid}` to an append-only sink (`A0P_TRAFFIC_LOG`, default `/app/backend/logs/
+  traffic.log`). **Never** logs bodies/headers/cookies/secrets; best-effort uid via no-DB
+  JWT decode. Verified writing on live `/api/health` hits.
+- **Security test suite** (`tests/test_security.py`, 9 tests): Fernet round-trip +
+  tamper rejection + masking, bcrypt hash/verify, JWT mint/decode + wrong-secret
+  rejection, ZFAE refuse-until-trained, gated (HOLD) `decompose_clause`, off-carrier
+  `CarrierCharError`, traffic-log secret-redaction. Plus new contract
+  `traffic_log_append_only`.
+- **NOT done (by ruling):** force-push-on-startup (destructive — use Save to GitHub) and
+  discharging `multiply_left_cancellative` (lives in the external `ucns` Lean repo;
+  `PROOF_GREEN` stays False so decomposition is not falsely certified).
+- **Verified**: ratios 125/125 · 0 drift; module-build 125 valid; test-build **144
+  contracts · 141 pass / 0 fail / 0 error / 3 skipped**; security + lifted + morphology +
+  seam unit tests pass; eslint clean; frontend-module-build 29/29; backend `/api/health` 200.
+
+
 
 - **Re-architected the three-core inscription** per Erin's canon (handoff HEAD
   2448def) from the flat-sum (`phi*1.0 + psi*0.6 + omega*0.3` through one gonal) into

@@ -1,4 +1,4 @@
-# ratios: loc_comments=228:75 imports_exports=14:16 calls_definitions=86:19
+# ratios: loc_comments=229:75 imports_exports=14:16 calls_definitions=87:19
 # === MODULE_BUILD ===
 # id: agents_routes
 #   module_name: routes
@@ -269,6 +269,7 @@ async def chat_instance(agent_id: str, body: ChatInstanceRequest, request: Reque
         sentinel_weights=getattr(agent.sheet, "sentinel_weights", None),
         override_id=body.override_id,
         tools_allowed=getattr(agent.sheet, "tools_allowed", None),
+        lifted_path_trace=getattr(agent.sheet, "lifted_path_trace", False),
     )
 
     # Persist weight bank if updated
@@ -365,4 +366,4 @@ async def teacher_context_preview(agent_id: str, body: TeacherPreviewRequest, re
         "surface_3_teacher_context": messages,
         "context_distinct_from_prompt": len(messages) > 1 or (messages and messages[-1].get("content") != body.prompt or messages[0].get("role") != "user"),
     }
-# ratios: loc_comments=228:75 imports_exports=14:16 calls_definitions=86:19
+# ratios: loc_comments=229:75 imports_exports=14:16 calls_definitions=87:19
