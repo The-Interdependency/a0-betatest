@@ -1,4 +1,4 @@
-# ratios: loc_comments=641:100 imports_exports=21:3 calls_definitions=117:18
+# ratios: loc_comments=642:100 imports_exports=21:3 calls_definitions=117:18
 # === MODULE_BUILD ===
 # id: zfae_runtime
 #   module_name: runtime
@@ -201,6 +201,7 @@ class ZFAERuntime:
                 zfae_snapshot=zfae_snapshot, agent_id=agent_id, user_id=user_id,
                 tools_allowed=tools_allowed, sentinel_modes=sentinel_modes,
                 sentinel_weights=sentinel_weights, override_id=override_id,
+                lifted_path_trace=lifted_path_trace,
             )
         else:
             raise ValueError(f"unknown mode {mode!r}")
@@ -642,7 +643,6 @@ class ZFAERuntime:
             zfaeSnapshot=zfae_snapshot,
             rings={"summary": ring_summary} if ring_summary else None,
             gonal_seed=bank.gonal_seed_bytes,
-            lifted_path_trace=lifted_path_trace,
         )
         snapshot_after = native_result["nextSnapshot"]
 
@@ -691,6 +691,7 @@ class ZFAERuntime:
         sentinel_weights=None,
         override_id=None,
         extra_trace: Optional[dict] = None,
+        lifted_path_trace: bool = False,
     ) -> RuntimeReply:
         extra_trace = extra_trace or {}
         ready = _is_trained_enough(bank, min_steps=self.min_steps, max_loss=self.max_loss)
@@ -795,4 +796,4 @@ def _verdict_to_dict(verdict: Optional[Verdict13]) -> Optional[dict]:
             for v in verdict.verdicts
         ],
     }
-# ratios: loc_comments=641:100 imports_exports=21:3 calls_definitions=117:18
+# ratios: loc_comments=642:100 imports_exports=21:3 calls_definitions=117:18

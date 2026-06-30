@@ -41,7 +41,24 @@
     └── src/                            7 routes: Workspace, Inventory, Keys, Vault, Drafts, Inspector (3 skill tiles), Agents
 ```
 
-## Changelog — 2026-06-30 (lifted-path toggle · append-only traffic log · security suite)
+## Hotfix — 2026-06-30 (P0: main chat 500 — `lifted_path_trace` NameError)
+
+- **Regression I introduced** in the prior lifted-path-toggle change: `runtime._teacher_assisted`
+  and `_zfae_native` referenced `lifted_path_trace` which was only defined in `reply()`'s
+  scope → `NameError` → **HTTP 500 on every teacher/model chat** (`POST /api/chat/instance/{id}`,
+  modes `a0(<model>)`, `a0(zfae)<model>`, etc.). Native untrained agents masked it by refusing
+  before the buggy line.
+- **Fix:** threaded `lifted_path_trace` into `_zfae_native`'s signature + the `reply()` call;
+  removed the out-of-scope reference in `_teacher_assisted`'s shadow `native.infer` (the lifted
+  trace is a native-reply feature, not the teacher's displayed text).
+- **Verified on preview:** teacher-assisted chat reproduced the 500, now returns 200 with real
+  `assistantText` ("Hello!") via the user's OpenAI BYOK key; `test_tool_use_loop.py` (17, covers
+  this path) + 72 offline tests pass; ratios 125/125·0 drift; test-build 144·141 pass.
+- Also re-removed `.env`/`.env.*`/`*.env` from `/app/.gitignore` (had reappeared — deploy blocker).
+- **Root lesson:** I had not run `test_tool_use_loop.py` after the toggle change; that suite
+  already covered the teacher path and would have caught it.
+
+
 
 - **`lifted_path` wired as a per-agent toggle.** New `CharacterSheet.lifted_path_trace`
   (default off) threads schema → `agents/routes` → `runtime.reply` → `inference.infer`.
