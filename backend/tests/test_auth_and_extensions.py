@@ -160,6 +160,7 @@ class TestMeAndLogout:
 class TestAdminSeed:
     def test_admin_login(self):
         admin_ident = os.environ.get("ADMIN_USERNAME", "wayseer")
+        admin_email = os.environ.get("ADMIN_EMAIL", "")
         admin_pass = os.environ.get("ADMIN_PASSWORD", "")
         if not admin_pass:
             pytest.skip("ADMIN_PASSWORD not set; admin-seed login test requires the seeded admin passphrase")
@@ -173,9 +174,12 @@ class TestAdminSeed:
         assert r2.status_code == 200
         me = r2.json()
         me = me.get("user", me)
-        assert me["username"] == "wayseer"
-        assert me["email"] == "wayseer@interdependentway.org"
+        # seed_admin() lowercases username/email; derive expectations from the
+        # same env so a rotated/custom admin identity does not fail this test.
         assert me["role"] == "admin", f"role={me.get('role')}"
+        assert me["username"] == admin_ident.lower()
+        if admin_email:
+            assert me["email"] == admin_email.lower()
 
 
 # -------- T5: Custom Keys CRUD --------
