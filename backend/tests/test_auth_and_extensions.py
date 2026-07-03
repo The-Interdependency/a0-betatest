@@ -159,14 +159,18 @@ class TestMeAndLogout:
 # -------- T4: admin seeding --------
 class TestAdminSeed:
     def test_admin_login(self):
-        admin_ident = os.environ.get("ADMIN_USERNAME", "wayseer")
         admin_email = os.environ.get("ADMIN_EMAIL", "")
         admin_pass = os.environ.get("ADMIN_PASSWORD", "")
-        if not admin_pass:
-            pytest.skip("ADMIN_PASSWORD not set; admin-seed login test requires the seeded admin passphrase")
+        # seed_admin() requires both ADMIN_EMAIL and ADMIN_PASSWORD (it returns
+        # early without them), so without both there is no seeded admin to test.
+        if not (admin_email and admin_pass):
+            pytest.skip("ADMIN_EMAIL/ADMIN_PASSWORD not set; no seeded admin to log in as")
         s = requests.Session()
+        # Log in by email: seed_admin() keys the admin on ADMIN_EMAIL and
+        # defaults the username to "admin" when ADMIN_USERNAME is unset, so the
+        # email is the reliable identifier across deployments.
         r = s.post(f"{API}/auth/login",
-                   json={"identifier": admin_ident,
+                   json={"identifier": admin_email,
                          "passphrase": admin_pass},
                    timeout=30)
         assert r.status_code == 200, f"admin seed login failed: {r.status_code} {r.text}"
@@ -174,12 +178,11 @@ class TestAdminSeed:
         assert r2.status_code == 200
         me = r2.json()
         me = me.get("user", me)
-        # seed_admin() lowercases username/email; derive expectations from the
-        # same env so a rotated/custom admin identity does not fail this test.
+        # Mirror seed_admin(): username defaults to "admin"; both are lowercased.
+        expected_username = (os.environ.get("ADMIN_USERNAME") or "admin").lower()
         assert me["role"] == "admin", f"role={me.get('role')}"
-        assert me["username"] == admin_ident.lower()
-        if admin_email:
-            assert me["email"] == admin_email.lower()
+        assert me["username"] == expected_username
+        assert me["email"] == admin_email.lower()
 
 
 # -------- T5: Custom Keys CRUD --------
