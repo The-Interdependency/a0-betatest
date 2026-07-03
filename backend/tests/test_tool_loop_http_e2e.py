@@ -23,12 +23,14 @@ import pytest
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://byok-inference.preview.emergentagent.com").rstrip("/")
 
-ADMIN_IDENT = "wayseer"
-ADMIN_PASS = "ChangeMeOnFirstLogin2026"
+ADMIN_IDENT = os.environ.get("ADMIN_USERNAME", "wayseer")
+ADMIN_PASS = os.environ.get("ADMIN_PASSWORD", "")
 
 
 @pytest.fixture(scope="module")
 def session():
+    if not ADMIN_PASS:
+        pytest.skip("ADMIN_PASSWORD not set; admin-login e2e requires the seeded admin passphrase")
     s = requests.Session()
     s.headers.update({"Content-Type": "application/json"})
     r = s.post(f"{BASE_URL}/api/auth/login", json={"identifier": ADMIN_IDENT, "passphrase": ADMIN_PASS}, timeout=20)

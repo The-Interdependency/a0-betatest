@@ -159,10 +159,14 @@ class TestMeAndLogout:
 # -------- T4: admin seeding --------
 class TestAdminSeed:
     def test_admin_login(self):
+        admin_ident = os.environ.get("ADMIN_USERNAME", "wayseer")
+        admin_pass = os.environ.get("ADMIN_PASSWORD", "")
+        if not admin_pass:
+            pytest.skip("ADMIN_PASSWORD not set; admin-seed login test requires the seeded admin passphrase")
         s = requests.Session()
         r = s.post(f"{API}/auth/login",
-                   json={"identifier": "wayseer",
-                         "passphrase": "ChangeMeOnFirstLogin2026"},
+                   json={"identifier": admin_ident,
+                         "passphrase": admin_pass},
                    timeout=30)
         assert r.status_code == 200, f"admin seed login failed: {r.status_code} {r.text}"
         r2 = s.get(f"{API}/auth/me", timeout=30)
