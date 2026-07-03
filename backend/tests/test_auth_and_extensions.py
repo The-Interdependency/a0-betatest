@@ -178,10 +178,11 @@ class TestAdminSeed:
         assert r2.status_code == 200
         me = r2.json()
         me = me.get("user", me)
-        # Mirror seed_admin(): username defaults to "admin"; both are lowercased.
-        expected_username = (os.environ.get("ADMIN_USERNAME") or "admin").lower()
+        # Assert only what seed_admin() guarantees for an email-keyed admin:
+        # role and email. Username is intentionally not asserted — seed_admin()
+        # preserves an existing record's username (and skips the update when the
+        # password already matches), so it need not equal ADMIN_USERNAME.
         assert me["role"] == "admin", f"role={me.get('role')}"
-        assert me["username"] == expected_username
         assert me["email"] == admin_email.lower()
 
 
