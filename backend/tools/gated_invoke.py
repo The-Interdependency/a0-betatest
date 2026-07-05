@@ -1,4 +1,4 @@
-# ratios: loc_comments=106:58 imports_exports=11:2 calls_definitions=22:2
+# ratios: loc_comments=111:63 imports_exports=11:2 calls_definitions=25:2
 # === MODULE_BUILD ===
 # id: tools_gated_invoke
 #   module_name: gated_invoke
@@ -129,10 +129,20 @@ async def gated_invoke(
         approved = False
         if override_id and pending_overrides_col is not None:
             existing = await zfae_overrides.get(pending_overrides_col, override_id)
+            # Bind the approval to the exact halted action: same agent, a
+            # tool_call override, and the identical tool + params. Otherwise an
+            # approval granted for one (harmless) tool call could be replayed to
+            # resume a different S4/S12-flagged tool or the same tool with
+            # different params.
+            req = (existing.raw_request or {}) if existing is not None else {}
             approved = (
                 existing is not None
                 and existing.status == "approved"
                 and existing.agent_id == agent_id
+                and existing.event_kind == "tool_call"
+                and req.get("tool") == tool.name
+                and json.dumps(req.get("params"), sort_keys=True, default=str)
+                == json.dumps(params, sort_keys=True, default=str)
             )
         if not approved:
             rec = None
@@ -177,4 +187,4 @@ async def gated_invoke(
 
 
 __all__ = ["gated_invoke"]
-# ratios: loc_comments=106:58 imports_exports=11:2 calls_definitions=22:2
+# ratios: loc_comments=111:63 imports_exports=11:2 calls_definitions=25:2

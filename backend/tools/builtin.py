@@ -1,4 +1,4 @@
-# ratios: loc_comments=126:70 imports_exports=11:2 calls_definitions=41:6
+# ratios: loc_comments=138:74 imports_exports=11:2 calls_definitions=48:6
 # === MODULE_BUILD ===
 # id: tools_builtin
 #   module_name: builtin
@@ -82,10 +82,26 @@ async def _assert_public_url(url: str) -> None:
         raise ToolError(f"fetch_url: DNS resolution timed out for host {host!r}")
     except socket.gaierror as e:
         raise ToolError(f"fetch_url: cannot resolve host {host!r}: {e}")
+    _NAT64 = (ipaddress.ip_network("64:ff9b::/96"), ipaddress.ip_network("64:ff9b:1::/48"))
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
-        if not ip.is_global:
-            raise ToolError(f"fetch_url: refusing non-global address {ip} for host {host!r}")
+        # An IPv6 address can embed an IPv4 (v4-mapped, 6to4, Teredo, NAT64), so
+        # a globally-classified wrapper like 64:ff9b::a9fe:a9fe translates to
+        # 169.254.169.254. Reject if the address OR any embedded IPv4 is
+        # non-globally-routable.
+        candidates = [ip]
+        if isinstance(ip, ipaddress.IPv6Address):
+            if ip.ipv4_mapped:
+                candidates.append(ip.ipv4_mapped)
+            if ip.sixtofour:
+                candidates.append(ip.sixtofour)
+            if ip.teredo:
+                candidates.extend(a for a in ip.teredo if a)
+            if any(ip in net for net in _NAT64):
+                candidates.append(ipaddress.ip_address(int(ip) & 0xFFFFFFFF))
+        for cand in candidates:
+            if not cand.is_global:
+                raise ToolError(f"fetch_url: refusing non-global address {cand} for host {host!r}")
 
 
 async def _living_spec_lookup(*, user: dict, params: dict) -> dict:
@@ -215,4 +231,4 @@ def register_builtins() -> list[Tool]:
 
 
 __all__ = ["register_builtins"]
-# ratios: loc_comments=126:70 imports_exports=11:2 calls_definitions=41:6
+# ratios: loc_comments=138:74 imports_exports=11:2 calls_definitions=48:6
