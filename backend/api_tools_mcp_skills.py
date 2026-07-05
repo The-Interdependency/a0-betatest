@@ -1,4 +1,4 @@
-# ratios: loc_comments=233:60 imports_exports=14:20 calls_definitions=94:21
+# ratios: loc_comments=235:62 imports_exports=14:20 calls_definitions=95:21
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -155,8 +155,12 @@ async def delete_tool(name: str, user=Depends(get_current_user)):
     if r.deleted_count == 0:
         raise HTTPException(404, "tool not found (cannot delete built-ins)")
     # Evict from the in-process registry so the deleted tool (and its webhook
-    # secret) can no longer be invoked or listed before the next restart.
-    tools_pkg.unregister(name)
+    # secret) can no longer be invoked or listed before the next restart — but
+    # only when the current registry entry is this user's own tool, never a
+    # built-in or another user's entry that happens to share the name.
+    existing = tools_pkg.lookup(name)
+    if existing is not None and existing.owner_user_id == user["id"]:
+        tools_pkg.unregister(name)
     return {"ok": True}
 
 
@@ -342,4 +346,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=233:60 imports_exports=14:20 calls_definitions=94:21
+# ratios: loc_comments=235:62 imports_exports=14:20 calls_definitions=95:21
