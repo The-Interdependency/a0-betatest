@@ -1,4 +1,4 @@
-# ratios: loc_comments=850:124 imports_exports=49:56 calls_definitions=313:65
+# ratios: loc_comments=846:126 imports_exports=48:55 calls_definitions=311:64
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -757,13 +757,6 @@ async def list_usage(request: Request, user_id: str = "local", limit: int = 100)
 #   class: observability
 #   call: a0p_skills.contracts.skill_report_visibility_holds
 # === END CONTRACTS ===
-@api.get("/skill/capabilities/report")
-async def skill_capabilities_report(block: str = "CAPABILITIES"):
-    """Legacy CAPABILITIES coverage report (deprecated; here for migration view)."""
-    from pathlib import Path
-    return msdmd_report(Path("/app/backend"), block)
-
-
 @api.get("/skill/contracts/report")
 async def skill_contracts_report():
     """test-build runner — imports each CONTRACTS `call:` path and runs it."""
@@ -794,7 +787,11 @@ async def skill_boundaries_report():
 
 
 @api.get("/skill/capabilities/report")
-async def skill_capabilities_report_v2():
+async def skill_capabilities_report():
+    """cap-build runner — CAPABILITIES coverage + gap list (Tier 5).
+
+    The legacy msdmd CAPABILITIES view stays at /api/skill/report?block=CAPABILITIES.
+    """
     from pathlib import Path
     return capabilities_runner.run(Path("/app/backend"))
 
@@ -1142,4 +1139,4 @@ async def _on_startup():
         for a in starters:
             await agents_col.insert_one({"_id": new_id(), **a.model_dump(),
                                          "created_at": now, "updated_at": now})
-# ratios: loc_comments=850:124 imports_exports=49:56 calls_definitions=313:65
+# ratios: loc_comments=846:126 imports_exports=48:55 calls_definitions=311:64
