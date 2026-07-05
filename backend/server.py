@@ -1,4 +1,4 @@
-# ratios: loc_comments=839:116 imports_exports=48:56 calls_definitions=306:65
+# ratios: loc_comments=850:124 imports_exports=49:56 calls_definitions=313:65
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -1086,6 +1086,20 @@ async def _on_startup():
             if _moved:
                 import logging as _lgk
                 _lgk.getLogger("a0p").info("migrated %d legacy local %s to admin", _moved, _label)
+        # Migrate the other per-user collections that are now resolved strictly
+        # from the cookie user (previously reachable via the legacy client
+        # user_id='local'). These rows are id-keyed with no uniqueness
+        # constraint, so a bulk move is safe and idempotent — without it,
+        # pre-auth sessions/drafts/usage/overrides would vanish from the UI.
+        for _c, _lbl in ((sessions_col, "sessions"), (drafts_col, "drafts"),
+                         (usage_col, "usage rows"),
+                         (pending_overrides_col, "pending overrides")):
+            _rm = await _c.update_many(
+                {"user_id": "local"}, {"$set": {"user_id": admin["_id"]}},
+            )
+            if _rm.modified_count:
+                import logging as _lgm
+                _lgm.getLogger("a0p").info("migrated %d legacy local %s to admin", _rm.modified_count, _lbl)
     # Regenerate README.md from the living spec
     try:
         from readme_writer import write_readme
@@ -1128,4 +1142,4 @@ async def _on_startup():
         for a in starters:
             await agents_col.insert_one({"_id": new_id(), **a.model_dump(),
                                          "created_at": now, "updated_at": now})
-# ratios: loc_comments=839:116 imports_exports=48:56 calls_definitions=306:65
+# ratios: loc_comments=850:124 imports_exports=49:56 calls_definitions=313:65
