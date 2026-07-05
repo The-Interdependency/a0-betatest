@@ -1,4 +1,4 @@
-# ratios: loc_comments=111:63 imports_exports=11:2 calls_definitions=25:2
+# ratios: loc_comments=113:64 imports_exports=11:2 calls_definitions=25:2
 # === MODULE_BUILD ===
 # id: tools_gated_invoke
 #   module_name: gated_invoke
@@ -123,32 +123,35 @@ async def gated_invoke(
 
     if verdict.requires_override:
         # An override_id lifts the halt ONLY when it names a real, APPROVED
-        # override owned by this agent (mirrors ZFAERuntime._gate). A non-empty
-        # but unvalidated override_id must NOT bypass the sentinel gate — that
-        # was the bypass: any truthy override_id skipped the halt entirely.
-        approved = False
+        # tool_call override for THIS exact tool + params (mirrors and tightens
+        # ZFAERuntime._gate). Binding to the exact action stops an approval for
+        # one call being replayed to resume a different flagged tool.
+        existing = None
         if override_id and pending_overrides_col is not None:
             existing = await zfae_overrides.get(pending_overrides_col, override_id)
-            # Bind the approval to the exact halted action: same agent, a
-            # tool_call override, and the identical tool + params. Otherwise an
-            # approval granted for one (harmless) tool call could be replayed to
-            # resume a different S4/S12-flagged tool or the same tool with
-            # different params.
-            req = (existing.raw_request or {}) if existing is not None else {}
-            approved = (
-                existing is not None
-                and existing.status == "approved"
-                and existing.agent_id == agent_id
-                and existing.event_kind == "tool_call"
-                and req.get("tool") == tool.name
-                and json.dumps(req.get("params"), sort_keys=True, default=str)
-                == json.dumps(params, sort_keys=True, default=str)
-            )
-        if not approved:
+        req = (existing.raw_request or {}) if existing is not None else {}
+        matches_this_call = (
+            existing is not None
+            and existing.agent_id == agent_id
+            and existing.event_kind == "tool_call"
+            and req.get("tool") == tool.name
+            and json.dumps(req.get("params"), sort_keys=True, default=str)
+            == json.dumps(params, sort_keys=True, default=str)
+        )
+        if not (matches_this_call and existing.status == "approved"):
+            reuse_id = None
             rec = None
-            # Mint a fresh pending override only when none was supplied; a
-            # bad/unapproved override_id simply halts (no duplicate record).
-            if pending_overrides_col is not None and not override_id:
+            if matches_this_call and existing.status == "pending":
+                # Already a pending override for this exact call — reuse it so
+                # the client re-approves the same record instead of piling up
+                # duplicates on retry.
+                reuse_id = existing.id
+            elif pending_overrides_col is not None:
+                # No usable override: none supplied, or the supplied id is for a
+                # different action (e.g. a chat-level override forwarded into a
+                # tool call that itself trips a sentinel). Mint a fresh pending
+                # tool override so the client always has one to approve — never
+                # halt with override_id=None here.
                 reasons = {v.name: v.reason for v in verdict.verdicts if v.flagged}
                 rec = await zfae_overrides.create_override(
                     pending_overrides_col,
@@ -163,7 +166,7 @@ async def gated_invoke(
             raise ToolError(
                 f"sentinels halted tool {tool.name!r}",
                 halt=True,
-                override_id=(rec.id if rec else None),
+                override_id=(reuse_id or (rec.id if rec else None)),
                 sentinel_verdict={
                     "flagged_sentinels": list(verdict.flagged_sentinels),
                     "blocking_cliff": verdict.blocking_cliff,
@@ -187,4 +190,4 @@ async def gated_invoke(
 
 
 __all__ = ["gated_invoke"]
-# ratios: loc_comments=111:63 imports_exports=11:2 calls_definitions=25:2
+# ratios: loc_comments=113:64 imports_exports=11:2 calls_definitions=25:2
