@@ -1,4 +1,4 @@
-# ratios: loc_comments=97:52 imports_exports=11:2 calls_definitions=21:2
+# ratios: loc_comments=106:58 imports_exports=11:2 calls_definitions=22:2
 # === MODULE_BUILD ===
 # id: tools_gated_invoke
 #   module_name: gated_invoke
@@ -121,30 +121,45 @@ async def gated_invoke(
         except Exception:
             pass
 
-    if verdict.requires_override and not override_id:
-        rec = None
-        if pending_overrides_col is not None:
-            reasons = {v.name: v.reason for v in verdict.verdicts if v.flagged}
-            rec = await zfae_overrides.create_override(
-                pending_overrides_col,
-                agent_id=agent_id, user_id=user_id, event_kind="tool_call",
-                raw_request={"tool": tool.name, "params": params},
-                flagged_sentinels=list(verdict.flagged_sentinels),
-                reasons=reasons,
-                verdict_vector=list(verdict.vector),
-                disabled_sentinels=list(verdict.disabled_sentinels),
-                blocking_cliff=bool(verdict.blocking_cliff),
+    if verdict.requires_override:
+        # An override_id lifts the halt ONLY when it names a real, APPROVED
+        # override owned by this agent (mirrors ZFAERuntime._gate). A non-empty
+        # but unvalidated override_id must NOT bypass the sentinel gate — that
+        # was the bypass: any truthy override_id skipped the halt entirely.
+        approved = False
+        if override_id and pending_overrides_col is not None:
+            existing = await zfae_overrides.get(pending_overrides_col, override_id)
+            approved = (
+                existing is not None
+                and existing.status == "approved"
+                and existing.agent_id == agent_id
             )
-        raise ToolError(
-            f"sentinels halted tool {tool.name!r}",
-            halt=True,
-            override_id=(rec.id if rec else None),
-            sentinel_verdict={
-                "flagged_sentinels": list(verdict.flagged_sentinels),
-                "blocking_cliff": verdict.blocking_cliff,
-                "vector": list(verdict.vector),
-            },
-        )
+        if not approved:
+            rec = None
+            # Mint a fresh pending override only when none was supplied; a
+            # bad/unapproved override_id simply halts (no duplicate record).
+            if pending_overrides_col is not None and not override_id:
+                reasons = {v.name: v.reason for v in verdict.verdicts if v.flagged}
+                rec = await zfae_overrides.create_override(
+                    pending_overrides_col,
+                    agent_id=agent_id, user_id=user_id, event_kind="tool_call",
+                    raw_request={"tool": tool.name, "params": params},
+                    flagged_sentinels=list(verdict.flagged_sentinels),
+                    reasons=reasons,
+                    verdict_vector=list(verdict.vector),
+                    disabled_sentinels=list(verdict.disabled_sentinels),
+                    blocking_cliff=bool(verdict.blocking_cliff),
+                )
+            raise ToolError(
+                f"sentinels halted tool {tool.name!r}",
+                halt=True,
+                override_id=(rec.id if rec else None),
+                sentinel_verdict={
+                    "flagged_sentinels": list(verdict.flagged_sentinels),
+                    "blocking_cliff": verdict.blocking_cliff,
+                    "vector": list(verdict.vector),
+                },
+            )
 
     # Emit invocation start (audit trail).
     if fiq_audit_col is not None:
@@ -162,4 +177,4 @@ async def gated_invoke(
 
 
 __all__ = ["gated_invoke"]
-# ratios: loc_comments=97:52 imports_exports=11:2 calls_definitions=21:2
+# ratios: loc_comments=106:58 imports_exports=11:2 calls_definitions=22:2

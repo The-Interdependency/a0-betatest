@@ -1,4 +1,4 @@
-# ratios: loc_comments=94:57 imports_exports=7:2 calls_definitions=26:5
+# ratios: loc_comments=121:67 imports_exports=10:2 calls_definitions=39:6
 # === MODULE_BUILD ===
 # id: tools_builtin
 #   module_name: builtin
@@ -43,10 +43,41 @@
 # === END CONTRACTS ===
 """Built-in native tools."""
 from __future__ import annotations
+import ipaddress
+import socket
+from urllib.parse import urlparse
+
 import httpx
 from typing import Any
 
-from .registry import Tool, register, TOOL_KIND_NATIVE
+from .registry import Tool, ToolError, register, TOOL_KIND_NATIVE
+
+
+def _assert_public_url(url: str) -> None:
+    """Reject non-public fetch targets (SSRF guard).
+
+    Refuses non-http(s) schemes and any host that resolves to a private,
+    loopback, link-local (incl. cloud metadata 169.254.169.254), reserved,
+    multicast, or unspecified address — for both IPv4 and IPv6. Applied before
+    the request and after every redirect. (Residual: DNS rebinding between this
+    check and connect; a full fix would pin the resolved IP at connect time.)
+    """
+    p = urlparse(url)
+    if p.scheme not in ("http", "https"):
+        raise ToolError(f"fetch_url: unsupported scheme {p.scheme!r}")
+    host = p.hostname
+    if not host:
+        raise ToolError("fetch_url: missing host")
+    port = p.port or (443 if p.scheme == "https" else 80)
+    try:
+        infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as e:
+        raise ToolError(f"fetch_url: cannot resolve host {host!r}: {e}")
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+                or ip.is_multicast or ip.is_unspecified):
+            raise ToolError(f"fetch_url: refusing non-public address {ip} for host {host!r}")
 
 
 async def _living_spec_lookup(*, user: dict, params: dict) -> dict:
@@ -90,18 +121,29 @@ async def _vault_get_key(*, user: dict, params: dict) -> dict:
 
 
 async def _fetch_url(*, user: dict, params: dict) -> dict:
-    """GET a URL. Returns {status, headers, text} (text truncated to 16 KiB)."""
+    """GET a URL. Returns {status, headers, text} (text truncated to 16 KiB).
+
+    Redirects are followed manually so the SSRF guard runs on every hop — an
+    open redirect to a loopback/metadata address is rejected mid-chain.
+    """
     url = params["url"]
     timeout = float(params.get("timeout", 10))
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as cli:
-        r = await cli.get(url)
-        text = r.text[:16384]
-        return {
-            "status": r.status_code,
-            "headers": {k.lower(): v for k, v in r.headers.items() if k.lower() in ("content-type", "etag", "last-modified")},
-            "text": text,
-            "truncated": len(r.text) > 16384,
-        }
+    max_redirects = 5
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as cli:
+        for _ in range(max_redirects + 1):
+            _assert_public_url(url)
+            r = await cli.get(url)
+            if r.is_redirect and r.headers.get("location"):
+                url = str(httpx.URL(r.url).join(r.headers["location"]))
+                continue
+            text = r.text[:16384]
+            return {
+                "status": r.status_code,
+                "headers": {k.lower(): v for k, v in r.headers.items() if k.lower() in ("content-type", "etag", "last-modified")},
+                "text": text,
+                "truncated": len(r.text) > 16384,
+            }
+    raise ToolError("fetch_url: too many redirects")
 
 
 async def _web_search(*, user: dict, params: dict) -> dict:
@@ -165,4 +207,4 @@ def register_builtins() -> list[Tool]:
 
 
 __all__ = ["register_builtins"]
-# ratios: loc_comments=94:57 imports_exports=7:2 calls_definitions=26:5
+# ratios: loc_comments=121:67 imports_exports=10:2 calls_definitions=39:6
