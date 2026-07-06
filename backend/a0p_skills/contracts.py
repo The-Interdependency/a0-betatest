@@ -1,4 +1,4 @@
-# ratios: loc_comments=1301:290 imports_exports=185:98 calls_definitions=518:115
+# ratios: loc_comments=1313:294 imports_exports=186:98 calls_definitions=524:115
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1672,11 +1672,29 @@ async def _tools_odysseus_relay_request_async() -> None:
             raise AssertionError("SSRF guard did not refuse a link-local host")
         except ToolError as e:
             assert "non-global" in str(e), str(e)
+
+        # Path-normalization guard: dot-segments that escape /api/codex/ are
+        # refused, raw and percent-encoded, before any network call.
+        for bad in ("/api/codex/../admin", "/api/codex/%2e%2e/admin", "/api/codex/a/../../admin"):
+            try:
+                await od.request("http://odysseus.local", "tkn", "GET", bad,
+                                 allow_private=True, client=client)
+                raise AssertionError(f"path-escape not refused: {bad!r}")
+            except ToolError:
+                pass
     finally:
         await client.aclose()
 
     # catalogue exposes the generic passthrough + capability probe
     assert "request" in od.ODYSSEUS_CATALOGUE and "capabilities" in od.ODYSSEUS_CATALOGUE
+
+    # provider-safe tool names: [A-Za-z0-9_-] only, <= 64 chars, even for a
+    # workspace name full of characters providers reject.
+    nm = od.safe_tool_name("my:weird/workspace name!", "memory_search")
+    import re as _re
+    assert _re.fullmatch(r"[A-Za-z0-9_-]+", nm) and len(nm) <= 64, nm
+    long_nm = od.safe_tool_name("x" * 200, "calendar_events")
+    assert _re.fullmatch(r"[A-Za-z0-9_-]+", long_nm) and len(long_nm) <= 64, long_nm
 
 
 def tools_mcp_server_initialize_holds():
@@ -1963,4 +1981,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1301:290 imports_exports=185:98 calls_definitions=518:115
+# ratios: loc_comments=1313:294 imports_exports=186:98 calls_definitions=524:115

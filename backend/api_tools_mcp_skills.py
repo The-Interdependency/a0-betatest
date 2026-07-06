@@ -1,4 +1,4 @@
-# ratios: loc_comments=313:77 imports_exports=15:25 calls_definitions=129:27
+# ratios: loc_comments=320:81 imports_exports=16:25 calls_definitions=131:27
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -51,6 +51,7 @@ _log = logging.getLogger("a0p.tools_mcp_skills")
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
+from pymongo.errors import DuplicateKeyError
 
 from auth import get_current_user
 from db import (
@@ -294,10 +295,14 @@ async def _refresh_odysseus_tools(user_id: str, conn: dict) -> dict:
     now = int(time.time() * 1000)
     await user_tools_col.delete_many({"user_id": user_id, "mcp_server_id": conn["_id"], "source": "odysseus"})
     out: list[str] = []
+    skipped: list[str] = []
     for cap, spec in odysseus_relay.ODYSSEUS_CATALOGUE.items():
+        # Provider-safe public name ([A-Za-z0-9_-], <=64) so OpenAI/Anthropic/
+        # Gemini tool-calling accepts the schema; remote_name keeps the raw cap.
+        name = odysseus_relay.safe_tool_name(conn["name"], cap)
         doc = {
             "_id": str(uuid.uuid4()), "user_id": user_id,
-            "name": f"odysseus:{conn['name']}:{cap}",
+            "name": name,
             "kind": TOOL_KIND_ODYSSEUS,
             "description": spec.get("description", ""),
             "input_schema": spec.get("input_schema") or {"type": "object"},
@@ -305,8 +310,13 @@ async def _refresh_odysseus_tools(user_id: str, conn: dict) -> dict:
             "tags": ["odysseus", conn["name"]], "source": "odysseus",
             "created_at_ms": now,
         }
-        await user_tools_col.insert_one(doc)
-        out.append(doc["name"])
+        try:
+            await user_tools_col.insert_one(doc)
+            out.append(name)
+        except DuplicateKeyError:
+            # A non-odysseus tool of this user already holds the generated name;
+            # skip it (never 500 the create/refresh or leave an orphan server).
+            skipped.append(name)
     # Keep the detailed probe error server-side only; never reflect the raw
     # exception text (which can carry internal host/stack detail) back to the
     # caller. The client gets a coarse reachability signal instead.
@@ -321,7 +331,8 @@ async def _refresh_odysseus_tools(user_id: str, conn: dict) -> dict:
         {"$set": {"last_refresh_ms": now, "tools_count": len(out),
                   "reachable": probe["ok"], "probe_error": coarse}},
     )
-    return {"ok": True, "tools": out, "capabilities": probe["capabilities"],
+    return {"ok": True, "tools": out, "skipped": skipped,
+            "capabilities": probe["capabilities"],
             "reachable": probe["ok"], "error": coarse}
 
 
@@ -453,4 +464,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=313:77 imports_exports=15:25 calls_definitions=129:27
+# ratios: loc_comments=320:81 imports_exports=16:25 calls_definitions=131:27

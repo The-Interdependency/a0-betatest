@@ -1,11 +1,11 @@
-# ratios: loc_comments=149:87 imports_exports=9:4 calls_definitions=45:7
+# ratios: loc_comments=169:98 imports_exports=12:5 calls_definitions=57:8
 # === MODULE_BUILD ===
 # id: tools_odysseus_relay
 #   module_name: odysseus_relay
 #   module_kind: adapter
 #   summary: relay a0p tool calls to a registered Odysseus workspace over its scoped /api/codex/* REST surface — outbound httpx client attaching the per-connection Bearer api_token; the destination host is the operator-registered base_url (never agent-supplied) and the path is pinned to the /api/codex/ prefix; an SSRF guard refuses non-global hosts unless the connection is explicitly allow_private (self-hosted/localhost opt-in), so Odysseus's own api_token scopes bound every capability while a0p sentinels gate each call
 #   owner: Erin Spencer
-#   public_surface: probe_capabilities, request, invoke, ODYSSEUS_CATALOGUE
+#   public_surface: probe_capabilities, request, invoke, safe_tool_name, ODYSSEUS_CATALOGUE
 #   internal_surface: _guard_path, _resolve_spec, _assert_allowed_host
 #   auth_boundary: bearer
 #   storage_boundary: read
@@ -29,7 +29,7 @@
 # === CAPABILITIES ===
 # id: tools_odysseus_relay
 #   summary: outbound Odysseus /api/codex/* REST client
-#   exposes: probe_capabilities, request, invoke, ODYSSEUS_CATALOGUE
+#   exposes: probe_capabilities, request, invoke, safe_tool_name, ODYSSEUS_CATALOGUE
 #   boundaries: auth:bearer, storage:read, network:external, user_data:read
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
@@ -63,9 +63,11 @@ Boundary discipline:
 from __future__ import annotations
 import asyncio
 import ipaddress
+import posixpath
+import re
 import socket
 from typing import Any, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit, unquote
 
 import httpx
 
@@ -74,6 +76,28 @@ from .registry import Tool, ToolError, TOOL_KIND_ODYSSEUS
 
 _CODEX_PREFIX = "/api/codex/"
 _ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
+_UNSAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9_-]")
+
+
+def safe_tool_name(workspace: str, cap: str) -> str:
+    """Build a provider-safe public tool name for an Odysseus capability.
+
+    OpenAI / Anthropic / Gemini function names must match ``[A-Za-z0-9_-]`` and
+    are length-bounded (~64). The workspace name is user-chosen, so sanitize it
+    (non-conforming chars -> ``_``) and bound the whole name to 64 chars, keeping
+    a short hash suffix for uniqueness when the sanitized form must be truncated.
+    """
+    ws = _UNSAFE_NAME_RE.sub("_", workspace).strip("_") or "ws"
+    name = f"odysseus_{ws}_{cap}"
+    if len(name) <= 64:
+        return name
+    import hashlib
+    h = hashlib.sha256(workspace.encode("utf-8")).hexdigest()[:6]
+    keep = 64 - len(f"odysseus__{h}_{cap}")
+    ws = ws[:max(1, keep)]
+    return f"odysseus_{ws}_{h}_{cap}"[:64]
+
+
 _NAT64 = (ipaddress.ip_network("64:ff9b::/96"), ipaddress.ip_network("64:ff9b:1::/48"))
 
 
@@ -167,11 +191,23 @@ ODYSSEUS_CATALOGUE: dict[str, dict] = {
 
 
 def _guard_path(path: str) -> str:
-    """Refuse anything that is not a relative path under /api/codex/."""
+    """Refuse anything that is not a relative path strictly under /api/codex/.
+
+    Beyond the raw prefix check, decode percent-encoding and reject any ``.``/
+    ``..`` segment, then confirm the normalized path still resolves under the
+    prefix — so ``/api/codex/../admin`` (or an encoded ``%2e%2e`` variant) cannot
+    escape the scoped surface once the client/server normalizes the URL.
+    """
     if not isinstance(path, str) or not path.startswith(_CODEX_PREFIX):
         raise ToolError(f"odysseus: path must start with {_CODEX_PREFIX!r}, got {path!r}")
     if "://" in path or path.startswith("//"):
         raise ToolError("odysseus: path must be a relative /api/codex/ path, not a URL")
+    decoded = unquote(urlsplit(path).path)
+    if any(seg in (".", "..") for seg in decoded.split("/")):
+        raise ToolError(f"odysseus: path must not contain '.'/'..' segments: {path!r}")
+    norm = posixpath.normpath(decoded)
+    if norm != _CODEX_PREFIX.rstrip("/") and not (norm + "/").startswith(_CODEX_PREFIX):
+        raise ToolError(f"odysseus: path escapes {_CODEX_PREFIX!r}: {path!r}")
     return path
 
 
@@ -260,5 +296,6 @@ async def invoke(tool: Tool, params: dict, *, user: dict) -> Any:
                          query=query, json_body=body, allow_private=allow_private)
 
 
-__all__ = ["probe_capabilities", "request", "invoke", "ODYSSEUS_CATALOGUE", "TOOL_KIND_ODYSSEUS"]
-# ratios: loc_comments=149:87 imports_exports=9:4 calls_definitions=45:7
+__all__ = ["probe_capabilities", "request", "invoke", "safe_tool_name",
+           "ODYSSEUS_CATALOGUE", "TOOL_KIND_ODYSSEUS"]
+# ratios: loc_comments=169:98 imports_exports=12:5 calls_definitions=57:8
