@@ -1,4 +1,4 @@
-# ratios: loc_comments=1321:297 imports_exports=186:98 calls_definitions=527:115
+# ratios: loc_comments=1340:300 imports_exports=186:98 calls_definitions=534:116
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1692,11 +1692,35 @@ async def _tools_odysseus_relay_request_async() -> None:
                 raise AssertionError(f"query/fragment base_url not refused: {bad_base!r}")
             except ToolError:
                 pass
+
+        # a malformed port is a ToolError (not a bare ValueError -> 500)
+        try:
+            await od.request("http://odysseus.local:notaport", "tkn", "GET",
+                             "/api/codex/capabilities", allow_private=True, client=client)
+            raise AssertionError("malformed port not refused")
+        except ToolError:
+            pass
     finally:
         await client.aclose()
 
-    # catalogue exposes the generic passthrough + capability probe
+    # a transport failure (offline workspace) surfaces as ToolError, not httpx.*
+    def _boom(request):
+        raise httpx.ConnectError("refused", request=request)
+    boom_client = httpx.AsyncClient(transport=httpx.MockTransport(_boom))
+    try:
+        await od.request("http://odysseus.local", "tkn", "GET", "/api/codex/capabilities",
+                         allow_private=True, client=boom_client)
+        raise AssertionError("transport error not wrapped as ToolError")
+    except ToolError:
+        pass
+    finally:
+        await boom_client.aclose()
+
+    # catalogue exposes the generic passthrough + capability probe, and matches
+    # the real Odysseus endpoints (calendar needs start/end; memory is a list).
     assert "request" in od.ODYSSEUS_CATALOGUE and "capabilities" in od.ODYSSEUS_CATALOGUE
+    assert od.ODYSSEUS_CATALOGUE["calendar_events"]["input_schema"]["required"] == ["start", "end"]
+    assert "memory_list" in od.ODYSSEUS_CATALOGUE and "memory_search" not in od.ODYSSEUS_CATALOGUE
 
     # provider-safe tool names: [A-Za-z0-9_-] only, <= 64 chars, even for a
     # workspace name full of characters providers reject.
@@ -1993,4 +2017,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1321:297 imports_exports=186:98 calls_definitions=527:115
+# ratios: loc_comments=1340:300 imports_exports=186:98 calls_definitions=534:116

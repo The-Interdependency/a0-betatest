@@ -1,4 +1,4 @@
-# ratios: loc_comments=174:103 imports_exports=12:5 calls_definitions=60:8
+# ratios: loc_comments=191:110 imports_exports=12:5 calls_definitions=62:8
 # === MODULE_BUILD ===
 # id: tools_odysseus_relay
 #   module_name: odysseus_relay
@@ -158,27 +158,37 @@ ODYSSEUS_CATALOGUE: dict[str, dict] = {
         "description": "Report which Odysseus capabilities this api_token may use.",
         "input_schema": {"type": "object", "properties": {}, "required": []},
     },
-    "memory_search": {
+    "memory_list": {
         "method": "GET", "path": "/api/codex/memory", "scope": "memory:read",
-        "query": ["q", "limit"],
-        "description": "Search the Odysseus memory store (optional q, limit).",
-        "input_schema": {"type": "object", "properties": {
-            "q": {"type": "string"}, "limit": {"type": "integer"}}, "required": []},
+        "description": "List all stored Odysseus memories. This endpoint has no "
+                       "server-side filter — it returns the full memory list.",
+        "input_schema": {"type": "object", "properties": {}, "required": []},
     },
     "todos_list": {
         "method": "GET", "path": "/api/codex/todos", "scope": "todos:read",
-        "description": "List the user's Odysseus to-dos.",
-        "input_schema": {"type": "object", "properties": {}, "required": []},
+        "query": ["archived", "label"],
+        "description": "List the user's Odysseus to-dos (optional archived, label).",
+        "input_schema": {"type": "object", "properties": {
+            "archived": {"type": "boolean"}, "label": {"type": "string"}}, "required": []},
     },
     "documents_list": {
         "method": "GET", "path": "/api/codex/documents", "scope": "docs:read",
-        "description": "List the user's Odysseus documents.",
-        "input_schema": {"type": "object", "properties": {}, "required": []},
+        "query": ["search", "language", "sort", "limit", "archived"],
+        "description": "List/search the user's Odysseus documents (optional "
+                       "search, language, sort, limit, archived).",
+        "input_schema": {"type": "object", "properties": {
+            "search": {"type": "string"}, "language": {"type": "string"},
+            "sort": {"type": "string"}, "limit": {"type": "integer"},
+            "archived": {"type": "boolean"}}, "required": []},
     },
     "calendar_events": {
         "method": "GET", "path": "/api/codex/calendar/events", "scope": "calendar:read",
-        "description": "List Odysseus calendar events.",
-        "input_schema": {"type": "object", "properties": {}, "required": []},
+        "query": ["start", "end", "calendar"],
+        "description": "List Odysseus calendar events in a window. start and end "
+                       "are REQUIRED (ISO datetimes); calendar is optional.",
+        "input_schema": {"type": "object", "properties": {
+            "start": {"type": "string"}, "end": {"type": "string"},
+            "calendar": {"type": "string"}}, "required": ["start", "end"]},
     },
     "request": {
         "method": None, "path": None, "scope": "(varies — Odysseus enforces per path)",
@@ -230,22 +240,36 @@ async def request(base_url: str, token: Optional[str], method: str, path: str, *
     if method not in _ALLOWED_METHODS:
         raise ToolError(f"odysseus: unsupported method {method!r}")
     _guard_path(path)
-    await _assert_allowed_host(base_url, allow_private)
-    # Build the URL by components so the guarded /api/codex/ path always lands in
-    # the PATH — a base_url carrying a query/fragment (e.g. ".../latest?x=") would
-    # otherwise push the path into the query and defeat the /api/codex/ pinning.
+    # Validate base_url (incl. a malformed port) BEFORE the host guard, which also
+    # reads the port — so a bad URL raises ToolError (handled) rather than a bare
+    # ValueError that the /api/tools invoke route would turn into a 500. Building
+    # the URL by components also keeps the guarded /api/codex/ path in the PATH; a
+    # base_url with a query/fragment would otherwise push it into the query and
+    # defeat the pinning.
     sp = urlsplit(base_url)
     if sp.scheme not in ("http", "https") or not sp.netloc:
         raise ToolError(f"odysseus: base_url must be http(s)://host[:port], got {base_url!r}")
     if sp.query or sp.fragment:
         raise ToolError("odysseus: base_url must not contain a query or fragment")
+    try:
+        _ = sp.port  # property raises ValueError on a malformed port
+    except ValueError:
+        raise ToolError(f"odysseus: invalid port in base_url {base_url!r}")
+    await _assert_allowed_host(base_url, allow_private)
     url = urlunsplit((sp.scheme, sp.netloc, sp.path.rstrip("/") + path, "", ""))
     headers = {"Accept": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
     async def _do(cli: httpx.AsyncClient) -> Any:
-        r = await cli.request(method, url, params=query or None, json=json_body, headers=headers)
+        # An offline / timing-out / connection-reset workspace raises
+        # httpx.RequestError, which is NOT a ToolError — surface it as one so the
+        # invoke route returns a handled tool failure instead of a 500. Only the
+        # exception class name is included (the message can embed the base_url).
+        try:
+            r = await cli.request(method, url, params=query or None, json=json_body, headers=headers)
+        except httpx.RequestError as e:
+            raise ToolError(f"odysseus request failed ({type(e).__name__})")
         # A non-2xx (Odysseus 401/403/404 with a {"detail": ...} body) or an
         # off-host redirect is a transport failure, not a result — surface it.
         if r.status_code >= 400 or r.is_redirect:
@@ -308,4 +332,4 @@ async def invoke(tool: Tool, params: dict, *, user: dict) -> Any:
 
 __all__ = ["probe_capabilities", "request", "invoke", "safe_tool_name",
            "ODYSSEUS_CATALOGUE", "TOOL_KIND_ODYSSEUS"]
-# ratios: loc_comments=174:103 imports_exports=12:5 calls_definitions=60:8
+# ratios: loc_comments=191:110 imports_exports=12:5 calls_definitions=62:8

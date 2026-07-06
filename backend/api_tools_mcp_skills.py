@@ -1,4 +1,4 @@
-# ratios: loc_comments=325:84 imports_exports=16:25 calls_definitions=134:27
+# ratios: loc_comments=331:87 imports_exports=17:25 calls_definitions=137:27
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -46,6 +46,7 @@ import logging
 import time
 import uuid
 from typing import Any, Optional
+from urllib.parse import urlsplit
 
 _log = logging.getLogger("a0p.tools_mcp_skills")
 
@@ -354,6 +355,10 @@ async def add_odysseus_server(body: OdysseusServerBody, user=Depends(get_current
         raise HTTPException(400, "base_url must be http(s)://...")
     if "?" in body.base_url or "#" in body.base_url:
         raise HTTPException(400, "base_url must not contain a query or fragment")
+    try:
+        _ = urlsplit(body.base_url).port  # raises ValueError on a malformed port
+    except ValueError:
+        raise HTTPException(400, "base_url has an invalid port")
     if await odysseus_servers_col.find_one({"user_id": user["id"], "name": body.name}):
         raise HTTPException(409, f"odysseus workspace {body.name!r} already exists")
     doc = {"_id": str(uuid.uuid4()), "user_id": user["id"],
@@ -386,6 +391,10 @@ async def delete_odysseus_server(server_id: str, user=Depends(get_current_user))
         raise HTTPException(404, "odysseus workspace not found")
     await user_tools_col.delete_many({"user_id": user["id"], "mcp_server_id": server_id, "source": "odysseus"})
     await odysseus_servers_col.delete_one({"_id": server_id})
+    # Evict the now-deleted tools from the in-process registry so an agent stops
+    # advertising them before the next /api/tools hydrate (reconcile drops any
+    # registry entry no longer backed by a Mongo row).
+    await _hydrate_user_tools(user["id"])
     return {"ok": True}
 
 
@@ -472,4 +481,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=325:84 imports_exports=16:25 calls_definitions=134:27
+# ratios: loc_comments=331:87 imports_exports=17:25 calls_definitions=137:27
