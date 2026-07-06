@@ -1,9 +1,9 @@
-# ratios: loc_comments=235:62 imports_exports=14:20 calls_definitions=95:21
+# ratios: loc_comments=303:70 imports_exports=14:25 calls_definitions=125:27
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
 #   module_kind: route
-#   summary: REST surface for the tools / MCP-client / skills layer — /api/tools (list, register user-webhook tool, invoke), /api/mcp/servers (CRUD external MCP servers, refresh their tools), /api/skills (list, register w/ overlap warning, delete, sync from skill-lib)
+#   summary: REST surface for the tools / MCP-client / Odysseus-client / skills layer — /api/tools (list, register user-webhook tool, invoke), /api/mcp/servers (CRUD external MCP servers, refresh their tools), /api/odysseus/servers (CRUD registered Odysseus workspaces, refresh their scoped /api/codex/* catalogue tools), /api/skills (list, register w/ overlap warning, delete, sync from skill-lib)
 #   owner: Erin Spencer
 #   public_surface: router
 #   internal_surface: _refresh_mcp_tools, _user_id
@@ -51,13 +51,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from auth import get_current_user
 from db import (
-    user_tools_col, mcp_servers_col, skills_col,
+    user_tools_col, mcp_servers_col, odysseus_servers_col, skills_col,
     pending_overrides_col, fiq_audit_col,
 )
 
 import tools as tools_pkg
-from tools.registry import Tool, ToolError, TOOL_KIND_NATIVE, TOOL_KIND_WEBHOOK, TOOL_KIND_MCP, list_tools as _list_tools
-from tools import mcp_relay
+from tools.registry import (
+    Tool, ToolError, TOOL_KIND_NATIVE, TOOL_KIND_WEBHOOK, TOOL_KIND_MCP,
+    TOOL_KIND_ODYSSEUS, list_tools as _list_tools,
+)
+from tools import mcp_relay, odysseus_relay
 import skills as skills_pkg
 
 
@@ -263,6 +266,92 @@ async def delete_mcp_server(server_id: str, user=Depends(get_current_user)):
     return {"ok": True}
 
 
+# ---- Odysseus workspaces (scoped /api/codex/* REST client) ---------------
+class OdysseusServerBody(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    name: str = Field(..., min_length=2, max_length=64)
+    base_url: str
+    token: Optional[str] = None
+
+
+async def _refresh_odysseus_tools(user_id: str, conn: dict) -> dict:
+    """Probe the Odysseus capabilities endpoint, (re)mirror the catalogue tools.
+
+    Every catalogue capability is materialized as an ``odysseus:<name>:<cap>``
+    tool of kind ``odysseus``; Odysseus itself enforces api_token scopes at call
+    time, so a capability the token cannot reach simply returns a scoped error
+    when invoked. The probe result (what the token *can* reach) is returned so
+    the caller sees the effective grant.
+    """
+    probe = await odysseus_relay.probe_capabilities(conn["base_url"], conn.get("token"))
+    now = int(time.time() * 1000)
+    await user_tools_col.delete_many({"user_id": user_id, "mcp_server_id": conn["_id"], "source": "odysseus"})
+    out: list[str] = []
+    for cap, spec in odysseus_relay.ODYSSEUS_CATALOGUE.items():
+        doc = {
+            "_id": str(uuid.uuid4()), "user_id": user_id,
+            "name": f"odysseus:{conn['name']}:{cap}",
+            "kind": TOOL_KIND_ODYSSEUS,
+            "description": spec.get("description", ""),
+            "input_schema": spec.get("input_schema") or {"type": "object"},
+            "mcp_server_id": conn["_id"], "remote_name": cap,
+            "tags": ["odysseus", conn["name"]], "source": "odysseus",
+            "created_at_ms": now,
+        }
+        await user_tools_col.insert_one(doc)
+        out.append(doc["name"])
+    await odysseus_servers_col.update_one(
+        {"_id": conn["_id"]},
+        {"$set": {"last_refresh_ms": now, "tools_count": len(out),
+                  "reachable": probe["ok"], "probe_error": probe["error"]}},
+    )
+    return {"ok": True, "tools": out, "capabilities": probe["capabilities"],
+            "reachable": probe["ok"], "error": probe["error"]}
+
+
+@router.get("/odysseus/servers")
+async def list_odysseus_servers(user=Depends(get_current_user)):
+    out = []
+    async for d in odysseus_servers_col.find({"user_id": user["id"]}).sort("name", 1):
+        out.append({"id": d["_id"], "name": d["name"], "base_url": d["base_url"],
+                    "tools_count": d.get("tools_count", 0),
+                    "last_refresh_ms": d.get("last_refresh_ms"),
+                    "reachable": d.get("reachable"), "has_token": bool(d.get("token"))})
+    return {"servers": out}
+
+
+@router.post("/odysseus/servers")
+async def add_odysseus_server(body: OdysseusServerBody, user=Depends(get_current_user)):
+    if not body.base_url.startswith(("http://", "https://")):
+        raise HTTPException(400, "base_url must be http(s)://...")
+    if await odysseus_servers_col.find_one({"user_id": user["id"], "name": body.name}):
+        raise HTTPException(409, f"odysseus workspace {body.name!r} already exists")
+    doc = {"_id": str(uuid.uuid4()), "user_id": user["id"],
+           "name": body.name, "base_url": body.base_url.rstrip("/"), "token": body.token,
+           "created_at_ms": int(time.time() * 1000), "tools_count": 0}
+    await odysseus_servers_col.insert_one(doc)
+    refresh = await _refresh_odysseus_tools(user["id"], doc)
+    return {"ok": True, "id": doc["_id"], "refresh": refresh}
+
+
+@router.post("/odysseus/servers/{server_id}/refresh")
+async def refresh_odysseus_server(server_id: str, user=Depends(get_current_user)):
+    conn = await odysseus_servers_col.find_one({"_id": server_id, "user_id": user["id"]})
+    if not conn:
+        raise HTTPException(404, "odysseus workspace not found")
+    return await _refresh_odysseus_tools(user["id"], conn)
+
+
+@router.delete("/odysseus/servers/{server_id}")
+async def delete_odysseus_server(server_id: str, user=Depends(get_current_user)):
+    conn = await odysseus_servers_col.find_one({"_id": server_id, "user_id": user["id"]})
+    if not conn:
+        raise HTTPException(404, "odysseus workspace not found")
+    await user_tools_col.delete_many({"user_id": user["id"], "mcp_server_id": server_id, "source": "odysseus"})
+    await odysseus_servers_col.delete_one({"_id": server_id})
+    return {"ok": True}
+
+
 # ---- Skills --------------------------------------------------------------
 class SkillBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
@@ -346,4 +435,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=235:62 imports_exports=14:20 calls_definitions=95:21
+# ratios: loc_comments=303:70 imports_exports=14:25 calls_definitions=125:27

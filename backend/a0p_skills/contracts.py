@@ -1,4 +1,4 @@
-# ratios: loc_comments=1254:282 imports_exports=182:97 calls_definitions=500:112
+# ratios: loc_comments=1294:288 imports_exports=185:98 calls_definitions=515:115
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1612,6 +1612,63 @@ async def _tools_mcp_relay_request_async() -> None:
     assert isinstance(r["error"], str) and r["error"]
 
 
+def tools_odysseus_relay_request_holds():
+    """Odysseus relay: round-trips a stubbed /api/codex/* call, guards path/scope."""
+    return _tools_odysseus_relay_request_async()
+
+
+async def _tools_odysseus_relay_request_async() -> None:
+    import httpx
+    from tools import odysseus_relay as od
+    from tools.registry import ToolError
+
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["auth"] = request.headers.get("authorization")
+        if request.url.path == "/api/codex/capabilities":
+            return httpx.Response(200, json={"token_scopes": ["memory:read"]})
+        if request.url.path == "/api/codex/emails/send":
+            return httpx.Response(403, json={"detail": "scope"})
+        return httpx.Response(404, json={"detail": "nope"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        # 200 round-trip with the Bearer token attached
+        data = await od.request("http://odysseus.local", "tkn", "GET",
+                                "/api/codex/capabilities", client=client)
+        assert data.get("token_scopes") == ["memory:read"], data
+        assert seen["auth"] == "Bearer tkn", seen
+
+        # non-2xx surfaces as ToolError (not a silent empty result)
+        try:
+            await od.request("http://odysseus.local", "tkn", "POST",
+                             "/api/codex/emails/send", json_body={}, client=client)
+            raise AssertionError("403 did not raise ToolError")
+        except ToolError:
+            pass
+
+        # a path outside /api/codex/ is refused before any network call
+        try:
+            await od.request("http://odysseus.local", "tkn", "GET", "/etc/passwd", client=client)
+            raise AssertionError("non-codex path was not refused")
+        except ToolError:
+            pass
+
+        # an unsupported method is refused
+        try:
+            await od.request("http://odysseus.local", "tkn", "TRACE",
+                             "/api/codex/capabilities", client=client)
+            raise AssertionError("bad method was not refused")
+        except ToolError:
+            pass
+    finally:
+        await client.aclose()
+
+    # catalogue exposes the generic passthrough + capability probe
+    assert "request" in od.ODYSSEUS_CATALOGUE and "capabilities" in od.ODYSSEUS_CATALOGUE
+
+
 def tools_mcp_server_initialize_holds():
     """JSON-RPC `initialize` is open and returns serverInfo + protocolVersion."""
     return _tools_mcp_server_initialize_async()
@@ -1896,4 +1953,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1254:282 imports_exports=182:97 calls_definitions=500:112
+# ratios: loc_comments=1294:288 imports_exports=185:98 calls_definitions=515:115
