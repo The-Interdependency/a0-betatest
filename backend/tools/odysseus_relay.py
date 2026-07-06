@@ -1,4 +1,4 @@
-# ratios: loc_comments=149:84 imports_exports=9:4 calls_definitions=45:7
+# ratios: loc_comments=149:87 imports_exports=9:4 calls_definitions=45:7
 # === MODULE_BUILD ===
 # id: tools_odysseus_relay
 #   module_name: odysseus_relay
@@ -217,13 +217,16 @@ async def request(base_url: str, token: Optional[str], method: str, path: str, *
 
 async def probe_capabilities(base_url: str, token: Optional[str],
                              allow_private: bool = False) -> dict:
-    """GET /api/codex/capabilities. Returns {ok, capabilities, error} (never raises)."""
+    """GET /api/codex/capabilities. Returns {ok, capabilities, error_kind} (never raises)."""
     try:
         data = await request(base_url, token, "GET", "/api/codex/capabilities",
                              timeout=10.0, allow_private=allow_private)
-        return {"ok": True, "capabilities": data, "error": None}
+        return {"ok": True, "capabilities": data, "error_kind": None}
     except Exception as e:
-        return {"ok": False, "capabilities": None, "error": f"{type(e).__name__}: {e}"}
+        # Return ONLY the exception class name (safe — not user content). The raw
+        # message can embed the registered base_url / stack detail, so it is never
+        # carried in this dict (which would taint every field returned to the API).
+        return {"ok": False, "capabilities": None, "error_kind": type(e).__name__}
 
 
 def _resolve_spec(cap_key: str) -> dict:
@@ -258,4 +261,4 @@ async def invoke(tool: Tool, params: dict, *, user: dict) -> Any:
 
 
 __all__ = ["probe_capabilities", "request", "invoke", "ODYSSEUS_CATALOGUE", "TOOL_KIND_ODYSSEUS"]
-# ratios: loc_comments=149:84 imports_exports=9:4 calls_definitions=45:7
+# ratios: loc_comments=149:87 imports_exports=9:4 calls_definitions=45:7

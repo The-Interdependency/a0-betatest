@@ -1,4 +1,4 @@
-# ratios: loc_comments=315:80 imports_exports=15:25 calls_definitions=130:28
+# ratios: loc_comments=313:77 imports_exports=15:25 calls_definitions=129:27
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -48,16 +48,6 @@ import uuid
 from typing import Any, Optional
 
 _log = logging.getLogger("a0p.tools_mcp_skills")
-
-
-def _oneline(s: Any, limit: int = 300) -> str:
-    """Collapse a value to a single, length-bounded log line.
-
-    Strips CR/LF (and other control chars) so a user-influenced string — e.g. an
-    outbound-probe error derived from a registered base_url — cannot inject
-    forged log records (log-injection guard).
-    """
-    return "".join(c if c.isprintable() else " " for c in str(s))[:limit]
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -321,8 +311,10 @@ async def _refresh_odysseus_tools(user_id: str, conn: dict) -> dict:
     # exception text (which can carry internal host/stack detail) back to the
     # caller. The client gets a coarse reachability signal instead.
     if not probe["ok"]:
-        _log.warning("odysseus workspace %s probe failed: %s",
-                     _oneline(conn["_id"], 64), _oneline(probe["error"]))
+        # Log only the exception CLASS name (safe — not user content). The full
+        # message can embed the registered base_url, so it is never logged.
+        _log.warning("odysseus workspace probe failed (kind=%s)",
+                     probe.get("error_kind") or "error")
     coarse = None if probe["ok"] else "workspace unreachable or refused"
     await odysseus_servers_col.update_one(
         {"_id": conn["_id"]},
@@ -461,4 +453,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=315:80 imports_exports=15:25 calls_definitions=130:28
+# ratios: loc_comments=313:77 imports_exports=15:25 calls_definitions=129:27
