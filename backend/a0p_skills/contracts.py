@@ -1,4 +1,4 @@
-# ratios: loc_comments=1313:294 imports_exports=186:98 calls_definitions=524:115
+# ratios: loc_comments=1321:297 imports_exports=186:98 calls_definitions=527:115
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1682,6 +1682,16 @@ async def _tools_odysseus_relay_request_async() -> None:
                 raise AssertionError(f"path-escape not refused: {bad!r}")
             except ToolError:
                 pass
+
+        # base_url carrying a query/fragment is refused (would push the guarded
+        # path into the query and defeat /api/codex/ pinning).
+        for bad_base in ("http://odysseus.local/latest?x=", "http://odysseus.local/p#f"):
+            try:
+                await od.request(bad_base, "tkn", "GET", "/api/codex/capabilities",
+                                 allow_private=True, client=client)
+                raise AssertionError(f"query/fragment base_url not refused: {bad_base!r}")
+            except ToolError:
+                pass
     finally:
         await client.aclose()
 
@@ -1693,6 +1703,8 @@ async def _tools_odysseus_relay_request_async() -> None:
     nm = od.safe_tool_name("my:weird/workspace name!", "memory_search")
     import re as _re
     assert _re.fullmatch(r"[A-Za-z0-9_-]+", nm) and len(nm) <= 64, nm
+    # distinct workspaces that sanitize to the same alias still get distinct names
+    assert od.safe_tool_name("foo/bar", "memory_search") != od.safe_tool_name("foo:bar", "memory_search")
     long_nm = od.safe_tool_name("x" * 200, "calendar_events")
     assert _re.fullmatch(r"[A-Za-z0-9_-]+", long_nm) and len(long_nm) <= 64, long_nm
 
@@ -1981,4 +1993,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1313:294 imports_exports=186:98 calls_definitions=524:115
+# ratios: loc_comments=1321:297 imports_exports=186:98 calls_definitions=527:115

@@ -1,4 +1,4 @@
-# ratios: loc_comments=320:81 imports_exports=16:25 calls_definitions=131:27
+# ratios: loc_comments=325:84 imports_exports=16:25 calls_definitions=134:27
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -352,6 +352,8 @@ async def list_odysseus_servers(user=Depends(get_current_user)):
 async def add_odysseus_server(body: OdysseusServerBody, user=Depends(get_current_user)):
     if not body.base_url.startswith(("http://", "https://")):
         raise HTTPException(400, "base_url must be http(s)://...")
+    if "?" in body.base_url or "#" in body.base_url:
+        raise HTTPException(400, "base_url must not contain a query or fragment")
     if await odysseus_servers_col.find_one({"user_id": user["id"], "name": body.name}):
         raise HTTPException(409, f"odysseus workspace {body.name!r} already exists")
     doc = {"_id": str(uuid.uuid4()), "user_id": user["id"],
@@ -360,6 +362,10 @@ async def add_odysseus_server(body: OdysseusServerBody, user=Depends(get_current
            "created_at_ms": int(time.time() * 1000), "tools_count": 0}
     await odysseus_servers_col.insert_one(doc)
     refresh = await _refresh_odysseus_tools(user["id"], doc)
+    # Register the mirrored tools in-process now (mirrors webhook registration),
+    # so an agent tool loop can build provider schemas without waiting for a
+    # later /api/tools hydrate.
+    await _hydrate_user_tools(user["id"])
     return {"ok": True, "id": doc["_id"], "refresh": refresh}
 
 
@@ -368,7 +374,9 @@ async def refresh_odysseus_server(server_id: str, user=Depends(get_current_user)
     conn = await odysseus_servers_col.find_one({"_id": server_id, "user_id": user["id"]})
     if not conn:
         raise HTTPException(404, "odysseus workspace not found")
-    return await _refresh_odysseus_tools(user["id"], conn)
+    refresh = await _refresh_odysseus_tools(user["id"], conn)
+    await _hydrate_user_tools(user["id"])
+    return refresh
 
 
 @router.delete("/odysseus/servers/{server_id}")
@@ -464,4 +472,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=320:81 imports_exports=16:25 calls_definitions=131:27
+# ratios: loc_comments=325:84 imports_exports=16:25 calls_definitions=134:27

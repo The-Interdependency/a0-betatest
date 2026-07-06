@@ -1,4 +1,4 @@
-# ratios: loc_comments=169:98 imports_exports=12:5 calls_definitions=57:8
+# ratios: loc_comments=174:103 imports_exports=12:5 calls_definitions=60:8
 # === MODULE_BUILD ===
 # id: tools_odysseus_relay
 #   module_name: odysseus_relay
@@ -62,12 +62,13 @@ Boundary discipline:
 """
 from __future__ import annotations
 import asyncio
+import hashlib
 import ipaddress
 import posixpath
 import re
 import socket
 from typing import Any, Optional
-from urllib.parse import urlparse, urlsplit, unquote
+from urllib.parse import urlparse, urlsplit, urlunsplit, unquote
 
 import httpx
 
@@ -84,15 +85,16 @@ def safe_tool_name(workspace: str, cap: str) -> str:
 
     OpenAI / Anthropic / Gemini function names must match ``[A-Za-z0-9_-]`` and
     are length-bounded (~64). The workspace name is user-chosen, so sanitize it
-    (non-conforming chars -> ``_``) and bound the whole name to 64 chars, keeping
-    a short hash suffix for uniqueness when the sanitized form must be truncated.
+    (non-conforming chars -> ``_``) and bound the whole name to 64 chars. A short
+    hash of the *original* workspace name is ALWAYS included so two names that
+    sanitize to the same alias (e.g. ``foo/bar`` and ``foo:bar`` -> ``foo_bar``)
+    still produce distinct tool names instead of silently colliding.
     """
     ws = _UNSAFE_NAME_RE.sub("_", workspace).strip("_") or "ws"
-    name = f"odysseus_{ws}_{cap}"
+    h = hashlib.sha256(workspace.encode("utf-8")).hexdigest()[:6]
+    name = f"odysseus_{ws}_{h}_{cap}"
     if len(name) <= 64:
         return name
-    import hashlib
-    h = hashlib.sha256(workspace.encode("utf-8")).hexdigest()[:6]
     keep = 64 - len(f"odysseus__{h}_{cap}")
     ws = ws[:max(1, keep)]
     return f"odysseus_{ws}_{h}_{cap}"[:64]
@@ -229,7 +231,15 @@ async def request(base_url: str, token: Optional[str], method: str, path: str, *
         raise ToolError(f"odysseus: unsupported method {method!r}")
     _guard_path(path)
     await _assert_allowed_host(base_url, allow_private)
-    url = base_url.rstrip("/") + path
+    # Build the URL by components so the guarded /api/codex/ path always lands in
+    # the PATH — a base_url carrying a query/fragment (e.g. ".../latest?x=") would
+    # otherwise push the path into the query and defeat the /api/codex/ pinning.
+    sp = urlsplit(base_url)
+    if sp.scheme not in ("http", "https") or not sp.netloc:
+        raise ToolError(f"odysseus: base_url must be http(s)://host[:port], got {base_url!r}")
+    if sp.query or sp.fragment:
+        raise ToolError("odysseus: base_url must not contain a query or fragment")
+    url = urlunsplit((sp.scheme, sp.netloc, sp.path.rstrip("/") + path, "", ""))
     headers = {"Accept": "application/json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -298,4 +308,4 @@ async def invoke(tool: Tool, params: dict, *, user: dict) -> Any:
 
 __all__ = ["probe_capabilities", "request", "invoke", "safe_tool_name",
            "ODYSSEUS_CATALOGUE", "TOOL_KIND_ODYSSEUS"]
-# ratios: loc_comments=169:98 imports_exports=12:5 calls_definitions=57:8
+# ratios: loc_comments=174:103 imports_exports=12:5 calls_definitions=60:8
