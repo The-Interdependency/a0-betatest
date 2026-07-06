@@ -1,4 +1,4 @@
-# ratios: loc_comments=1294:288 imports_exports=185:98 calls_definitions=515:115
+# ratios: loc_comments=1301:290 imports_exports=185:98 calls_definitions=518:115
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1634,34 +1634,44 @@ async def _tools_odysseus_relay_request_async() -> None:
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     try:
-        # 200 round-trip with the Bearer token attached
+        # 200 round-trip with the Bearer token attached (allow_private opts the
+        # stub self-hosted host past the SSRF guard).
         data = await od.request("http://odysseus.local", "tkn", "GET",
-                                "/api/codex/capabilities", client=client)
+                                "/api/codex/capabilities", allow_private=True, client=client)
         assert data.get("token_scopes") == ["memory:read"], data
         assert seen["auth"] == "Bearer tkn", seen
 
         # non-2xx surfaces as ToolError (not a silent empty result)
         try:
-            await od.request("http://odysseus.local", "tkn", "POST",
-                             "/api/codex/emails/send", json_body={}, client=client)
+            await od.request("http://odysseus.local", "tkn", "POST", "/api/codex/emails/send",
+                             json_body={}, allow_private=True, client=client)
             raise AssertionError("403 did not raise ToolError")
         except ToolError:
             pass
 
         # a path outside /api/codex/ is refused before any network call
         try:
-            await od.request("http://odysseus.local", "tkn", "GET", "/etc/passwd", client=client)
+            await od.request("http://odysseus.local", "tkn", "GET", "/etc/passwd",
+                             allow_private=True, client=client)
             raise AssertionError("non-codex path was not refused")
         except ToolError:
             pass
 
         # an unsupported method is refused
         try:
-            await od.request("http://odysseus.local", "tkn", "TRACE",
-                             "/api/codex/capabilities", client=client)
+            await od.request("http://odysseus.local", "tkn", "TRACE", "/api/codex/capabilities",
+                             allow_private=True, client=client)
             raise AssertionError("bad method was not refused")
         except ToolError:
             pass
+
+        # SSRF guard: a non-global base_url is refused unless allow_private is set
+        try:
+            await od.request("http://169.254.169.254", "tkn", "GET", "/api/codex/capabilities",
+                             allow_private=False, client=client)
+            raise AssertionError("SSRF guard did not refuse a link-local host")
+        except ToolError as e:
+            assert "non-global" in str(e), str(e)
     finally:
         await client.aclose()
 
@@ -1953,4 +1963,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1294:288 imports_exports=185:98 calls_definitions=515:115
+# ratios: loc_comments=1301:290 imports_exports=185:98 calls_definitions=518:115

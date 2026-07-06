@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   check-replit-refs:
     name: Verify no @replit packages in frontend build output

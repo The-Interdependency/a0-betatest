@@ -1,12 +1,12 @@
-# ratios: loc_comments=103:70 imports_exports=5:4 calls_definitions=28:6
+# ratios: loc_comments=149:84 imports_exports=9:4 calls_definitions=45:7
 # === MODULE_BUILD ===
 # id: tools_odysseus_relay
 #   module_name: odysseus_relay
 #   module_kind: adapter
-#   summary: relay a0p tool calls to a registered Odysseus workspace over its scoped /api/codex/* REST surface — outbound httpx client attaching the per-connection Bearer api_token; the destination host is the operator-registered base_url (never agent-supplied) and the path is pinned to the /api/codex/ prefix, so Odysseus's own api_token scopes bound every capability while a0p sentinels gate each call
+#   summary: relay a0p tool calls to a registered Odysseus workspace over its scoped /api/codex/* REST surface — outbound httpx client attaching the per-connection Bearer api_token; the destination host is the operator-registered base_url (never agent-supplied) and the path is pinned to the /api/codex/ prefix; an SSRF guard refuses non-global hosts unless the connection is explicitly allow_private (self-hosted/localhost opt-in), so Odysseus's own api_token scopes bound every capability while a0p sentinels gate each call
 #   owner: Erin Spencer
 #   public_surface: probe_capabilities, request, invoke, ODYSSEUS_CATALOGUE
-#   internal_surface: _guard_path, _resolve_spec
+#   internal_surface: _guard_path, _resolve_spec, _assert_allowed_host
 #   auth_boundary: bearer
 #   storage_boundary: read
 #   network_boundary: external
@@ -61,7 +61,11 @@ Boundary discipline:
     fabricated endpoint body schema.
 """
 from __future__ import annotations
+import asyncio
+import ipaddress
+import socket
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import httpx
 
@@ -70,6 +74,54 @@ from .registry import Tool, ToolError, TOOL_KIND_ODYSSEUS
 
 _CODEX_PREFIX = "/api/codex/"
 _ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
+_NAT64 = (ipaddress.ip_network("64:ff9b::/96"), ipaddress.ip_network("64:ff9b:1::/48"))
+
+
+async def _assert_allowed_host(base_url: str, allow_private: bool) -> None:
+    """SSRF guard for a registered workspace host.
+
+    Resolves ``base_url``'s host and, unless the connection is explicitly marked
+    ``allow_private`` (a local-first / self-hosted Odysseus on localhost or a
+    LAN — the common case), refuses any address that is not globally routable.
+    This mirrors the ``fetch_url`` guard so a registered ``base_url`` cannot aim
+    a0p at cloud metadata (169.254.169.254), loopback, or internal services;
+    ``allow_private`` is a per-connection opt-in the user sets knowingly. DNS is
+    resolved in a worker thread with a bounded timeout, and an IPv6 wrapper's
+    embedded IPv4 (v4-mapped / 6to4 / Teredo / NAT64) is checked too.
+    """
+    p = urlparse(base_url)
+    host = p.hostname
+    if not host:
+        raise ToolError("odysseus: base_url missing host")
+    if allow_private:
+        return  # user opted in to a private / self-hosted target
+    port = p.port or (443 if p.scheme == "https" else 80)
+    try:
+        infos = await asyncio.wait_for(
+            asyncio.to_thread(socket.getaddrinfo, host, port, 0, 0, socket.IPPROTO_TCP),
+            timeout=5.0,
+        )
+    except asyncio.TimeoutError:
+        raise ToolError(f"odysseus: DNS resolution timed out for host {host!r}")
+    except socket.gaierror as e:
+        raise ToolError(f"odysseus: cannot resolve host {host!r}: {e}")
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        candidates = [ip]
+        if isinstance(ip, ipaddress.IPv6Address):
+            if ip.ipv4_mapped:
+                candidates.append(ip.ipv4_mapped)
+            if ip.sixtofour:
+                candidates.append(ip.sixtofour)
+            if ip.teredo:
+                candidates.extend(a for a in ip.teredo if a)
+            if any(ip in net for net in _NAT64):
+                candidates.append(ipaddress.ip_address(int(ip) & 0xFFFFFFFF))
+        for cand in candidates:
+            if not cand.is_global:
+                raise ToolError(
+                    f"odysseus: refusing non-global address {cand} for host {host!r} "
+                    "(set allow_private on the connection for a self-hosted Odysseus)")
 
 
 # Stable capability key -> call spec. `request` is the generic scoped passthrough
@@ -125,16 +177,22 @@ def _guard_path(path: str) -> str:
 
 async def request(base_url: str, token: Optional[str], method: str, path: str, *,
                   query: Optional[dict] = None, json_body: Optional[dict] = None,
-                  timeout: float = 20.0, client: Optional[httpx.AsyncClient] = None) -> Any:
+                  timeout: float = 20.0, allow_private: bool = False,
+                  client: Optional[httpx.AsyncClient] = None) -> Any:
     """Call one Odysseus /api/codex/* endpoint; return parsed JSON or raise ToolError.
 
-    ``client`` lets a caller inject a pre-built AsyncClient (used by the contract
-    test's MockTransport); when omitted a short-lived client is created here.
+    The destination host is ``base_url`` (the operator-registered workspace host,
+    never agent-supplied) and the path is pinned to ``/api/codex/``. The SSRF
+    guard runs before egress unless ``allow_private`` opts the connection in to a
+    self-hosted/localhost target. ``client`` lets a caller inject a pre-built
+    AsyncClient (the contract test's MockTransport); when omitted a short-lived
+    client is created here.
     """
     method = (method or "GET").upper()
     if method not in _ALLOWED_METHODS:
         raise ToolError(f"odysseus: unsupported method {method!r}")
     _guard_path(path)
+    await _assert_allowed_host(base_url, allow_private)
     url = base_url.rstrip("/") + path
     headers = {"Accept": "application/json"}
     if token:
@@ -157,10 +215,12 @@ async def request(base_url: str, token: Optional[str], method: str, path: str, *
         return await _do(cli)
 
 
-async def probe_capabilities(base_url: str, token: Optional[str]) -> dict:
+async def probe_capabilities(base_url: str, token: Optional[str],
+                             allow_private: bool = False) -> dict:
     """GET /api/codex/capabilities. Returns {ok, capabilities, error} (never raises)."""
     try:
-        data = await request(base_url, token, "GET", "/api/codex/capabilities", timeout=10.0)
+        data = await request(base_url, token, "GET", "/api/codex/capabilities",
+                             timeout=10.0, allow_private=allow_private)
         return {"ok": True, "capabilities": data, "error": None}
     except Exception as e:
         return {"ok": False, "capabilities": None, "error": f"{type(e).__name__}: {e}"}
@@ -185,14 +245,17 @@ async def invoke(tool: Tool, params: dict, *, user: dict) -> Any:
     if not conn:
         raise ToolError(f"odysseus connection {tool.mcp_server_id} not found for current user")
     base_url, token = conn["base_url"], conn.get("token")
+    allow_private = bool(conn.get("allow_private", False))
     params = params or {}
     if (tool.remote_name or "") == "request":
         return await request(base_url, token, params.get("method", "GET"), params.get("path", ""),
-                             query=params.get("query"), json_body=params.get("body"))
+                             query=params.get("query"), json_body=params.get("body"),
+                             allow_private=allow_private)
     query = {k: params[k] for k in (spec.get("query") or []) if k in params} or None
     body = params if spec["method"] in ("POST", "PUT", "PATCH") else None
-    return await request(base_url, token, spec["method"], spec["path"], query=query, json_body=body)
+    return await request(base_url, token, spec["method"], spec["path"],
+                         query=query, json_body=body, allow_private=allow_private)
 
 
 __all__ = ["probe_capabilities", "request", "invoke", "ODYSSEUS_CATALOGUE", "TOOL_KIND_ODYSSEUS"]
-# ratios: loc_comments=103:70 imports_exports=5:4 calls_definitions=28:6
+# ratios: loc_comments=149:84 imports_exports=9:4 calls_definitions=45:7

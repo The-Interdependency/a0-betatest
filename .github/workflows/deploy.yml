@@ -14,6 +14,11 @@ env:
   SERVICE: a0p
   REGISTRY: us-central1-docker.pkg.dev
 
+# Least-privilege default for the whole workflow; the deploy job widens its own
+# permissions (id-token: write) below for Google Cloud auth.
+permissions:
+  contents: read
+
 jobs:
   check-current-layout:
     name: Current layout build smoke

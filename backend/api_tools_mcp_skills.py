@@ -1,4 +1,4 @@
-# ratios: loc_comments=303:70 imports_exports=14:25 calls_definitions=125:27
+# ratios: loc_comments=312:75 imports_exports=15:25 calls_definitions=128:27
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -42,9 +42,12 @@
 # === END CONTRACTS ===
 """REST surface for tools, MCP client (external server registry), and skills."""
 from __future__ import annotations
+import logging
 import time
 import uuid
 from typing import Any, Optional
+
+_log = logging.getLogger("a0p.tools_mcp_skills")
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -272,6 +275,9 @@ class OdysseusServerBody(BaseModel):
     name: str = Field(..., min_length=2, max_length=64)
     base_url: str
     token: Optional[str] = None
+    # Opt-in for a self-hosted / localhost / LAN Odysseus. When false (default)
+    # the SSRF guard refuses non-global base_url hosts.
+    allow_private: bool = False
 
 
 async def _refresh_odysseus_tools(user_id: str, conn: dict) -> dict:
@@ -283,7 +289,8 @@ async def _refresh_odysseus_tools(user_id: str, conn: dict) -> dict:
     when invoked. The probe result (what the token *can* reach) is returned so
     the caller sees the effective grant.
     """
-    probe = await odysseus_relay.probe_capabilities(conn["base_url"], conn.get("token"))
+    probe = await odysseus_relay.probe_capabilities(
+        conn["base_url"], conn.get("token"), bool(conn.get("allow_private", False)))
     now = int(time.time() * 1000)
     await user_tools_col.delete_many({"user_id": user_id, "mcp_server_id": conn["_id"], "source": "odysseus"})
     out: list[str] = []
@@ -300,13 +307,19 @@ async def _refresh_odysseus_tools(user_id: str, conn: dict) -> dict:
         }
         await user_tools_col.insert_one(doc)
         out.append(doc["name"])
+    # Keep the detailed probe error server-side only; never reflect the raw
+    # exception text (which can carry internal host/stack detail) back to the
+    # caller. The client gets a coarse reachability signal instead.
+    if not probe["ok"]:
+        _log.warning("odysseus workspace %s probe failed: %s", conn["_id"], probe["error"])
+    coarse = None if probe["ok"] else "workspace unreachable or refused"
     await odysseus_servers_col.update_one(
         {"_id": conn["_id"]},
         {"$set": {"last_refresh_ms": now, "tools_count": len(out),
-                  "reachable": probe["ok"], "probe_error": probe["error"]}},
+                  "reachable": probe["ok"], "probe_error": coarse}},
     )
     return {"ok": True, "tools": out, "capabilities": probe["capabilities"],
-            "reachable": probe["ok"], "error": probe["error"]}
+            "reachable": probe["ok"], "error": coarse}
 
 
 @router.get("/odysseus/servers")
@@ -316,7 +329,8 @@ async def list_odysseus_servers(user=Depends(get_current_user)):
         out.append({"id": d["_id"], "name": d["name"], "base_url": d["base_url"],
                     "tools_count": d.get("tools_count", 0),
                     "last_refresh_ms": d.get("last_refresh_ms"),
-                    "reachable": d.get("reachable"), "has_token": bool(d.get("token"))})
+                    "reachable": d.get("reachable"), "has_token": bool(d.get("token")),
+                    "allow_private": bool(d.get("allow_private", False))})
     return {"servers": out}
 
 
@@ -328,6 +342,7 @@ async def add_odysseus_server(body: OdysseusServerBody, user=Depends(get_current
         raise HTTPException(409, f"odysseus workspace {body.name!r} already exists")
     doc = {"_id": str(uuid.uuid4()), "user_id": user["id"],
            "name": body.name, "base_url": body.base_url.rstrip("/"), "token": body.token,
+           "allow_private": bool(body.allow_private),
            "created_at_ms": int(time.time() * 1000), "tools_count": 0}
     await odysseus_servers_col.insert_one(doc)
     refresh = await _refresh_odysseus_tools(user["id"], doc)
@@ -435,4 +450,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=303:70 imports_exports=14:25 calls_definitions=125:27
+# ratios: loc_comments=312:75 imports_exports=15:25 calls_definitions=128:27
