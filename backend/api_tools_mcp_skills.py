@@ -1,4 +1,4 @@
-# ratios: loc_comments=331:89 imports_exports=17:25 calls_definitions=137:27
+# ratios: loc_comments=333:92 imports_exports=17:25 calls_definitions=139:27
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -361,6 +361,11 @@ async def add_odysseus_server(body: OdysseusServerBody, user=Depends(get_current
         _ = urlsplit(body.base_url).port  # raises ValueError on a malformed port
     except ValueError:
         raise HTTPException(400, "base_url has an invalid port")
+    if not (body.token or "").strip():
+        # /api/codex/capabilities can answer without a token, but the actual data
+        # routes are api_token-scoped and reject session-less server-to-server
+        # calls — so a token is required or every mirrored tool fails at invoke.
+        raise HTTPException(400, "an Odysseus api_token is required (the /api/codex/* data routes are token-scoped)")
     if await odysseus_servers_col.find_one({"user_id": user["id"], "name": body.name}):
         raise HTTPException(409, f"odysseus workspace {body.name!r} already exists")
     doc = {"_id": str(uuid.uuid4()), "user_id": user["id"],
@@ -483,4 +488,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=331:89 imports_exports=17:25 calls_definitions=137:27
+# ratios: loc_comments=333:92 imports_exports=17:25 calls_definitions=139:27

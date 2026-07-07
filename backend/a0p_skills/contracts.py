@@ -1,4 +1,4 @@
-# ratios: loc_comments=1340:301 imports_exports=186:98 calls_definitions=534:116
+# ratios: loc_comments=1349:303 imports_exports=186:98 calls_definitions=540:116
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1716,6 +1716,18 @@ async def _tools_odysseus_relay_request_async() -> None:
     finally:
         await boom_client.aclose()
 
+    # a large JSON result is capped (preview + truncated flag) so it cannot blow
+    # the agent context when the tool loop serializes it back into the request.
+    big = {"items": ["x" * 1000 for _ in range(100)]}
+    big_client = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: httpx.Response(200, json=big)))
+    try:
+        capped = await od.request("http://odysseus.local", "tkn", "GET", "/api/codex/memory",
+                                  allow_private=True, client=big_client)
+        assert capped.get("truncated") is True and len(capped.get("preview", "")) <= 16384, capped
+    finally:
+        await big_client.aclose()
+
     # catalogue exposes the generic passthrough + capability probe, and matches
     # the real Odysseus endpoints (calendar needs start/end; memory is a list).
     assert "request" in od.ODYSSEUS_CATALOGUE and "capabilities" in od.ODYSSEUS_CATALOGUE
@@ -2018,4 +2030,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1340:301 imports_exports=186:98 calls_definitions=534:116
+# ratios: loc_comments=1349:303 imports_exports=186:98 calls_definitions=540:116

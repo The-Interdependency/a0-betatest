@@ -1,4 +1,4 @@
-# ratios: loc_comments=191:112 imports_exports=12:5 calls_definitions=62:8
+# ratios: loc_comments=200:118 imports_exports=13:5 calls_definitions=65:8
 # === MODULE_BUILD ===
 # id: tools_odysseus_relay
 #   module_name: odysseus_relay
@@ -64,6 +64,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import ipaddress
+import json
 import posixpath
 import re
 import socket
@@ -78,6 +79,9 @@ from .registry import Tool, ToolError, TOOL_KIND_ODYSSEUS
 _CODEX_PREFIX = "/api/codex/"
 _ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 _UNSAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9_-]")
+# Cap what a single Odysseus tool result feeds back into the agent's next
+# provider request, so a verbose endpoint can't blow the model context.
+_MAX_RESULT_BYTES = 16384
 
 
 def safe_tool_name(workspace: str, cap: str, server_id: str) -> str:
@@ -93,7 +97,9 @@ def safe_tool_name(workspace: str, cap: str, server_id: str) -> str:
     colliding onto one another's ``Tool``.
     """
     ws = _UNSAFE_NAME_RE.sub("_", workspace).strip("_") or "ws"
-    h = hashlib.sha256((server_id or workspace).encode("utf-8")).hexdigest()[:6]
+    # 48 bits of the server-id digest — collision-resistant for any realistic
+    # number of same-named workspaces, while staying within the 64-char limit.
+    h = hashlib.sha256((server_id or workspace).encode("utf-8")).hexdigest()[:12]
     name = f"odysseus_{ws}_{h}_{cap}"
     if len(name) <= 64:
         return name
@@ -277,9 +283,18 @@ async def request(base_url: str, token: Optional[str], method: str, path: str, *
         if r.status_code >= 400 or r.is_redirect:
             raise ToolError(f"odysseus http {r.status_code}: {r.text[:200]}")
         try:
-            return r.json()
+            data = r.json()
         except Exception:
-            return {"raw": r.text[:4096], "status": r.status_code}
+            return {"raw": r.text[:_MAX_RESULT_BYTES], "status": r.status_code,
+                    "truncated": len(r.text) > _MAX_RESULT_BYTES}
+        # Cap large JSON too: the tool loop serializes the whole result back into
+        # the next request, so a big memory/document list would blow the context.
+        serialized = json.dumps(data, default=str)
+        if len(serialized) > _MAX_RESULT_BYTES:
+            return {"truncated": True, "bytes": len(serialized),
+                    "preview": serialized[:_MAX_RESULT_BYTES],
+                    "note": "Odysseus result truncated — use a narrower query / pagination."}
+        return data
 
     if client is not None:
         return await _do(client)
@@ -334,4 +349,4 @@ async def invoke(tool: Tool, params: dict, *, user: dict) -> Any:
 
 __all__ = ["probe_capabilities", "request", "invoke", "safe_tool_name",
            "ODYSSEUS_CATALOGUE", "TOOL_KIND_ODYSSEUS"]
-# ratios: loc_comments=191:112 imports_exports=12:5 calls_definitions=62:8
+# ratios: loc_comments=200:118 imports_exports=13:5 calls_definitions=65:8
