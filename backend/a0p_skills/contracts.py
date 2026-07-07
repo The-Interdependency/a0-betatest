@@ -1,4 +1,4 @@
-# ratios: loc_comments=1254:282 imports_exports=182:97 calls_definitions=500:112
+# ratios: loc_comments=1350:303 imports_exports=186:98 calls_definitions=540:116
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1612,6 +1612,141 @@ async def _tools_mcp_relay_request_async() -> None:
     assert isinstance(r["error"], str) and r["error"]
 
 
+def tools_odysseus_relay_request_holds():
+    """Odysseus relay: round-trips a stubbed /api/codex/* call, guards path/scope."""
+    return _tools_odysseus_relay_request_async()
+
+
+async def _tools_odysseus_relay_request_async() -> None:
+    import httpx
+    from tools import odysseus_relay as od
+    from tools.registry import ToolError
+
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["auth"] = request.headers.get("authorization")
+        if request.url.path == "/api/codex/capabilities":
+            return httpx.Response(200, json={"token_scopes": ["memory:read"]})
+        if request.url.path == "/api/codex/emails/send":
+            return httpx.Response(403, json={"detail": "scope"})
+        return httpx.Response(404, json={"detail": "nope"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        # 200 round-trip with the Bearer token attached (allow_private opts the
+        # stub self-hosted host past the SSRF guard).
+        data = await od.request("http://odysseus.local", "tkn", "GET",
+                                "/api/codex/capabilities", allow_private=True, client=client)
+        assert data.get("token_scopes") == ["memory:read"], data
+        assert seen["auth"] == "Bearer tkn", seen
+
+        # non-2xx surfaces as ToolError (not a silent empty result)
+        try:
+            await od.request("http://odysseus.local", "tkn", "POST", "/api/codex/emails/send",
+                             json_body={}, allow_private=True, client=client)
+            raise AssertionError("403 did not raise ToolError")
+        except ToolError:
+            pass
+
+        # a path outside /api/codex/ is refused before any network call
+        try:
+            await od.request("http://odysseus.local", "tkn", "GET", "/etc/passwd",
+                             allow_private=True, client=client)
+            raise AssertionError("non-codex path was not refused")
+        except ToolError:
+            pass
+
+        # an unsupported method is refused
+        try:
+            await od.request("http://odysseus.local", "tkn", "TRACE", "/api/codex/capabilities",
+                             allow_private=True, client=client)
+            raise AssertionError("bad method was not refused")
+        except ToolError:
+            pass
+
+        # SSRF guard: a non-global base_url is refused unless allow_private is set
+        try:
+            await od.request("http://169.254.169.254", "tkn", "GET", "/api/codex/capabilities",
+                             allow_private=False, client=client)
+            raise AssertionError("SSRF guard did not refuse a link-local host")
+        except ToolError as e:
+            assert "non-global" in str(e), str(e)
+
+        # Path-normalization guard: dot-segments that escape /api/codex/ are
+        # refused, raw and percent-encoded, before any network call.
+        for bad in ("/api/codex/../admin", "/api/codex/%2e%2e/admin", "/api/codex/a/../../admin"):
+            try:
+                await od.request("http://odysseus.local", "tkn", "GET", bad,
+                                 allow_private=True, client=client)
+                raise AssertionError(f"path-escape not refused: {bad!r}")
+            except ToolError:
+                pass
+
+        # base_url that carries a query/fragment or has no host is refused (the
+        # former would push the guarded path into the query; the latter is unusable).
+        for bad_base in ("http://odysseus.local/latest?x=", "http://odysseus.local/p#f",
+                         "http:///nohost"):
+            try:
+                await od.request(bad_base, "tkn", "GET", "/api/codex/capabilities",
+                                 allow_private=True, client=client)
+                raise AssertionError(f"bad base_url not refused: {bad_base!r}")
+            except ToolError:
+                pass
+
+        # a malformed port is a ToolError (not a bare ValueError -> 500)
+        try:
+            await od.request("http://odysseus.local:notaport", "tkn", "GET",
+                             "/api/codex/capabilities", allow_private=True, client=client)
+            raise AssertionError("malformed port not refused")
+        except ToolError:
+            pass
+    finally:
+        await client.aclose()
+
+    # a transport failure (offline workspace) surfaces as ToolError, not httpx.*
+    def _boom(request):
+        raise httpx.ConnectError("refused", request=request)
+    boom_client = httpx.AsyncClient(transport=httpx.MockTransport(_boom))
+    try:
+        await od.request("http://odysseus.local", "tkn", "GET", "/api/codex/capabilities",
+                         allow_private=True, client=boom_client)
+        raise AssertionError("transport error not wrapped as ToolError")
+    except ToolError:
+        pass
+    finally:
+        await boom_client.aclose()
+
+    # a large JSON result is capped (preview + truncated flag) so it cannot blow
+    # the agent context when the tool loop serializes it back into the request.
+    big = {"items": ["x" * 1000 for _ in range(100)]}
+    big_client = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: httpx.Response(200, json=big)))
+    try:
+        capped = await od.request("http://odysseus.local", "tkn", "GET", "/api/codex/memory",
+                                  allow_private=True, client=big_client)
+        assert capped.get("truncated") is True and len(capped.get("preview", "")) <= 16384, capped
+    finally:
+        await big_client.aclose()
+
+    # catalogue exposes the generic passthrough + capability probe, and matches
+    # the real Odysseus endpoints (calendar needs start/end; memory is a list).
+    assert "request" in od.ODYSSEUS_CATALOGUE and "capabilities" in od.ODYSSEUS_CATALOGUE
+    assert od.ODYSSEUS_CATALOGUE["calendar_events"]["input_schema"]["required"] == ["start", "end"]
+    assert "memory_list" in od.ODYSSEUS_CATALOGUE and "memory_search" not in od.ODYSSEUS_CATALOGUE
+
+    # provider-safe tool names: [A-Za-z0-9_-] only, <= 64 chars, even for a
+    # workspace name full of characters providers reject.
+    nm = od.safe_tool_name("my:weird/workspace name!", "memory_list", "srv-1")
+    import re as _re
+    assert _re.fullmatch(r"[A-Za-z0-9_-]+", nm) and len(nm) <= 64, nm
+    long_nm = od.safe_tool_name("x" * 200, "calendar_events", "srv-1")
+    assert _re.fullmatch(r"[A-Za-z0-9_-]+", long_nm) and len(long_nm) <= 64, long_nm
+    # same workspace name on two different connections (e.g. two users' "home")
+    # must produce distinct names — the disambiguator hashes the server id.
+    assert od.safe_tool_name("home", "memory_list", "srv-A") != od.safe_tool_name("home", "memory_list", "srv-B")
+
+
 def tools_mcp_server_initialize_holds():
     """JSON-RPC `initialize` is open and returns serverInfo + protocolVersion."""
     return _tools_mcp_server_initialize_async()
@@ -1896,4 +2031,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1254:282 imports_exports=182:97 calls_definitions=500:112
+# ratios: loc_comments=1350:303 imports_exports=186:98 calls_definitions=540:116
