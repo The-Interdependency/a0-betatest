@@ -1,4 +1,4 @@
-# ratios: loc_comments=1349:303 imports_exports=186:98 calls_definitions=540:116
+# ratios: loc_comments=1350:303 imports_exports=186:98 calls_definitions=540:116
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1683,13 +1683,14 @@ async def _tools_odysseus_relay_request_async() -> None:
             except ToolError:
                 pass
 
-        # base_url carrying a query/fragment is refused (would push the guarded
-        # path into the query and defeat /api/codex/ pinning).
-        for bad_base in ("http://odysseus.local/latest?x=", "http://odysseus.local/p#f"):
+        # base_url that carries a query/fragment or has no host is refused (the
+        # former would push the guarded path into the query; the latter is unusable).
+        for bad_base in ("http://odysseus.local/latest?x=", "http://odysseus.local/p#f",
+                         "http:///nohost"):
             try:
                 await od.request(bad_base, "tkn", "GET", "/api/codex/capabilities",
                                  allow_private=True, client=client)
-                raise AssertionError(f"query/fragment base_url not refused: {bad_base!r}")
+                raise AssertionError(f"bad base_url not refused: {bad_base!r}")
             except ToolError:
                 pass
 
@@ -2030,4 +2031,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1349:303 imports_exports=186:98 calls_definitions=540:116
+# ratios: loc_comments=1350:303 imports_exports=186:98 calls_definitions=540:116

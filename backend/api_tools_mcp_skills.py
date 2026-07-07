@@ -1,4 +1,4 @@
-# ratios: loc_comments=333:92 imports_exports=17:25 calls_definitions=139:27
+# ratios: loc_comments=336:92 imports_exports=17:25 calls_definitions=140:27
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -358,9 +358,12 @@ async def add_odysseus_server(body: OdysseusServerBody, user=Depends(get_current
     if "?" in body.base_url or "#" in body.base_url:
         raise HTTPException(400, "base_url must not contain a query or fragment")
     try:
-        _ = urlsplit(body.base_url).port  # raises ValueError on a malformed port
+        _sp = urlsplit(body.base_url)
+        _ = _sp.port  # raises ValueError on a malformed port
     except ValueError:
         raise HTTPException(400, "base_url has an invalid port")
+    if not _sp.netloc:
+        raise HTTPException(400, "base_url must include a host (e.g. http://host:port)")
     if not (body.token or "").strip():
         # /api/codex/capabilities can answer without a token, but the actual data
         # routes are api_token-scoped and reject session-less server-to-server
@@ -488,4 +491,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=333:92 imports_exports=17:25 calls_definitions=139:27
+# ratios: loc_comments=336:92 imports_exports=17:25 calls_definitions=140:27
