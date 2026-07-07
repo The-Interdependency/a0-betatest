@@ -1,4 +1,4 @@
-# ratios: loc_comments=331:87 imports_exports=17:25 calls_definitions=137:27
+# ratios: loc_comments=331:89 imports_exports=17:25 calls_definitions=137:27
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -298,9 +298,11 @@ async def _refresh_odysseus_tools(user_id: str, conn: dict) -> dict:
     out: list[str] = []
     skipped: list[str] = []
     for cap, spec in odysseus_relay.ODYSSEUS_CATALOGUE.items():
-        # Provider-safe public name ([A-Za-z0-9_-], <=64) so OpenAI/Anthropic/
-        # Gemini tool-calling accepts the schema; remote_name keeps the raw cap.
-        name = odysseus_relay.safe_tool_name(conn["name"], cap)
+        # Provider-safe, globally-unique public name ([A-Za-z0-9_-], <=64) so
+        # OpenAI/Anthropic/Gemini tool-calling accepts the schema and two users'
+        # same-named workspaces don't collide in the process-wide registry;
+        # remote_name keeps the raw cap.
+        name = odysseus_relay.safe_tool_name(conn["name"], cap, conn["_id"])
         doc = {
             "_id": str(uuid.uuid4()), "user_id": user_id,
             "name": name,
@@ -481,4 +483,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=331:87 imports_exports=17:25 calls_definitions=137:27
+# ratios: loc_comments=331:89 imports_exports=17:25 calls_definitions=137:27

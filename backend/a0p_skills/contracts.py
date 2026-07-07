@@ -1,4 +1,4 @@
-# ratios: loc_comments=1340:300 imports_exports=186:98 calls_definitions=534:116
+# ratios: loc_comments=1340:301 imports_exports=186:98 calls_definitions=534:116
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1724,13 +1724,14 @@ async def _tools_odysseus_relay_request_async() -> None:
 
     # provider-safe tool names: [A-Za-z0-9_-] only, <= 64 chars, even for a
     # workspace name full of characters providers reject.
-    nm = od.safe_tool_name("my:weird/workspace name!", "memory_search")
+    nm = od.safe_tool_name("my:weird/workspace name!", "memory_list", "srv-1")
     import re as _re
     assert _re.fullmatch(r"[A-Za-z0-9_-]+", nm) and len(nm) <= 64, nm
-    # distinct workspaces that sanitize to the same alias still get distinct names
-    assert od.safe_tool_name("foo/bar", "memory_search") != od.safe_tool_name("foo:bar", "memory_search")
-    long_nm = od.safe_tool_name("x" * 200, "calendar_events")
+    long_nm = od.safe_tool_name("x" * 200, "calendar_events", "srv-1")
     assert _re.fullmatch(r"[A-Za-z0-9_-]+", long_nm) and len(long_nm) <= 64, long_nm
+    # same workspace name on two different connections (e.g. two users' "home")
+    # must produce distinct names — the disambiguator hashes the server id.
+    assert od.safe_tool_name("home", "memory_list", "srv-A") != od.safe_tool_name("home", "memory_list", "srv-B")
 
 
 def tools_mcp_server_initialize_holds():
@@ -2017,4 +2018,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1340:300 imports_exports=186:98 calls_definitions=534:116
+# ratios: loc_comments=1340:301 imports_exports=186:98 calls_definitions=534:116

@@ -1,4 +1,4 @@
-# ratios: loc_comments=191:110 imports_exports=12:5 calls_definitions=62:8
+# ratios: loc_comments=191:112 imports_exports=12:5 calls_definitions=62:8
 # === MODULE_BUILD ===
 # id: tools_odysseus_relay
 #   module_name: odysseus_relay
@@ -80,18 +80,20 @@ _ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 _UNSAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9_-]")
 
 
-def safe_tool_name(workspace: str, cap: str) -> str:
-    """Build a provider-safe public tool name for an Odysseus capability.
+def safe_tool_name(workspace: str, cap: str, server_id: str) -> str:
+    """Build a provider-safe, globally-unique public tool name for a capability.
 
     OpenAI / Anthropic / Gemini function names must match ``[A-Za-z0-9_-]`` and
     are length-bounded (~64). The workspace name is user-chosen, so sanitize it
-    (non-conforming chars -> ``_``) and bound the whole name to 64 chars. A short
-    hash of the *original* workspace name is ALWAYS included so two names that
-    sanitize to the same alias (e.g. ``foo/bar`` and ``foo:bar`` -> ``foo_bar``)
-    still produce distinct tool names instead of silently colliding.
+    (non-conforming chars -> ``_``) for the readable part and bound the whole name
+    to 64 chars. The disambiguator hashes the stable per-connection ``server_id``
+    (a UUID), NOT the workspace name — the in-process tool registry is keyed by
+    name across all users, so hashing the connection id keeps two users who both
+    name a workspace ``home`` (and two same-user names that sanitize alike) from
+    colliding onto one another's ``Tool``.
     """
     ws = _UNSAFE_NAME_RE.sub("_", workspace).strip("_") or "ws"
-    h = hashlib.sha256(workspace.encode("utf-8")).hexdigest()[:6]
+    h = hashlib.sha256((server_id or workspace).encode("utf-8")).hexdigest()[:6]
     name = f"odysseus_{ws}_{h}_{cap}"
     if len(name) <= 64:
         return name
@@ -332,4 +334,4 @@ async def invoke(tool: Tool, params: dict, *, user: dict) -> Any:
 
 __all__ = ["probe_capabilities", "request", "invoke", "safe_tool_name",
            "ODYSSEUS_CATALOGUE", "TOOL_KIND_ODYSSEUS"]
-# ratios: loc_comments=191:110 imports_exports=12:5 calls_definitions=62:8
+# ratios: loc_comments=191:112 imports_exports=12:5 calls_definitions=62:8
