@@ -150,7 +150,11 @@ export default function AgentLabPage() {
   async function createAgent() {
     setCreating(true); setCreateErr(null); setCreated(null);
     try {
-      const sheet = { name: identity?.canonical || "a0(zfae)", mode,
+      // Leave name blank so AgentStore.create composes the owner-namespaced name
+      // from the *authenticated* owner (compose_agent_name) — the typed username
+      // is only a preview hint; passing the raw canonical name here would bypass
+      // the real owner namespacing and collapse to per-user suffixing.
+      const sheet = { name: "", mode,
         base_model: baseModel || null, outer_model: outerModel || null };
       const r = await api.createInstance({ user_id: "local", sheet });
       setCreated(r);

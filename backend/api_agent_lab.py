@@ -1,4 +1,4 @@
-# ratios: loc_comments=221:83 imports_exports=7:9 calls_definitions=35:9
+# ratios: loc_comments=250:85 imports_exports=7:9 calls_definitions=50:11
 # === MODULE_BUILD ===
 # id: api_agent_lab_routes
 #   module_name: agent_lab
@@ -68,7 +68,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from auth import get_current_user
 from agents.schema import AgentMode, compose_canonical_name, compose_agent_name
@@ -82,6 +82,13 @@ router = APIRouter(prefix="/api/agent-lab", tags=["agent-lab"])
 _NATIVE_MIN_STEPS = 16
 _NATIVE_MAX_LOSS = 0.1
 _ALL_SEED_PAIRS = 471   # 157 seeds x 3 cores
+
+# Sub-memory demo bounds — this endpoint synchronously appends + echoes the input,
+# so cap the fan-out and text size to keep a single request off the event loop.
+_MAX_SUBS = 32
+_MAX_ITEMS_PER_SUB = 128
+_MAX_ITEM_CHARS = 2_000
+_MAX_TOTAL_CHARS = 200_000
 
 # The canonical creation ladder. Order here is the plan order. Each stage carries
 # whether it is native/executable-here and the REAL entrypoint it maps to.
@@ -222,6 +229,33 @@ class SubMemoryBody(BaseModel):
     seed_long_term: list[str] = Field(default_factory=list, max_length=64)
     seed_short_term: list[str] = Field(default_factory=list, max_length=64)
 
+    @field_validator("items_by_sub")
+    @classmethod
+    def _bound_subs(cls, v: dict[str, list[str]]) -> dict[str, list[str]]:
+        if len(v) > _MAX_SUBS:
+            raise ValueError(f"at most {_MAX_SUBS} sub-caches")
+        total = 0
+        for sub_id, items in v.items():
+            if len(sub_id) > 128:
+                raise ValueError("sub id too long")
+            if len(items) > _MAX_ITEMS_PER_SUB:
+                raise ValueError(f"at most {_MAX_ITEMS_PER_SUB} items per sub")
+            for it in items:
+                if len(it) > _MAX_ITEM_CHARS:
+                    raise ValueError(f"each item must be <= {_MAX_ITEM_CHARS} chars")
+                total += len(it)
+        if total > _MAX_TOTAL_CHARS:
+            raise ValueError("aggregate sub-memory text too large")
+        return v
+
+    @field_validator("seed_long_term", "seed_short_term")
+    @classmethod
+    def _bound_seeds(cls, v: list[str]) -> list[str]:
+        for it in v:
+            if len(it) > _MAX_ITEM_CHARS:
+                raise ValueError(f"each seed must be <= {_MAX_ITEM_CHARS} chars")
+        return v
+
 
 def _identity_warnings(idn: IdentityBody) -> list[str]:
     warns: list[str] = []
@@ -336,4 +370,4 @@ async def sub_memory(body: SubMemoryBody, user=Depends(get_current_user)):
 
 
 __all__ = ["router"]
-# ratios: loc_comments=221:83 imports_exports=7:9 calls_definitions=35:9
+# ratios: loc_comments=250:85 imports_exports=7:9 calls_definitions=50:11
