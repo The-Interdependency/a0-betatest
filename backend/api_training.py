@@ -1,4 +1,4 @@
-# ratios: loc_comments=50:71 imports_exports=8:5 calls_definitions=20:5
+# ratios: loc_comments=51:73 imports_exports=8:5 calls_definitions=20:5
 # === MODULE_BUILD ===
 # id: api_training_routes
 #   module_name: training
@@ -76,6 +76,9 @@ router = APIRouter(prefix="/api/training", tags=["training"])
 
 _MAX_TURNS = 200
 _MAX_CHARS = 20_000
+# Explicit aggregate cap for a whole session (build_disk_stack joins + tokenizes +
+# hashes it synchronously) — a small fixed limit, NOT _MAX_TURNS * _MAX_CHARS.
+_MAX_SESSION_CHARS = 200_000
 
 
 class ReadoutBody(BaseModel):
@@ -101,8 +104,8 @@ class DiskStackBody(BaseModel):
             if len(t) > _MAX_CHARS:
                 raise ValueError(f"each turn must be <= {_MAX_CHARS} chars")
             total += len(t)
-        if total > _MAX_TURNS * _MAX_CHARS:
-            raise ValueError("aggregate session text too large")
+        if total > _MAX_SESSION_CHARS:
+            raise ValueError(f"aggregate session text must be <= {_MAX_SESSION_CHARS} chars")
         return v
 
 
@@ -141,4 +144,4 @@ async def training_disk_stack(body: DiskStackBody, user=Depends(get_current_user
 
 
 __all__ = ["router"]
-# ratios: loc_comments=50:71 imports_exports=8:5 calls_definitions=20:5
+# ratios: loc_comments=51:73 imports_exports=8:5 calls_definitions=20:5

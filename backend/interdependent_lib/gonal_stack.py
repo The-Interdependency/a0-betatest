@@ -1,4 +1,4 @@
-# ratios: loc_comments=108:84 imports_exports=8:5 calls_definitions=33:12
+# ratios: loc_comments=112:87 imports_exports=9:5 calls_definitions=34:12
 # === MODULE_BUILD ===
 # id: il_gonal_stack
 #   module_name: gonal_stack
@@ -79,6 +79,7 @@ from typing import Optional
 
 from .ucns_embed import embed_text, phase_compose, UCNS_CARRIER_ARITY, EMBED_LANES
 from .zfae.morphology import BoneGonal
+from .zfae.closed_tokens import strip_affixes
 
 try:  # ground the carrier on the public fixture; never require private material
     from .gonal import build_public_fixture_disk, ARITY as _CARRIER_ARITY
@@ -98,8 +99,14 @@ def _tokens(text: str) -> list[str]:
 
 
 def _bone_density(text: str) -> float:
+    # Count whole-token bones PLUS words carrying a bound affix (reopened, running)
+    # via the same deterministic strip_affixes the embedding's omega skeleton uses,
+    # so the displayed disk omega doesn't read 0 for ordinary inflected text.
     toks = _tokens(text)
-    return sum(1 for t in toks if t in _BONES) / len(toks) if toks else 0.0
+    if not toks:
+        return 0.0
+    structural = sum(1 for t in toks if t in _BONES or strip_affixes(t) != t)
+    return structural / len(toks)
 
 
 def _grain_texts(turns: list[str]) -> dict:
@@ -226,4 +233,4 @@ def build_disk_stack(turns: list[str], agent_id: str = "local") -> CylindricalDi
 
 __all__ = ["DiskState", "CylindricalDiskStack", "single_disk", "build_disk_stack",
            "GRAIN_LADDER", "GEOMETRY_STATUS"]
-# ratios: loc_comments=108:84 imports_exports=8:5 calls_definitions=33:12
+# ratios: loc_comments=112:87 imports_exports=9:5 calls_definitions=34:12

@@ -44,6 +44,13 @@ const KIND_TONE = { required: "cyan", optional: "emerald", derived: "amber",
 // Stages the user toggles; required/derived/automatic are always in the plan.
 const TOGGLEABLE = new Set(["distill_unlock", "sentinel_config", "sub_memory", "cross_repo_merge"]);
 
+// Mirror of the backend _NEEDS_BASE / _NEEDS_OUTER — which modes require a model.
+function identityNeedsModel(mode, base, outer) {
+  const needsBase = /<model>/.test(mode) && mode !== "a0(zfae)";
+  const needsOuter = mode === "a0(<model>)<model>";
+  return (needsBase && !(base || "").trim()) || (needsOuter && !(outer || "").trim());
+}
+
 function StageCard({ stage, checked, toggleable, onToggle }) {
   const tone = KIND_TONE[stage.kind] || "default";
   return (
@@ -127,6 +134,10 @@ export default function AgentLabPage() {
     return () => clearTimeout(t);
   }, [mode, baseModel, outerModel, username]);
 
+  // Drop a stale plan when the identity inputs change, so the create button under
+  // a rendered plan can never mint a different agent than the plan describes.
+  useEffect(() => { setPlan(null); setCreated(null); }, [mode, baseModel, outerModel]);
+
   const modes = cat?.modes || ["a0(zfae)"];
   const catalogue = cat?.stages || [];
 
@@ -148,14 +159,18 @@ export default function AgentLabPage() {
   }
 
   async function createAgent() {
+    if (!plan) return;
+    const id = plan.identity;
+    if (identityNeedsModel(id.mode, id.base_model, id.outer_model)) return;
     setCreating(true); setCreateErr(null); setCreated(null);
     try {
-      // Leave name blank so AgentStore.create composes the owner-namespaced name
-      // from the *authenticated* owner (compose_agent_name) — the typed username
-      // is only a preview hint; passing the raw canonical name here would bypass
-      // the real owner namespacing and collapse to per-user suffixing.
-      const sheet = { name: "", mode,
-        base_model: baseModel || null, outer_model: outerModel || null };
+      // Build from the COMPOSED plan snapshot (not live inputs), so the created
+      // agent always matches the plan shown above the button. Blank name lets
+      // AgentStore.create compose the owner-namespaced name from the authenticated
+      // owner (the typed username is only a preview hint; the raw canonical name
+      // would bypass owner namespacing).
+      const sheet = { name: "", mode: id.mode,
+        base_model: id.base_model || null, outer_model: id.outer_model || null };
       const r = await api.createInstance({ user_id: "local", sheet });
       setCreated(r);
     } catch (e) {
@@ -170,6 +185,9 @@ export default function AgentLabPage() {
   }
 
   const needsBase = /<model>/.test(mode) && mode !== "a0(zfae)";
+  const createIncomplete = plan
+    ? identityNeedsModel(plan.identity.mode, plan.identity.base_model, plan.identity.outer_model)
+    : false;
 
   return (
     <div className="space-y-5" data-testid="page-agent-lab">
@@ -265,11 +283,15 @@ export default function AgentLabPage() {
               {plan.steps.map((s, i) => <PlanStep key={s.id} step={s} idx={i} />)}
             </div>
             <div className="flex items-center gap-3 pt-1">
-              <button onClick={createAgent} disabled={creating} data-testid="al-create-btn"
+              <button onClick={createAgent} disabled={creating || createIncomplete} data-testid="al-create-btn"
                 className="px-4 py-2 border border-accent-emerald/40 text-accent-emerald font-mono text-xs uppercase tracking-wider hover:bg-accent-emerald/10 disabled:opacity-40 flex items-center gap-2">
                 <Plus size={14} /> {creating ? "creating…" : "create this native agent"}
               </button>
-              <span className="font-mono text-[0.55rem] text-neutral-600">runs the native create stage (POST /api/instances) + seeds a fresh ZFAE weight bank</span>
+              <span className="font-mono text-[0.55rem] text-neutral-600">
+                {createIncomplete
+                  ? "this mode needs a base/outer model before it can be created"
+                  : "runs the native create stage (POST /api/instances) + seeds a fresh ZFAE weight bank"}
+              </span>
             </div>
             {creating && <AsciiLoader label="minting instance + weight bank" />}
             {createErr && <div className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-rose-300 text-xs font-mono" data-testid="al-create-err">{String(createErr)}</div>}
