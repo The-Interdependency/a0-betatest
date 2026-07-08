@@ -1,11 +1,11 @@
-# ratios: loc_comments=58:67 imports_exports=7:3 calls_definitions=19:6
+# ratios: loc_comments=75:73 imports_exports=7:4 calls_definitions=27:8
 # === MODULE_BUILD ===
 # id: il_ucns_embed
 #   module_name: ucns_embed
 #   module_kind: adapter
 #   summary: build a UCNS-native embedding of text as unit-circle phase streams on the 157-gonal carrier — one angle per lane derived from the ZFAE three-core gonal weights (omega 0.8 structural / phi 0.4 content / psi 1.0 = phi carrier-LCM omega via ucns_bridge.multiply), plus a chirality/face bit per lane, keyed by a canonical blake2b hash. This is the a0p-native "embedding" surface (phase streams over a prime carrier, unit-norm by construction — NOT a dense float vector). It composes psi through the real morphology so decompose stays proof-gated; it degrades gracefully when the ucns package / a0_safe facade is absent (no hard ucns import).
 #   owner: Erin Spencer
-#   public_surface: UCNSNativeEmbedding, embed_text, UCNS_CARRIER_ARITY, EMBED_LANES
+#   public_surface: UCNSNativeEmbedding, embed_text, phase_compose, UCNS_CARRIER_ARITY, EMBED_LANES
 #   internal_surface: _lane_values, _bone_skeleton
 #   auth_boundary: none
 #   storage_boundary: none
@@ -29,7 +29,7 @@
 # === CAPABILITIES ===
 # id: il_ucns_embed
 #   summary: UCNS-native (unit-circle phase-stream) embedding of text
-#   exposes: UCNSNativeEmbedding, embed_text, UCNS_CARRIER_ARITY, EMBED_LANES
+#   exposes: UCNSNativeEmbedding, embed_text, phase_compose, UCNS_CARRIER_ARITY, EMBED_LANES
 #   boundaries: auth:none, storage:none, network:none, user_data:read
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
@@ -108,6 +108,18 @@ class UCNSNativeEmbedding:
             acc += math.cos(2.0 * math.pi * (a - b) / _TWO16)
         return acc / self.lanes
 
+    def coherence(self) -> float:
+        """Phase coherence |(1/n) sum e^{i*theta}| in [0,1] — how aligned the lane
+        phases are. This is the meaningful psi/word surface (the frame-composed
+        word_signal is structurally ~0), and it is UCNS-native (unit circle)."""
+        if not self.lanes:
+            return 0.0
+        c = s = 0.0
+        for a in self.angle_bits:
+            th = 2.0 * math.pi * a / _TWO16
+            c += math.cos(th); s += math.sin(th)
+        return math.hypot(c / self.lanes, s / self.lanes)
+
     def as_dict(self) -> dict:
         return {
             "carrier": self.carrier, "lanes": self.lanes,
@@ -141,5 +153,19 @@ def embed_text(text: str) -> UCNSNativeEmbedding:
     )
 
 
-__all__ = ["UCNSNativeEmbedding", "embed_text", "UCNS_CARRIER_ARITY", "EMBED_LANES"]
-# ratios: loc_comments=58:67 imports_exports=7:3 calls_definitions=19:6
+def phase_compose(a: UCNSNativeEmbedding, b: UCNSNativeEmbedding) -> UCNSNativeEmbedding:
+    """Compose two embeddings by the unit-circle product (⊠ = multiplyFuel): add
+    lane angles mod one turn. This is the recompose-only session-folding operator
+    used to build the chapter-scale gonol; there is no inverse here."""
+    n = min(a.lanes, b.lanes)
+    ab = tuple((a.angle_bits[i] + b.angle_bits[i]) & 0xFFFF for i in range(n))
+    ch = tuple(1 if math.sin(2.0 * math.pi * v / _TWO16) >= 0.0 else -1 for v in ab)
+    h = hashlib.blake2b((a.canonical_hash + b.canonical_hash).encode("utf-8"),
+                        digest_size=16).hexdigest()
+    return UCNSNativeEmbedding(angle_bits=ab, chirality=ch, carrier=a.carrier,
+                              lanes=n, canonical_hash=h)
+
+
+__all__ = ["UCNSNativeEmbedding", "embed_text", "phase_compose",
+           "UCNS_CARRIER_ARITY", "EMBED_LANES"]
+# ratios: loc_comments=75:73 imports_exports=7:4 calls_definitions=27:8

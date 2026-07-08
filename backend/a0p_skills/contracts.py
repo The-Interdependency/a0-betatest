@@ -1,4 +1,4 @@
-# ratios: loc_comments=1360:304 imports_exports=187:99 calls_definitions=546:117
+# ratios: loc_comments=1396:307 imports_exports=191:101 calls_definitions=557:119
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1612,6 +1612,49 @@ async def _tools_mcp_relay_request_async() -> None:
     assert isinstance(r["error"], str) and r["error"]
 
 
+def gonal_stack_recompose_holds() -> None:
+    """Disk stack: one disk/rung, chapter psi == phase-product fold, firewalls set."""
+    import functools
+    from interdependent_lib.gonal_stack import (
+        build_disk_stack, GRAIN_LADDER, GEOMETRY_STATUS)
+    from interdependent_lib.ucns_embed import embed_text, phase_compose
+    turns = ["keep the loop closed", "we must not open it", "hold the frontier line"]
+    st = build_disk_stack(turns, agent_id="t1")
+    assert tuple(d.grain for d in st.disks) == GRAIN_LADDER
+    assert st.carrier_arity == 157 and st.recompose_only is True
+    assert st.geometry_status == GEOMETRY_STATUS == "ucns-g:non-absolute"
+    assert st.session_turns == 3
+    for d in st.disks:
+        assert d.carrier == 157 and d.embedding_hash
+        assert d.face_plus + d.face_minus == 53      # chirality faces over the 53 lanes
+        assert 0.0 <= d.psi <= 1.0                    # psi is a unit-circle coherence
+    # chapter psi == coherence of the ⊠ (phase-product) fold of utterance embeddings
+    chapter_emb = functools.reduce(phase_compose, [embed_text(u) for u in turns])
+    chapter = [d for d in st.disks if d.grain == "chapter"][0]
+    assert abs(chapter.psi - st.chapter_psi) < 1e-12
+    assert abs(chapter.psi - chapter_emb.coherence()) < 1e-12
+    assert chapter.psi > 0.0                          # a real, nonzero recomposition
+
+
+def edcm_readout_bounds_holds() -> None:
+    """EDCM six-family readout is bounded [0,1], deterministic, banded, prior-safe."""
+    from interdependent_lib.edcm_readout import readout, EDCM_METRICS, ALERT_HIGH, ALERT_LOW
+    r1 = readout("we must not break the closed loop", "keep the loop open and running")
+    r2 = readout("we must not break the closed loop", "keep the loop open and running")
+    first = readout("a lone opening turn with no prior")
+    empty = readout("")
+    assert set(r1.metrics) == set(EDCM_METRICS) == set(first.metrics)
+    for rd in (r1, first, empty):
+        for k, v in rd.metrics.items():
+            assert 0.0 <= v <= 1.0, (k, v)
+            exp = "high" if v >= ALERT_HIGH else "low" if v <= ALERT_LOW else "nominal"
+            assert rd.alerts[k] == exp, (k, v, rd.alerts[k])
+    assert r1.metrics == r2.metrics                      # deterministic
+    assert first.metrics["drift"] == 0.0 and first.metrics["tbf"] == 0.5  # no-prior handling
+    assert r1.raised_field_count >= 1                    # "must"/"not"/"the" are bones
+    assert r1.metrics["da"] > 0.0                        # "not" -> dissonance
+
+
 def ucns_embed_deterministic_holds() -> None:
     """UCNS-native embedding is deterministic, unit-norm, and text-distinct."""
     from interdependent_lib.ucns_embed import embed_text, EMBED_LANES
@@ -2044,4 +2087,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1360:304 imports_exports=187:99 calls_definitions=546:117
+# ratios: loc_comments=1396:307 imports_exports=191:101 calls_definitions=557:119
