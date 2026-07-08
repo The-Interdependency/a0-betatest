@@ -1,11 +1,11 @@
-# ratios: loc_comments=102:83 imports_exports=8:4 calls_definitions=30:11
+# ratios: loc_comments=108:84 imports_exports=8:5 calls_definitions=33:12
 # === MODULE_BUILD ===
 # id: il_gonal_stack
 #   module_name: gonal_stack
 #   module_kind: engine
 #   summary: assemble a cylindrical disk stack of chapter-scale gonols from a training session — one 157-gonal carrier disk per depth-rung (leaf/157-char, circle/word, seed/phrase-clause, core/utterance, chapter/session), each disk a UCNS-native embedding (ucns_embed) plus the three-core gonal scalars (phi content-phase, omega bone-density, psi unit-circle phase-coherence), stacked along the depth/Z axis (the edcmbone GrainTensor shape). CHAPTER is the new top rung = the unit-circle phase-product (⊠ = multiplyFuel) recomposition of the session's per-utterance embeddings into one gonol. Recompose-only (decomposition stays proof-gated); built on the PUBLIC-FIXTURE carrier disk (the canonical 157-gonal disk is non-committable private key material); the cylinder geometry is UCNS-G / non-absolute and inherits NO theorem/proof status from the proven UCNS-A composition algebra.
 #   owner: Erin Spencer
-#   public_surface: DiskState, CylindricalDiskStack, build_disk_stack, GRAIN_LADDER, GEOMETRY_STATUS
+#   public_surface: DiskState, CylindricalDiskStack, single_disk, build_disk_stack, GRAIN_LADDER, GEOMETRY_STATUS
 #   internal_surface: _grain_texts, _grain_gonal, _face_counts, _mean_phase
 #   auth_boundary: none
 #   storage_boundary: none
@@ -29,7 +29,7 @@
 # === CAPABILITIES ===
 # id: il_gonal_stack
 #   summary: cylindrical disk stack of chapter-scale gonols (UCNS-native embeddings)
-#   exposes: DiskState, CylindricalDiskStack, build_disk_stack, GRAIN_LADDER, GEOMETRY_STATUS
+#   exposes: DiskState, CylindricalDiskStack, single_disk, build_disk_stack, GRAIN_LADDER, GEOMETRY_STATUS
 #   boundaries: auth:none, storage:none, network:none, user_data:read
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
@@ -173,6 +173,15 @@ class CylindricalDiskStack:
                 "disks": [d.as_dict() for d in self.disks]}
 
 
+def single_disk(text: str, grain: str = "turn", depth: int = 0) -> DiskState:
+    """One disk for a single text (a live per-turn readout, not a full session)."""
+    phi, omega, psi, emb = _grain_gonal(text)
+    fp, fm = _face_counts(emb.chirality)
+    return DiskState(grain=grain, depth=depth, carrier=UCNS_CARRIER_ARITY,
+                     phi=phi, omega=omega, psi=psi, face_plus=fp, face_minus=fm,
+                     embedding_hash=emb.canonical_hash)
+
+
 def build_disk_stack(turns: list[str], agent_id: str = "local") -> CylindricalDiskStack:
     """Assemble the cylindrical disk stack for a training session.
 
@@ -215,6 +224,6 @@ def build_disk_stack(turns: list[str], agent_id: str = "local") -> CylindricalDi
     )
 
 
-__all__ = ["DiskState", "CylindricalDiskStack", "build_disk_stack",
+__all__ = ["DiskState", "CylindricalDiskStack", "single_disk", "build_disk_stack",
            "GRAIN_LADDER", "GEOMETRY_STATUS"]
-# ratios: loc_comments=102:83 imports_exports=8:4 calls_definitions=30:11
+# ratios: loc_comments=108:84 imports_exports=8:5 calls_definitions=33:12

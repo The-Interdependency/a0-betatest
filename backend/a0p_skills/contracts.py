@@ -1,4 +1,4 @@
-# ratios: loc_comments=1396:307 imports_exports=191:101 calls_definitions=557:119
+# ratios: loc_comments=1419:313 imports_exports=194:102 calls_definitions=564:121
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1668,6 +1668,41 @@ def ucns_embed_deterministic_holds() -> None:
     assert all(c in (1, -1) for c in e1.chirality)  # chirality is a Mobius face bit
 
 
+def api_training_readout_holds():
+    """Training route: /readout and /disk-stack compute the expected shapes."""
+    return _api_training_readout_async()
+
+
+async def _api_training_readout_async() -> None:
+    """Calls the handler coroutines directly (a stub user, bypassing the ingress)
+    so the contract runner needs no live server. Pins that /readout returns the
+    three panels (embedding + EDCM + gonal disk) and /disk-stack returns a
+    cylindrical disk stack whose chapter psi is the phase-product recomposition.
+    """
+    from api_training import training_readout, training_disk_stack, ReadoutBody, DiskStackBody
+    from interdependent_lib.edcm_readout import EDCM_METRICS
+    from interdependent_lib.gonal_stack import GRAIN_LADDER
+
+    user = {"id": "contract-user"}
+    rd = await training_readout(
+        ReadoutBody(text="we must not open the closed loop",
+                    prev_text="keep the loop running"), user=user)
+    assert set(rd["embedding"]) >= {"angle_bits", "chirality", "carrier", "lanes"}
+    assert rd["embedding"]["carrier"] == 157 and rd["embedding"]["lanes"] == 53
+    assert set(rd["edcm"]["metrics"]) == set(EDCM_METRICS)
+    assert rd["disk"]["carrier"] == 157 and 0.0 <= rd["disk"]["psi"] <= 1.0
+    assert rd["recompose_only"] is True
+    assert rd["geometry_status"] == "ucns-g:non-absolute"
+
+    st = await training_disk_stack(DiskStackBody(
+        turns=["hold the frontier", "we must not cross it", "close the loop"],
+        agent_id="t1"), user=user)
+    assert tuple(d["grain"] for d in st["disks"]) == GRAIN_LADDER
+    assert st["carrier_arity"] == 157 and st["recompose_only"] is True
+    assert st["geometry_status"] == "ucns-g:non-absolute"
+    assert st["chapter_psi"] > 0.0
+
+
 def tools_odysseus_relay_request_holds():
     """Odysseus relay: round-trips a stubbed /api/codex/* call, guards path/scope."""
     return _tools_odysseus_relay_request_async()
@@ -2087,4 +2122,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1396:307 imports_exports=191:101 calls_definitions=557:119
+# ratios: loc_comments=1419:313 imports_exports=194:102 calls_definitions=564:121
