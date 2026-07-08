@@ -2,7 +2,7 @@
 // id: fe_lib_api
 //   module_name: api
 //   module_kind: client
-//   summary: axios-based REST client for every /api endpoint — health, BYOK keys, env vault, inventory, sessions, drafts, skill reports, fanout/daisy/synthesize chat, inspector, agents+slugs, instances CRUD, chat/instance, sentinels canon+modes+weights, overrides queue, chat-training readout/disk-stack, gonals, usage
+//   summary: axios-based REST client for every /api endpoint — health, BYOK keys, env vault, inventory, sessions, drafts, skill reports, fanout/daisy/synthesize chat, inspector, agents+slugs, instances CRUD, chat/instance, sentinels canon+modes+weights, overrides queue, chat-training readout/disk-stack, agent-lab permutations/plan/identity/sub-memory, gonals, usage
 //   owner: Erin Spencer
 //   public_surface: api
 //   internal_surface: client
@@ -149,6 +149,12 @@ export const api = {
   // ─── Chat Training tab (UCNS embedding + EDCM + cylindrical disk stack) ──
   trainingReadout:  (body) => client.post("/training/readout", body, { timeout: 60000 }).then(r => r.data),
   trainingDiskStack:(body) => client.post("/training/disk-stack", body, { timeout: 120000 }).then(r => r.data),
+
+  // ─── Agent Creation Lab (permutation catalogue + planner + sub-memory) ──
+  labPermutations:  () => client.get("/agent-lab/permutations").then(r => r.data),
+  labIdentity:      (body) => client.post("/agent-lab/identity-preview", body).then(r => r.data),
+  labPlan:          (body) => client.post("/agent-lab/plan", body).then(r => r.data),
+  labSubMemory:     (body) => client.post("/agent-lab/sub-memory", body).then(r => r.data),
 
   // ─── Gonals (157-gonal carriers — public/mirror/private) ────────────────
   listGonals:       () => client.get("/gonals").then(r => r.data),

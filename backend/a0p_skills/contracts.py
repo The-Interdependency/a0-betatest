@@ -1,4 +1,4 @@
-# ratios: loc_comments=1419:313 imports_exports=194:102 calls_definitions=564:121
+# ratios: loc_comments=1449:320 imports_exports=195:103 calls_definitions=575:123
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1668,6 +1668,51 @@ def ucns_embed_deterministic_holds() -> None:
     assert all(c in (1, -1) for c in e1.chirality)  # chirality is a Mobius face bit
 
 
+def agent_lab_plan_holds():
+    """Agent Lab: catalogue tags native/cross-repo; plan maps stages to real
+    routes/primitives (cross-repo plan-only); identity composes a0(<energy>);
+    sub-memory folds spawn_sub items into the ST ring."""
+    return _agent_lab_plan_async()
+
+
+async def _agent_lab_plan_async() -> None:
+    from api_agent_lab import (
+        permutations, identity_preview, plan, sub_memory,
+        IdentityBody, LabRecipe, SubMemoryBody, build_plan,
+    )
+    user = {"id": "contract-user"}
+
+    cat = await permutations(user=user)
+    ids = {s["id"] for s in cat["stages"]}
+    assert {"identity_mode", "create", "checkpoint", "sub_memory", "cross_repo_merge"} <= ids
+    xrepo = [s for s in cat["stages"] if s["id"] == "cross_repo_merge"][0]
+    assert xrepo["native"] is False and xrepo["kind"] == "plan_only"
+
+    # Identity composition (the 6-lattice grammar).
+    idp = await identity_preview(IdentityBody(mode="a0(zfae)<model>", base_model="openai:gpt-4o",
+                                              username="erin"), user=user)
+    assert idp["canonical"] == "a0(zfae)gpt-4o"
+    assert idp["agent_name"] == "erin(a0(zfae)gpt-4o)"
+    # A mode that needs a base model but is given none -> a warning, not a crash.
+    idp2 = await identity_preview(IdentityBody(mode="a0(<model>)"), user=user)
+    assert idp2["warnings"]
+
+    # Plan mixes a native + the cross-repo stage; ladder order preserved.
+    pl = await plan(LabRecipe(identity=IdentityBody(mode="a0(zfae)"),
+                              stages=["distill_unlock", "sub_memory", "cross_repo_merge"]), user=user)
+    step_ids = [s["id"] for s in pl["steps"]]
+    assert step_ids.index("create") < step_ids.index("checkpoint")
+    assert "cross_repo_merge" in pl["plan_only_steps"]
+    assert all(s["executable_here"] for s in pl["steps"] if s["id"] == "create")
+
+    # Volatile sub-memory: items fold into the short-term ring.
+    sm = await sub_memory(SubMemoryBody(items_by_sub={"probe": ["a", "b"]},
+                                        seed_short_term=["s0"]), user=user)
+    assert sm["merged"]["probe"] == ["a", "b"]
+    assert "a" in sm["snapshot"]["st"] and "b" in sm["snapshot"]["st"]
+    assert "probe" not in sm["snapshot"]["sub_keys"]      # merged out
+
+
 def api_training_readout_holds():
     """Training route: /readout and /disk-stack compute the expected shapes."""
     return _api_training_readout_async()
@@ -2122,4 +2167,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1419:313 imports_exports=194:102 calls_definitions=564:121
+# ratios: loc_comments=1449:320 imports_exports=195:103 calls_definitions=575:123
