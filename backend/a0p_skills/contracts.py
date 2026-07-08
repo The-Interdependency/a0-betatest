@@ -1,4 +1,4 @@
-# ratios: loc_comments=1350:303 imports_exports=186:98 calls_definitions=540:116
+# ratios: loc_comments=1360:304 imports_exports=187:99 calls_definitions=546:117
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1612,6 +1612,19 @@ async def _tools_mcp_relay_request_async() -> None:
     assert isinstance(r["error"], str) and r["error"]
 
 
+def ucns_embed_deterministic_holds() -> None:
+    """UCNS-native embedding is deterministic, unit-norm, and text-distinct."""
+    from interdependent_lib.ucns_embed import embed_text, EMBED_LANES
+    e1 = embed_text("the quick brown fox jumps")
+    e2 = embed_text("the quick brown fox jumps")
+    e3 = embed_text("a wholly unrelated clause")
+    assert e1.angle_bits == e2.angle_bits and e1.canonical_hash == e2.canonical_hash
+    assert e1.canonical_hash != e3.canonical_hash
+    assert e1.lanes == EMBED_LANES == len(e1.angle_bits) == len(e1.chirality)
+    assert abs(e1.similarity(e2) - 1.0) < 1e-9      # identical phases -> cos == 1
+    assert all(c in (1, -1) for c in e1.chirality)  # chirality is a Mobius face bit
+
+
 def tools_odysseus_relay_request_holds():
     """Odysseus relay: round-trips a stubbed /api/codex/* call, guards path/scope."""
     return _tools_odysseus_relay_request_async()
@@ -2031,4 +2044,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1350:303 imports_exports=186:98 calls_definitions=540:116
+# ratios: loc_comments=1360:304 imports_exports=187:99 calls_definitions=546:117
