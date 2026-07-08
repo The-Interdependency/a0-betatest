@@ -1,4 +1,4 @@
-# ratios: loc_comments=75:67 imports_exports=5:3 calls_definitions=32:10
+# ratios: loc_comments=77:70 imports_exports=5:3 calls_definitions=33:11
 # === MODULE_BUILD ===
 # id: il_edcm_readout
 #   module_name: edcm_readout
@@ -88,11 +88,18 @@ def _jaccard(a: set, b: set) -> float:
     return len(a & b) / len(union) if union else 1.0
 
 
+def _is_negation(tok: str) -> bool:
+    # `_TOKEN_RE` keeps the apostrophe, so contractions arrive as "don't"/"won't"/
+    # "isn't"/… — a single "n't" suffix check catches every such form; the set
+    # holds the apostrophe-free + standalone spellings (no, not, cannot, ...).
+    return tok in _NEG or tok.endswith("n't")
+
+
 def _neg_density(text: str) -> float:
     toks = _tokens(text)
     if not toks:
         return 0.0
-    return min(1.0, sum(1 for t in toks if t in _NEG) / len(toks) * 4.0)
+    return min(1.0, sum(1 for t in toks if _is_negation(t)) / len(toks) * 4.0)
 
 
 def _ttr(text: str) -> float:
@@ -167,4 +174,4 @@ def readout(cur_text: str, prev_text: Optional[str] = None, grain: str = "turn")
 
 
 __all__ = ["EDCMReadout", "readout", "EDCM_METRICS", "ALERT_HIGH", "ALERT_LOW"]
-# ratios: loc_comments=75:67 imports_exports=5:3 calls_definitions=32:10
+# ratios: loc_comments=77:70 imports_exports=5:3 calls_definitions=33:11

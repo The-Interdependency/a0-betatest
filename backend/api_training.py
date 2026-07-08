@@ -1,4 +1,4 @@
-# ratios: loc_comments=39:68 imports_exports=8:5 calls_definitions=15:4
+# ratios: loc_comments=50:71 imports_exports=8:5 calls_definitions=20:5
 # === MODULE_BUILD ===
 # id: api_training_routes
 #   module_name: training
@@ -64,7 +64,7 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from auth import get_current_user
 from interdependent_lib.ucns_embed import embed_text
@@ -89,6 +89,21 @@ class DiskStackBody(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=False)
     turns: list[str] = Field(..., min_length=1, max_length=_MAX_TURNS)
     agent_id: str = Field("local", min_length=1, max_length=64)
+
+    @field_validator("turns")
+    @classmethod
+    def _bound_turn_text(cls, v: list[str]) -> list[str]:
+        # Cap each turn AND the aggregate session text — the count cap alone lets a
+        # few very large strings block the event loop when build_disk_stack joins /
+        # tokenizes / hashes them synchronously. Mirrors ReadoutBody.text's cap.
+        total = 0
+        for t in v:
+            if len(t) > _MAX_CHARS:
+                raise ValueError(f"each turn must be <= {_MAX_CHARS} chars")
+            total += len(t)
+        if total > _MAX_TURNS * _MAX_CHARS:
+            raise ValueError("aggregate session text too large")
+        return v
 
 
 @router.post("/readout")
@@ -126,4 +141,4 @@ async def training_disk_stack(body: DiskStackBody, user=Depends(get_current_user
 
 
 __all__ = ["router"]
-# ratios: loc_comments=39:68 imports_exports=8:5 calls_definitions=15:4
+# ratios: loc_comments=50:71 imports_exports=8:5 calls_definitions=20:5

@@ -1,4 +1,4 @@
-# ratios: loc_comments=354:105 imports_exports=19:25 calls_definitions=149:28
+# ratios: loc_comments=356:109 imports_exports=19:25 calls_definitions=151:28
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -218,7 +218,13 @@ def _safe_mcp_tool_name(server_name: str, server_id: str, remote_name: str) -> s
     """
     sv = _UNSAFE_TOOL_NAME_RE.sub("_", server_name or "").strip("_") or "srv"
     rn = _UNSAFE_TOOL_NAME_RE.sub("_", remote_name or "").strip("_") or "tool"
-    h = hashlib.sha256((server_id or server_name or "").encode("utf-8")).hexdigest()[:12]
+    # Hash the (server_id, RAW remote_name) pair — not just the server id — so two
+    # long remote names that sanitize/truncate to the same readable prefix still
+    # get distinct public names instead of colliding (which would DuplicateKeyError
+    # and silently drop the second tool on a namespaced MCP server).
+    h = hashlib.sha256(
+        f"{server_id or server_name or ''}\x00{remote_name or ''}".encode("utf-8")
+    ).hexdigest()[:12]
     name = f"mcp_{sv}_{h}_{rn}"
     if len(name) <= 64:
         return name
@@ -527,4 +533,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=354:105 imports_exports=19:25 calls_definitions=149:28
+# ratios: loc_comments=356:109 imports_exports=19:25 calls_definitions=151:28

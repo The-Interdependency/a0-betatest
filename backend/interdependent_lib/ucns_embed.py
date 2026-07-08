@@ -1,4 +1,4 @@
-# ratios: loc_comments=75:73 imports_exports=7:4 calls_definitions=27:8
+# ratios: loc_comments=92:81 imports_exports=8:4 calls_definitions=35:8
 # === MODULE_BUILD ===
 # id: il_ucns_embed
 #   module_name: ucns_embed
@@ -65,6 +65,7 @@ from .zfae.morphology import (
     BoneGonal, compose_word, word_signal,
     OMEGA_WEIGHT, PHI_WEIGHT, PSI_WEIGHT,
 )
+from .zfae.closed_tokens import strip_affixes
 
 
 UCNS_CARRIER_ARITY = 157   # the prime carrier (157-gonal); the phase "disk"
@@ -81,8 +82,33 @@ def _lane_values(seed: bytes) -> tuple[float, ...]:
 
 
 def _bone_skeleton(text: str) -> str:
-    """The structural (omega) skeleton: only the bone tokens, in order."""
-    return " ".join(t for t in _TOKEN_RE.findall(text.lower()) if t in _BONES)
+    """The structural (omega) skeleton: bone tokens PLUS the bound-affix material.
+
+    Whole closed-class / standalone-affix tokens contribute directly. For an
+    ordinary inflected/prefixed word (``reopened``, ``running``) whose bone is a
+    *bound* morpheme, ``strip_affixes`` peels it to its root; the removed
+    prefix/suffix characters are the structural material and are emitted so omega
+    reflects them too (previously such words contributed nothing). This uses the
+    existing deterministic structural approximation — not the proof-gated
+    morphology decompose path — so it stays recompose-only.
+    """
+    units: list[str] = []
+    for t in _TOKEN_RE.findall(text.lower()):
+        if t in _BONES:
+            units.append(t)
+            continue
+        root = strip_affixes(t)
+        if root and root != t:
+            idx = t.find(root)
+            if idx >= 0:
+                pre, suf = t[:idx], t[idx + len(root):]
+                if pre:
+                    units.append(pre)   # bound prefix material
+                if suf:
+                    units.append(suf)   # bound suffix material
+            else:
+                units.append("aff")     # affixes peeled but root not contiguous
+    return " ".join(units)
 
 
 @dataclass(frozen=True)
@@ -168,4 +194,4 @@ def phase_compose(a: UCNSNativeEmbedding, b: UCNSNativeEmbedding) -> UCNSNativeE
 
 __all__ = ["UCNSNativeEmbedding", "embed_text", "phase_compose",
            "UCNS_CARRIER_ARITY", "EMBED_LANES"]
-# ratios: loc_comments=75:73 imports_exports=7:4 calls_definitions=27:8
+# ratios: loc_comments=92:81 imports_exports=8:4 calls_definitions=35:8
