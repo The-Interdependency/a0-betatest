@@ -1,4 +1,4 @@
-# ratios: loc_comments=1350:303 imports_exports=186:98 calls_definitions=540:116
+# ratios: loc_comments=1449:320 imports_exports=195:103 calls_definitions=575:123
 # Ensure backend/.env is loaded before any contract import logic runs.
 # Without this, contracts that import modules reading env at module-top (e.g.
 # `db`, `api_extensions`, `crypto_vault`) fail in fresh shells / CI runs.
@@ -1612,6 +1612,142 @@ async def _tools_mcp_relay_request_async() -> None:
     assert isinstance(r["error"], str) and r["error"]
 
 
+def gonal_stack_recompose_holds() -> None:
+    """Disk stack: one disk/rung, chapter psi == phase-product fold, firewalls set."""
+    import functools
+    from interdependent_lib.gonal_stack import (
+        build_disk_stack, GRAIN_LADDER, GEOMETRY_STATUS)
+    from interdependent_lib.ucns_embed import embed_text, phase_compose
+    turns = ["keep the loop closed", "we must not open it", "hold the frontier line"]
+    st = build_disk_stack(turns, agent_id="t1")
+    assert tuple(d.grain for d in st.disks) == GRAIN_LADDER
+    assert st.carrier_arity == 157 and st.recompose_only is True
+    assert st.geometry_status == GEOMETRY_STATUS == "ucns-g:non-absolute"
+    assert st.session_turns == 3
+    for d in st.disks:
+        assert d.carrier == 157 and d.embedding_hash
+        assert d.face_plus + d.face_minus == 53      # chirality faces over the 53 lanes
+        assert 0.0 <= d.psi <= 1.0                    # psi is a unit-circle coherence
+    # chapter psi == coherence of the ⊠ (phase-product) fold of utterance embeddings
+    chapter_emb = functools.reduce(phase_compose, [embed_text(u) for u in turns])
+    chapter = [d for d in st.disks if d.grain == "chapter"][0]
+    assert abs(chapter.psi - st.chapter_psi) < 1e-12
+    assert abs(chapter.psi - chapter_emb.coherence()) < 1e-12
+    assert chapter.psi > 0.0                          # a real, nonzero recomposition
+
+
+def edcm_readout_bounds_holds() -> None:
+    """EDCM six-family readout is bounded [0,1], deterministic, banded, prior-safe."""
+    from interdependent_lib.edcm_readout import readout, EDCM_METRICS, ALERT_HIGH, ALERT_LOW
+    r1 = readout("we must not break the closed loop", "keep the loop open and running")
+    r2 = readout("we must not break the closed loop", "keep the loop open and running")
+    first = readout("a lone opening turn with no prior")
+    empty = readout("")
+    assert set(r1.metrics) == set(EDCM_METRICS) == set(first.metrics)
+    for rd in (r1, first, empty):
+        for k, v in rd.metrics.items():
+            assert 0.0 <= v <= 1.0, (k, v)
+            exp = "high" if v >= ALERT_HIGH else "low" if v <= ALERT_LOW else "nominal"
+            assert rd.alerts[k] == exp, (k, v, rd.alerts[k])
+    assert r1.metrics == r2.metrics                      # deterministic
+    assert first.metrics["drift"] == 0.0 and first.metrics["tbf"] == 0.5  # no-prior handling
+    assert r1.raised_field_count >= 1                    # "must"/"not"/"the" are bones
+    assert r1.metrics["da"] > 0.0                        # "not" -> dissonance
+
+
+def ucns_embed_deterministic_holds() -> None:
+    """UCNS-native embedding is deterministic, unit-norm, and text-distinct."""
+    from interdependent_lib.ucns_embed import embed_text, EMBED_LANES
+    e1 = embed_text("the quick brown fox jumps")
+    e2 = embed_text("the quick brown fox jumps")
+    e3 = embed_text("a wholly unrelated clause")
+    assert e1.angle_bits == e2.angle_bits and e1.canonical_hash == e2.canonical_hash
+    assert e1.canonical_hash != e3.canonical_hash
+    assert e1.lanes == EMBED_LANES == len(e1.angle_bits) == len(e1.chirality)
+    assert abs(e1.similarity(e2) - 1.0) < 1e-9      # identical phases -> cos == 1
+    assert all(c in (1, -1) for c in e1.chirality)  # chirality is a Mobius face bit
+
+
+def agent_lab_plan_holds():
+    """Agent Lab: catalogue tags native/cross-repo; plan maps stages to real
+    routes/primitives (cross-repo plan-only); identity composes a0(<energy>);
+    sub-memory folds spawn_sub items into the ST ring."""
+    return _agent_lab_plan_async()
+
+
+async def _agent_lab_plan_async() -> None:
+    from api_agent_lab import (
+        permutations, identity_preview, plan, sub_memory,
+        IdentityBody, LabRecipe, SubMemoryBody, build_plan,
+    )
+    user = {"id": "contract-user"}
+
+    cat = await permutations(user=user)
+    ids = {s["id"] for s in cat["stages"]}
+    assert {"identity_mode", "create", "checkpoint", "sub_memory", "cross_repo_merge"} <= ids
+    xrepo = [s for s in cat["stages"] if s["id"] == "cross_repo_merge"][0]
+    assert xrepo["native"] is False and xrepo["kind"] == "plan_only"
+
+    # Identity composition (the 6-lattice grammar).
+    idp = await identity_preview(IdentityBody(mode="a0(zfae)<model>", base_model="openai:gpt-4o",
+                                              username="erin"), user=user)
+    assert idp["canonical"] == "a0(zfae)gpt-4o"
+    assert idp["agent_name"] == "erin(a0(zfae)gpt-4o)"
+    # A mode that needs a base model but is given none -> a warning, not a crash.
+    idp2 = await identity_preview(IdentityBody(mode="a0(<model>)"), user=user)
+    assert idp2["warnings"]
+
+    # Plan mixes a native + the cross-repo stage; ladder order preserved.
+    pl = await plan(LabRecipe(identity=IdentityBody(mode="a0(zfae)"),
+                              stages=["distill_unlock", "sub_memory", "cross_repo_merge"]), user=user)
+    step_ids = [s["id"] for s in pl["steps"]]
+    assert step_ids.index("create") < step_ids.index("checkpoint")
+    assert "cross_repo_merge" in pl["plan_only_steps"]
+    assert all(s["executable_here"] for s in pl["steps"] if s["id"] == "create")
+
+    # Volatile sub-memory: items fold into the short-term ring.
+    sm = await sub_memory(SubMemoryBody(items_by_sub={"probe": ["a", "b"]},
+                                        seed_short_term=["s0"]), user=user)
+    assert sm["merged"]["probe"] == ["a", "b"]
+    assert "a" in sm["snapshot"]["st"] and "b" in sm["snapshot"]["st"]
+    assert "probe" not in sm["snapshot"]["sub_keys"]      # merged out
+
+
+def api_training_readout_holds():
+    """Training route: /readout and /disk-stack compute the expected shapes."""
+    return _api_training_readout_async()
+
+
+async def _api_training_readout_async() -> None:
+    """Calls the handler coroutines directly (a stub user, bypassing the ingress)
+    so the contract runner needs no live server. Pins that /readout returns the
+    three panels (embedding + EDCM + gonal disk) and /disk-stack returns a
+    cylindrical disk stack whose chapter psi is the phase-product recomposition.
+    """
+    from api_training import training_readout, training_disk_stack, ReadoutBody, DiskStackBody
+    from interdependent_lib.edcm_readout import EDCM_METRICS
+    from interdependent_lib.gonal_stack import GRAIN_LADDER
+
+    user = {"id": "contract-user"}
+    rd = await training_readout(
+        ReadoutBody(text="we must not open the closed loop",
+                    prev_text="keep the loop running"), user=user)
+    assert set(rd["embedding"]) >= {"angle_bits", "chirality", "carrier", "lanes"}
+    assert rd["embedding"]["carrier"] == 157 and rd["embedding"]["lanes"] == 53
+    assert set(rd["edcm"]["metrics"]) == set(EDCM_METRICS)
+    assert rd["disk"]["carrier"] == 157 and 0.0 <= rd["disk"]["psi"] <= 1.0
+    assert rd["recompose_only"] is True
+    assert rd["geometry_status"] == "ucns-g:non-absolute"
+
+    st = await training_disk_stack(DiskStackBody(
+        turns=["hold the frontier", "we must not cross it", "close the loop"],
+        agent_id="t1"), user=user)
+    assert tuple(d["grain"] for d in st["disks"]) == GRAIN_LADDER
+    assert st["carrier_arity"] == 157 and st["recompose_only"] is True
+    assert st["geometry_status"] == "ucns-g:non-absolute"
+    assert st["chapter_psi"] > 0.0
+
+
 def tools_odysseus_relay_request_holds():
     """Odysseus relay: round-trips a stubbed /api/codex/* call, guards path/scope."""
     return _tools_odysseus_relay_request_async()
@@ -2031,4 +2167,4 @@ def traffic_log_append_only_holds() -> None:
                 os.environ.pop("A0P_TRAFFIC_LOG", None)
             else:
                 os.environ["A0P_TRAFFIC_LOG"] = prev
-# ratios: loc_comments=1350:303 imports_exports=186:98 calls_definitions=540:116
+# ratios: loc_comments=1449:320 imports_exports=195:103 calls_definitions=575:123

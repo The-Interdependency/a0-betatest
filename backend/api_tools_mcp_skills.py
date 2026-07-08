@@ -1,4 +1,4 @@
-# ratios: loc_comments=336:92 imports_exports=17:25 calls_definitions=140:27
+# ratios: loc_comments=373:118 imports_exports=19:25 calls_definitions=157:29
 # === MODULE_BUILD ===
 # id: api_tools_mcp_skills_routes
 #   module_name: api_tools_mcp_skills
@@ -6,7 +6,7 @@
 #   summary: REST surface for the tools / MCP-client / Odysseus-client / skills layer — /api/tools (list, register user-webhook tool, invoke), /api/mcp/servers (CRUD external MCP servers, refresh their tools), /api/odysseus/servers (CRUD registered Odysseus workspaces, refresh their scoped /api/codex/* catalogue tools), /api/skills (list, register w/ overlap warning, delete, sync from skill-lib)
 #   owner: Erin Spencer
 #   public_surface: router
-#   internal_surface: _refresh_mcp_tools, _user_id
+#   internal_surface: _refresh_mcp_tools, _safe_mcp_tool_name, _migrate_allow_lists, _user_id
 #   auth_boundary: bearer
 #   storage_boundary: write
 #   network_boundary: external
@@ -42,7 +42,9 @@
 # === END CONTRACTS ===
 """REST surface for tools, MCP client (external server registry), and skills."""
 from __future__ import annotations
+import hashlib
 import logging
+import re
 import time
 import uuid
 from typing import Any, Optional
@@ -57,7 +59,7 @@ from pymongo.errors import DuplicateKeyError
 from auth import get_current_user
 from db import (
     user_tools_col, mcp_servers_col, odysseus_servers_col, skills_col,
-    pending_overrides_col, fiq_audit_col,
+    pending_overrides_col, fiq_audit_col, agent_instances_col,
 )
 
 import tools as tools_pkg
@@ -199,6 +201,64 @@ class MCPServerBody(BaseModel):
     token: Optional[str] = None
 
 
+_UNSAFE_TOOL_NAME_RE = re.compile(r"[^A-Za-z0-9_-]+")
+
+
+def _safe_mcp_tool_name(server_name: str, server_id: str, remote_name: str) -> str:
+    """Provider-safe, globally-unique public name for a mirrored MCP tool.
+
+    Mirrors ``tools.odysseus_relay.safe_tool_name``'s discipline (the Odysseus
+    client already applies it): OpenAI/Anthropic/Gemini function names must match
+    ``[A-Za-z0-9_-]`` and are ~64-char bounded. The old ``mcp:{name}:{remote}``
+    form was provider-unsafe (``:`` and raw user/remote text) AND keyed the
+    process-wide tool registry on the user-chosen server name, so two users who
+    both name a server ``home`` (or a name reused after delete) collided onto one
+    another's ``Tool``. Sanitize the readable parts and disambiguate with a hash
+    of the STABLE per-server id (a UUID), never the name.
+    """
+    sv = _UNSAFE_TOOL_NAME_RE.sub("_", server_name or "").strip("_") or "srv"
+    rn = _UNSAFE_TOOL_NAME_RE.sub("_", remote_name or "").strip("_") or "tool"
+    # Hash the (server_id, RAW remote_name) pair — not just the server id — so two
+    # long remote names that sanitize/truncate to the same readable prefix still
+    # get distinct public names instead of colliding (which would DuplicateKeyError
+    # and silently drop the second tool on a namespaced MCP server).
+    h = hashlib.sha256(
+        f"{server_id or server_name or ''}\x00{remote_name or ''}".encode("utf-8")
+    ).hexdigest()[:12]
+    name = f"mcp_{sv}_{h}_{rn}"
+    if len(name) <= 64:
+        return name
+    # Both readable parts are user/remote-chosen; bound them, keep hash intact.
+    budget = 64 - len(f"mcp__{h}_")
+    half = max(1, budget // 2)
+    return f"mcp_{sv[:half]}_{h}_{rn[:budget - half]}"[:64]
+
+
+async def _migrate_allow_lists(user_id: str, rename_map: dict) -> int:
+    """Rewrite this user's agent allow-lists from old->new MCP tool names.
+
+    The public MCP tool name changed (``mcp:<server>:<remote>`` -> sanitized
+    ``mcp_<server>_<hash>_<remote>``). Agents resolve ``sheet.tools_allowed`` by
+    EXACT name (runtime ``tools_lookup``), and a refresh deletes the old rows and
+    writes only the new names — so without this, agents that had the old name
+    saved would silently lose the MCP tool after a refresh. Migrate the acting
+    user's agents in place so the allow-list keeps pointing at the same tool.
+    """
+    if not rename_map:
+        return 0
+    migrated = 0
+    cursor = agent_instances_col.find(
+        {"user_id": user_id, "sheet.tools_allowed": {"$in": list(rename_map)}})
+    async for agent in cursor:
+        allowed = (agent.get("sheet") or {}).get("tools_allowed") or []
+        new_allowed = [rename_map.get(x, x) for x in allowed]
+        if new_allowed != allowed:
+            await agent_instances_col.update_one(
+                {"_id": agent["_id"]}, {"$set": {"sheet.tools_allowed": new_allowed}})
+            migrated += 1
+    return migrated
+
+
 async def _refresh_mcp_tools(user_id: str, server: dict) -> dict:
     """Probe the remote server, mirror its tools into user_tools_col."""
     probe = await mcp_relay.ping_server(server["url"], token=server.get("token"))
@@ -208,13 +268,16 @@ async def _refresh_mcp_tools(user_id: str, server: dict) -> dict:
     # Clear stale mcp tools from this server first.
     await user_tools_col.delete_many({"user_id": user_id, "mcp_server_id": server["_id"]})
     out: list[str] = []
+    skipped: list[str] = []
+    rename_map: dict = {}   # old public name -> new public name (successful writes only)
     for t in probe["tools"]:
         rname = t.get("name")
         if not rname:
             continue
+        name = _safe_mcp_tool_name(server["name"], server["_id"], rname)
         doc = {
             "_id": str(uuid.uuid4()), "user_id": user_id,
-            "name": f"mcp:{server['name']}:{rname}",
+            "name": name,
             "kind": TOOL_KIND_MCP,
             "description": t.get("description", ""),
             "input_schema": t.get("inputSchema") or {"type": "object"},
@@ -222,10 +285,18 @@ async def _refresh_mcp_tools(user_id: str, server: dict) -> dict:
             "tags": ["mcp", server["name"]], "source": "mcp",
             "created_at_ms": now,
         }
-        await user_tools_col.insert_one(doc)
-        out.append(doc["name"])
+        try:
+            await user_tools_col.insert_one(doc)
+            out.append(name)
+            rename_map[f"mcp:{server['name']}:{rname}"] = name
+        except DuplicateKeyError:
+            # Another tool of this user already holds the generated name; skip it
+            # (never 500 the create/refresh or leave an orphan server).
+            skipped.append(name)
+    # Migrate saved agent allow-lists from the old name form to the new one.
+    migrated = await _migrate_allow_lists(user_id, rename_map)
     await mcp_servers_col.update_one({"_id": server["_id"]}, {"$set": {"last_refresh_ms": now, "tools_count": len(out)}})
-    return {"ok": True, "tools": out, "error": None}
+    return {"ok": True, "tools": out, "skipped": skipped, "migrated_agents": migrated, "error": None}
 
 
 @router.get("/mcp/servers")
@@ -491,4 +562,4 @@ async def mark_publishable(skill_id: str, publishable: bool = True, user=Depends
 
 
 __all__ = ["router"]
-# ratios: loc_comments=336:92 imports_exports=17:25 calls_definitions=140:27
+# ratios: loc_comments=373:118 imports_exports=19:25 calls_definitions=157:29
