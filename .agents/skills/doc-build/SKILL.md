@@ -9,10 +9,17 @@ description: Self-declaring documentation coverage built on msdmd. Each module d
 module's documentation obligations into colocated metadata so docs drift is
 observable instead of discovered by surprise.
 
+Implementation status: this skill defines the `DOCS` block and runner contract.
+This repo does not currently ship a DOCS runner script; consuming repos should
+implement the contract below against their own documentation tree.
+
 Read `msdmd/SKILL.md` first if you have not. The block syntax, parser
 contract, and visible gap rule are inherited.
 
 ## The block
+
+Every module with user, developer, operator, or agent-facing behavior may
+declare one or more documentation contracts:
 
 ```python
 # === DOCS ===
@@ -53,12 +60,17 @@ A DOCS runner MUST:
 
 1. Parse every `DOCS` block with the universal msdmd parser.
 2. Verify each non-`hmmm` `source` path exists.
-3. If `source` includes an anchor, verify the target heading or anchor exists when the file format supports anchors.
+3. If `source` includes an anchor, verify the target heading or anchor
+   exists when the file format supports anchors.
 4. Report `status: draft` and `source: hmmm` as pending, not passing.
 5. Report modules with no `DOCS` block as documentation coverage gaps.
-6. Exit non-zero for missing files, missing anchors, malformed required fields, or deprecated docs referenced as current. Coverage gaps fail only in strict mode.
+6. Exit non-zero for missing files, missing anchors, malformed required
+   fields, or deprecated docs referenced as current. Coverage gaps fail only
+   in strict mode.
 
 ## Reporting shape
+
+Normal output should group results as:
 
 - `PASS`: docs target exists and required fields are valid.
 - `PENDING`: `hmmm` or `draft` documentation contracts.
@@ -72,8 +84,7 @@ A DOCS runner MUST:
 - Treating missing DOCS blocks as invisible because the code has comments.
 - Letting generated docs replace the source-owned declaration.
 
-## hmmm
-
+hmmm
 - whether examples listed in `examples` must execute or only resolve
 - whether public exported surfaces without DOCS should fail strict mode by default
 - how to normalize anchors across Markdown renderers

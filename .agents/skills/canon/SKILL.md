@@ -29,18 +29,27 @@ Before writing a canonical claim, identify its backing class:
 | `inferred` | Reasonable conclusion but not declared or implemented. | Do not canonize; write `hmmm` or propose a decision. |
 | `desired` | A design goal or request. | Mark as proposed until accepted into a skill. |
 
-Only `declared` and `implemented` claims are canon without qualification.
+|∆|Only `declared` and `implemented` claims are canon without qualification.|∆|
 Repo-local and desired claims can motivate a skill change, but the skill must
 say where the claim came from or leave the unresolved part as `hmmm`.
 
 ## Canonization workflow
 
-1. **Find the source.** Prefer files in this repo. For repo-local copies, record the repo/path/commit when available.
-2. **Separate shape from meaning.** If examples show a pattern but do not define semantics, canonize only the pattern and write semantic meaning as `hmmm`.
-3. **Choose the right home.** Foundational parser/block rules belong in `msdmd`; application-specific blocks belong in their own skill; org distribution rules belong in `ORG_DISTRIBUTION.md`; onboarding narrative belongs in `visitor-intro`.
-4. **Update indexes.** When adding a skill, update `skills.json`, README, AGENTS, ORG_DISTRIBUTION, and CLAUDE when those files list installed skills.
-5. **Preserve uncertainty.** Unknown fields and unresolved doctrine are written `hmmm`, with enough context for the next agent to continue.
-6. **Avoid retroactive authority.** Do not describe old repo-local practice as canonical unless this repo adopts it in the same change.
+1. **Find the source.** Prefer files in this repo. For repo-local copies,
+   record the repo/path/commit when available.
+2. **Separate shape from meaning.** If examples show a pattern but do not
+   define semantics, canonize only the pattern and write semantic meaning as
+   `hmmm`.
+3. **Choose the right home.** Foundational parser/block rules belong in
+   `msdmd`; application-specific blocks belong in their own skill; org
+   distribution rules belong in `ORG_DISTRIBUTION.md`; onboarding narrative
+   belongs in `visitor-intro`.
+4. **Update indexes.** When adding a skill, update `skills.json`, README,
+   AGENTS, ORG_DISTRIBUTION, and CLAUDE when those files list installed skills.
+5. **Preserve uncertainty.** Unknown fields and unresolved doctrine are
+   written `hmmm`, with enough context for the next agent to continue.
+6. **Avoid retroactive authority.** Do not describe old repo-local practice as
+   canonical unless this repo adopts it in the same change.
 
 ## Output rubric
 
@@ -58,8 +67,7 @@ When answering canon questions, include:
 - Updating a skill without updating the machine-readable index.
 - Treating `hmmm` as failure. It is the honest boundary object.
 
-## hmmm
-
+hmmm
 - whether canon claims should eventually live in a `CANON` metadata block
 - whether target repo propagation should be verified by a dedicated runner
 - whether accepted design chat should be archived as a source-backed artifact
