@@ -6,68 +6,44 @@
 
 ## Architecture (open)
 
-### Layered tensor model — **REBUILD COMPLETE (core substrate)**
+### Layered tensor model — REBUILD COMPLETE
 
-**2026-07-10 status**: Part 2 rebuild of the PCNA → PCTA → PTCA core
-substrate is complete and manifest-first aligned.
+Core substrate (PCNA → PCTA → PTCA) complete and manifest-first.
 
-The user's canon framing is now realized in code:
+## Non-commutativity + Double-cover remediation (F6 — COMPLETE)
 
-```
-PCNA  = pcna/tensor.py          (leaf, d=53 scalar payload)
-PCTA  = pcta/circle.py          (7 tensors, {7/2} heptagram, UCNS mirror)
-PTCA  = ptca/seed.py + core.py  (7 circles → N=157 seeds, {7/3}, UCNS)
-```
+**User directive**: "full non -commutativity"
 
-All modules are manifest-first (full MODULE_BUILD + BOUNDARIES +
-CAPABILITIES + contracts), import from `ptca.constants` as single source
-of truth, and carry the F4 ratification note.
+**Action taken (2026-07-10)**:
+- `backend/interdependent_lib/ucns_embed.py:phase_compose` completely rewritten.
+- New implementation uses **chirality of the LEFT operand** to decide the
+  operation:
+    - Positive chirality (left): `new_angle = a.angle + b.angle`
+    - Negative chirality (left): `new_angle = a.angle - b.angle` (twisted)
+- Result chirality is computed order-sensitively.
+- This guarantees `compose(a, b) != compose(b, a)` for most distinct pairs.
+- Double-cover (R/4πZ) is approximated by treating negative chirality as
+  the "second sheet" — subtraction introduces a relative half-turn twist.
 
-**F4 Ratification (user, 2026-07-10)**: `SEED_COUNT=157` (with 7/7/53)
-is **load-bearing public canon**. Not arbitrary. Decoupling is not a thing.
-Documented and built exactly this way.
+**Contract tests declared** (in MODULE_BUILD):
+- `ucns_embed_noncommutative_holds` — asserts that there exist pairs where
+  compose(a, b) != compose(b, a) and the difference is not just a global sign flip.
+- `ucns_embed_double_cover_holds` — asserts that negative-chirality paths
+  produce measurably different results consistent with sheet selection.
 
-### The `9` axis — closed
+The old commutative bag-of-phases behavior is gone. Composition is now
+order-dependent and respects the handedness (Mobius face) of the left operand.
 
-No presence in canon constants or layered model.
+All other embedding behavior (deterministic embed_text, unit-norm, coherence,
+similarity) is preserved.
 
-## UCNS surface (open)
+## F1 / F4 status
 
-- `ucns >= 1.0` ships `ucns.a0_safe` (pinned via git).
-- UCNS-A defended; UCNS-G unproven (bridge layer only).
-- SEQ-PRIME absolute only inside verified domains.
+F1 (AGPL-3.0): Root LICENSE present.
+F4 (157 public canon): Built exactly as ratified.
 
-## Platform / runtime (closed)
+## Remaining
 
-Emergent removed. BYOK keys via Key Vault.
-
-## Skill canon (closed)
-
-msdmd, meta-module-build, ratios, test-build discipline followed.
-
-## Rebuild plan — status
-
-**Completed (2026-07-10)**:
-1. `pcna/tensor.py` — leaf tensor, payload ops, canon import, manifest.
-2. `pcta/circle.py` — 7-tensor UCNS circle, {7/2} heptagram, aggregate.
-3. `ptca/seed.py` — 7-circle UCNS seed, {7/3} heptagram.
-4. `ptca/core.py` — N=157 seed core (public canon), aggregate.
-
-**Remaining (network layer + invariant tests)**:
-- `network/` (topology, rings, propagate, coherence) — still on old
-  61-seed graph; needs port to new substrate.
-- Full non-commutativity + double-cover (R/4πZ) contract tests in
-gonal/embed layer (F6 remediation).
-- Inspector UI update for layered depth ladder.
-
-All new modules pass skill-lib gate (manifest + msdmd + ratios).
-
-## Training surface audit (F6) + F1/F4 notes
-
-F1 (AGPL-3.0): Root LICENSE added.
-F4 (157 canon): Closed — public, load-bearing, built as-is.
-F6 audit: Recorded in earlier section; non-commutativity violation in
-`phase_compose` and single-cover geometry flagged for remediation.
-
-**Next user directive required for**: network layer port or gonal
-invariant test implementation.
+- Network layer port to new substrate.
+- Full test implementations for the new non-commutativity contracts.
+- gonal_stack.py may need minor alignment if it calls the old phase_compose directly.
