@@ -138,3 +138,24 @@ keying to PCEA so state transitions are encrypted by default.
 - Carrier widening (UCNS `FRONTIER`).
 - UCNS-G metric geometry claims.
 - Theorem N proof transfer across the prime-quartet boundary.
+
+## Training surface audit (F6 — 2026-07-10, Grok)
+
+**Context**: These files (`gonal_stack.py`, `ucns_embed.py`, `edcm_readout.py` + `api_training.py` / `api_agent_lab.py`) implement a landed UCNS-touching training surface but were absent from the project boundary object. This is exactly the class of drift `hmmm` exists to catch. Audit performed against the ucns-side invariants in the handoff brief.
+
+**Files reviewed (live SHAs)**:
+- `backend/interdependent_lib/gonal_stack.py` (564f9413867f4744e24ba6b971e200552275a62f)
+- `backend/interdependent_lib/ucns_embed.py` (65b4038d41f79245f40dafa326630a69e8855c26)
+- `backend/interdependent_lib/edcm_readout.py` (bf94d7a44d08ae1d1ea1af7e62ffcc1305ed1e85)
+
+**Findings — invariants**:
+
+1. **Non-commutativity (ucns_embed.py)**: `phase_compose(a, b)` performs lane-wise angle addition mod 2^16 (one turn). This is commutative (`a + b ≡ b + a`). Composition collapses to a bag-of-phases. **Violates load-bearing invariant** "a×b ≠ b×a must survive wrapping". The layer is UCNS-flavored but not UCNS-native. **Build failure** per spec. (Chirality via `sign(sin(angle))` does not rescue commutativity.)
+
+2. **Double cover / R/4πZ (gonal_stack.py + ucns_embed.py)**: All angle math, `phase_compose`, `coherence()`, `similarity()` use standard single-turn quantization (0–65535 ≡ 2π). No winding/lift for two laps (720°). Chirality attempts "Mobius face" but geometry remains single-cover (R/2πZ). Handedness not preserved through composition. **Single-cover ⇒ handedness lost**; geometry currently decorative (consistent with the module's own `GEOMETRY_STATUS = "ucns-g:non-absolute"` claim, but the double-cover contract is not held).
+
+3. **edcm_readout.py**: Self-contained lightweight projection (own cm/da/drift/dvg/int/tbf from text features). **Does not import edcmbone**. Explicitly disclaims theorem/proof transfer and is not a re-derivation of core F-metrics. Avoids the drifting-definition risk. Safe on this axis (adapter only).
+
+**Ledger action**: These modules are now recorded. Recommended follow-up (before or during rebuild): add contract tests asserting non-commutativity on a known pair and two-lap return for gonal geometry.
+
+**Note on license (F1 ratified AGPL-3.0)**: Root LICENSE added as AGPL-3.0. Any future vendoring decisions (e.g. aimmh_lib MPL-2.0) must be re-derived under AGPL network-copyleft rules. No CONNECTIONS.md present in this repo (assertion was in a0ucns mirror).
