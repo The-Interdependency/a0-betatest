@@ -14,6 +14,10 @@ This complements `meta-module-build`: MODULE_BUILD describes intended
 boundaries before new work starts; BOUNDARIES records the actual runtime
 boundary of an existing module.
 
+Implementation status: this skill defines the `BOUNDARIES` block and runner
+contract. This repo does not currently ship a BOUNDARIES runner script;
+consuming repos should implement the contract below with local risk heuristics.
+
 ## The block
 
 ```python
@@ -62,9 +66,16 @@ A BOUNDARIES runner MUST:
 
 1. Parse every `BOUNDARIES` block with the universal msdmd parser.
 2. Report required fields containing `hmmm` as unresolved boundary objects.
-3. Report modules with likely sensitive imports or filenames but no BOUNDARIES block as visible gaps.
+3. Report modules with likely sensitive imports or filenames but no
+   BOUNDARIES block as visible gaps.
 4. Support strict mode where gaps or any required `hmmm` boundary fail.
-5. Exit non-zero for malformed required fields, invalid enum values, or strict-mode unresolved boundaries.
+5. Exit non-zero for malformed required fields, invalid enum values, or
+   strict-mode unresolved boundaries.
+
+Sensitive-file heuristics MAY include auth/session imports, database clients,
+network clients, migration filenames, admin routes, payment/billing modules,
+secret managers, and user-data models. Heuristics are advisory: they create
+review visibility, not proof of risk.
 
 ## Agent behavior
 
@@ -72,7 +83,8 @@ When this skill is loaded before editing code:
 
 - Read the BOUNDARIES block before changing implementation.
 - If a required boundary is `hmmm`, preserve that uncertainty and call it out.
-- Do not relax a boundary value (`admin` → `read`, `external` → `internal`, etc.) unless the code change actually removes the effect.
+- Do not relax a boundary value (`admin` → `read`, `external` → `internal`, etc.)
+  unless the code change actually removes the effect.
 - If the edit adds a new sensitive effect, update the block in the same diff.
 
 ## Anti-patterns
@@ -82,8 +94,7 @@ When this skill is loaded before editing code:
 - Hiding risk in prose comments instead of structured fields.
 - Letting heuristic gap detection replace explicit owner review.
 
-## hmmm
-
+hmmm
 - exact sensitive-import heuristic lists per framework
 - whether strict mode should fail all `hmmm` boundaries or only user-data/admin ones
 - how to represent read-only analytics on anonymized aggregate data

@@ -9,6 +9,10 @@ description: Self-declaring capability inventory built on msdmd. Each module dec
 agents and humans a source-backed inventory of what modules can do, where
 those capabilities are exposed, and which boundaries they cross.
 
+Implementation status: this skill defines the `CAPABILITIES` block and runner
+contract. This repo does not currently ship a CAPABILITIES runner script;
+consuming repos should implement the contract below against their own surfaces.
+
 Read `msdmd/SKILL.md` first if you have not. The block syntax, parser
 contract, and visible gap rule are inherited.
 
@@ -56,10 +60,14 @@ A CAPABILITIES runner MUST:
 1. Parse every `CAPABILITIES` block with the universal msdmd parser.
 2. Build a capability map keyed by `id`.
 3. Report duplicate ids as errors.
-4. Verify each non-`hmmm` `exposes` target still resolves when a resolver exists for the language or framework.
-5. Report unresolved `exposes: hmmm` and `boundaries` containing `hmmm` as pending, not passing.
-6. Report modules with exposed public surfaces but no CAPABILITIES block as visible gaps when the runner can detect public surfaces.
-7. Exit non-zero for duplicate ids, malformed required fields, or broken resolvable exposure targets. Coverage gaps fail only in strict mode.
+4. Verify each non-`hmmm` `exposes` target still resolves when a resolver
+   exists for the language or framework.
+5. Report unresolved `exposes: hmmm` and `boundaries` containing `hmmm` as
+   pending, not passing.
+6. Report modules with exposed public surfaces but no CAPABILITIES block as
+   visible gaps when the runner can detect public surfaces.
+7. Exit non-zero for duplicate ids, malformed required fields, or broken
+   resolvable exposure targets. Coverage gaps fail only in strict mode.
 
 ## Reporting shape
 
@@ -76,8 +84,7 @@ A CAPABILITIES runner MUST:
 - Hiding boundary uncertainty; write `hmmm` where the effect is unresolved.
 - Treating a module import as a capability without identifying the exposed behavior.
 
-## hmmm
-
+hmmm
 - exact resolver syntax for framework-specific route and UI surfaces
 - whether capability ids should be globally unique across a repo or only within a block
 - whether private capabilities deserve a separate block or a `class: internal` tag
