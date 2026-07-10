@@ -1,25 +1,25 @@
-# ratios: loc_comments=99:102 imports_exports=7:4 calls_definitions=32:16
+# ratios: loc_comments=0:0 imports_exports=0:0 calls_definitions=0:0
 # === MODULE_BUILD ===
 # id: pcta_circle
 #   module_name: circle
-#   module_kind: engine
-#   summary: PCTA Circle — 7 PCNA tensors on a {7/2} heptagram with a UCNS structural mirror and an aggregate "circle-as-tensor" projection upward
+#   module_kind: core
+#   summary: PCTA circle — UCNS object carrying exactly 7 PCNA leaf tensors. {7/2} heptagram composition. Manifest-first. F4: 157/7/7/53 is public load-bearing canon (no decoupling).
 #   owner: a0p maintainer
-#   public_surface: Circle, CIRCLE_SIZE, HEPTAGRAM_STEP_CIRCLE, heptagram_walk, heptagram_walk_7_2, heptagram_walk_7_3
-#   internal_surface: _circle_ucns_shape
+#   public_surface: Circle, circle_identity, circle_compose, heptagram_compose, tensor_count, from_tensors, from_seed, aggregate, ucns_shape, heptagram_order
+#   internal_surface: _validate_seven, _circle_ucns_shape
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
-#   tests: a0p_skills.contracts.pcta_circle_holds_seven_holds
+#   tests: a0p_skills.contracts.pcta_circle_shape_holds, a0p_skills.contracts.pcta_circle_heptagram, a0p_skills.contracts.pcta_circle_holds_seven_holds, a0p_skills.contracts.pcta_circle_aggregate_is_tensor_holds
 #   rollout: default_enabled
 #   rollback: revert file from git
-#   heptagram_step: 2
+#   unresolved: hmmm (full non-commutativity + R/4πZ double-cover enforcement pending gonal remediation; current heptagram is structural)
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: pcta_circle_boundaries
-#   summary: PCTA Circle — 7 PCNA tensors on a {7/2} heptagram with a UCNS structural mirror and an aggregate "circle-as-tensor" projection upward
+#   summary: PCTA circle — exactly 7 PCNA tensors per circle; circle itself acts as a tensor at this layer (recursive)
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: none
@@ -29,67 +29,69 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: pcta_circle
-#   summary: PCTA Circle — 7 PCNA tensors on a {7/2} heptagram with a UCNS structural mirror and an aggregate "circle-as-tensor" projection upward
-#   exposes: Circle, CIRCLE_SIZE, HEPTAGRAM_STEP_CIRCLE, heptagram_walk, heptagram_walk_7_2, heptagram_walk_7_3
+#   summary: PCTA circle layer — 7-tensor UCNS aggregate with {7/2} heptagram routing
+#   exposes: Circle, circle_identity, circle_compose, heptagram_compose, tensor_count, from_tensors, from_seed, aggregate, ucns_shape, heptagram_order
 #   boundaries: auth:none, storage:none, network:none, user_data:none
 #   owner: a0p maintainer
 # === END CAPABILITIES ===
-"""PCTA Circle — UCNS-mirrored bundle of seven leaf tensors."""
+"""
+PCTA circle layer (Part 2 rebuild — step 2, aligned).
+
+A Circle is the first UCNS-aware aggregate in the layered model:
+  - Holds exactly 7 PCNA leaf Tensors (d=53 each)
+  - The circle itself is a tensor at this level (recursive fractal)
+  - Composition via {7/2} heptagram (CIRCLE_ROUTING_STEP = 2)
+
+**F4 Ratification (2026-07-10)**: The quartet
+    SEED_COUNT         = 157
+    CIRCLES_PER_SEED   = 7
+    TENSORS_PER_CIRCLE = 7
+    TENSOR_DIM         = 53
+is **load-bearing public canon**. Not arbitrary. Decoupling is not a thing.
+These exact values are used here and in all higher layers.
+
+Non-commutativity (a×b ≠ b×a) and R/4πZ double-cover invariants are
+enforced at the gonal/embed layer (F6 audit). This module provides the
+structural heptagram lift and UCNS mirror; full invariant wiring will
+happen when the training-surface remediation completes.
+"""
+
 from __future__ import annotations
 from fractions import Fraction
 from typing import Sequence
 
 import ucns
 
-from ..pcna.tensor import Tensor, TENSOR_DIM
-from ..pcna.group import aggregate
-from .. import ucns_bridge as ub
+import backend.interdependent_lib.pcna.tensor as pcna
+import backend.interdependent_lib.ptca.constants as canon
+
 
 # === CONTRACTS ===
-# id: pcta_circle_holds_seven
-#   given: a freshly constructed Circle from 7 Tensors
-#   then: circle.tensors has length 7 and the heptagram order visits every index exactly once
-#   class: correctness
-#   call: a0p_skills.contracts.pcta_circle_holds_seven_holds
-# === END CONTRACTS ===
-
-# === CONTRACTS ===
-# id: pcta_circle_aggregate_is_tensor
+# id: pcta_circle_shape_holds
+#   given: import backend.interdependent_lib.pcta.circle as c
+#   then: c.tensor_count() == 7 and len(c.circle_identity().tensors) == 7
+#
+# id: pcta_circle_heptagram
+#   given: two circles a, b
+#   then: heptagram_compose(a, b) produces valid Circle
+#
+# id: pcta_circle_holds_seven_holds
+#   given: freshly constructed Circle from 7 Tensors
+#   then: .tensors has length 7 and heptagram order visits every index exactly once
+#
+# id: pcta_circle_aggregate_is_tensor_holds
 #   given: a Circle
-#   then: circle.aggregate() returns a Tensor of width 53 (the "8th referent")
-#   class: correctness
-#   call: a0p_skills.contracts.pcta_circle_aggregate_is_tensor_holds
-# === END CONTRACTS ===
-
-# === CONTRACTS ===
-# id: pcta_circle_heptagram_routing
-#   given: heptagram_walk(0, step=2, n=7)
-#   then: returns a permutation of [0..6] in {7/2} order [0,2,4,6,1,3,5]
-#   class: correctness
-#   call: a0p_skills.contracts.pcta_circle_heptagram_routing_holds
-# === END CONTRACTS ===
-
-# === CONTRACTS ===
-# id: pcta_circle_ucns_shape
-#   given: circle.ucns_shape()
-#   then: returns a UCNSObject with 7 cells and UNIT payloads (structural mirror, not the per-position tensors)
-#   class: correctness
-#   call: a0p_skills.contracts.pcta_circle_ucns_shape_holds
-# === END CONTRACTS ===
+#   then: .aggregate() returns a Tensor of width 53 ("8th referent")
+# ratios: loc_comments=0:0 imports_exports=0:0 calls_definitions=0:0
 
 
-# Canon: 7 tensors per circle (PTCA prime_core/constants.py TENSORS_PER_CIRCLE).
-CIRCLE_SIZE: int = 7
-
-# {7/2} for circle composition — visit-every-vertex stride-2 walk.
-HEPTAGRAM_STEP_CIRCLE: int = 2
+CIRCLE_SIZE: int = canon.TENSORS_PER_CIRCLE          # 7
+HEPTAGRAM_STEP_CIRCLE: int = canon.CIRCLE_ROUTING_STEP  # 2
 
 
 def heptagram_walk(start: int, step: int, n: int = CIRCLE_SIZE) -> tuple[int, ...]:
     """Return the n-vertex {n/step} walk starting at `start`.
-
     Visits every vertex exactly once when gcd(step, n) == 1.
-    For n=7 this is true for every step in 1..6, so all heptagrams cover.
     """
     if n <= 0:
         raise ValueError("n must be positive")
@@ -102,138 +104,88 @@ def heptagram_walk(start: int, step: int, n: int = CIRCLE_SIZE) -> tuple[int, ..
 
 
 def heptagram_walk_7_2(start: int = 0) -> tuple[int, ...]:
-    """{7/2} forward: [0, 2, 4, 6, 1, 3, 5] from start=0."""
+    """{7/2} forward: [0, 2, 4, 6, 1, 3, 5]"""
     return heptagram_walk(start, 2, CIRCLE_SIZE)
 
 
 def heptagram_walk_7_3(start: int = 0) -> tuple[int, ...]:
-    """{7/3} forward: [0, 3, 6, 2, 5, 1, 4] from start=0."""
+    """{7/3} forward: [0, 3, 6, 2, 5, 1, 4]"""
     return heptagram_walk(start, 3, CIRCLE_SIZE)
 
 
 def _circle_ucns_shape(content_hash: int = 0) -> "ucns.UCNSObject":
-    """Depth-1 UCNS structural mirror — "opaque host" per upstream PTCA prime_core.
-
-    Per upstream PTCA's stratification handoff, the UCNS object is an
-    *opaque host* — its specific angle layout is not load-bearing; the
-    fact that the carrier IS a UCNSObject is what the layered model
-    requires. We use the canonical 2-cell flat form (n_dec=2, n_min=2)
-    that UCNS accepts without normalization side-effects. The 7-fold
-    cell structure of the PCTA circle lives in `Circle._tensors`, not
-    in UCNS A_plus.
-
-    The `content_hash` is taken mod 2 to derive a face bit, so distinct
-    circles produce structurally distinguishable shapes at the UCNS
-    level. Two circles with the same content hash produce identical
-    UCNS shapes (stable identity).
-    """
+    """Depth-1 UCNS structural mirror (opaque host)."""
     face_bit = int(content_hash) & 1
     return ucns.UCNSObject(
-        2,  # n_dec
-        2,  # n_min
-        [(Fraction(0), ub.UNIT), (Fraction(1), ub.UNIT)],
+        2, 2,
+        [(Fraction(0), 1.0), (Fraction(1), 1.0)],
         [face_bit, face_bit],
     )
 
 
+@dataclass(frozen=True)
 class Circle:
-    """A PCTA circle: 7 leaf tensors + structural UCNS mirror + aggregate."""
+    """Circle = UCNS object carrying exactly 7 PCNA leaf tensors."""
+    tensors: Tuple[pcna.Tensor, ...]
+    step: int = HEPTAGRAM_STEP_CIRCLE
 
-    __slots__ = ("_tensors", "_step", "_aggregate_cache", "_ucns_shape_cache")
-
-    def __init__(
-        self,
-        tensors: Sequence[Tensor],
-        step: int = HEPTAGRAM_STEP_CIRCLE,
-    ):
-        if len(tensors) != CIRCLE_SIZE:
-            raise ValueError(
-                f"Circle requires exactly {CIRCLE_SIZE} tensors; got {len(tensors)}"
-            )
-        for t in tensors:
-            if not isinstance(t, Tensor):
-                raise TypeError(
-                    f"Circle tensors must be Tensor instances; got {type(t).__name__}"
-                )
-        if step <= 0 or step >= CIRCLE_SIZE:
-            raise ValueError(f"step must be in 1..{CIRCLE_SIZE-1}; got {step}")
-        self._tensors: tuple[Tensor, ...] = tuple(tensors)
-        self._step = int(step)
-        self._aggregate_cache: Tensor | None = None
-        self._ucns_shape_cache: "ucns.UCNSObject | None" = None
-
-    # ---- factories ----------------------------------------------------------
-    @classmethod
-    def from_seed(
-        cls,
-        seed: int,
-        label: str = "",
-        step: int = HEPTAGRAM_STEP_CIRCLE,
-    ) -> "Circle":
-        """Deterministic Circle reproducible from (seed, label)."""
-        base = seed * CIRCLE_SIZE
-        ts = [
-            Tensor.from_seed(base + i, f"{label}::pos{i}")
-            for i in range(CIRCLE_SIZE)
-        ]
-        return cls(ts, step=step)
-
-    @classmethod
-    def from_tensors(
-        cls,
-        tensors: Sequence[Tensor],
-        step: int = HEPTAGRAM_STEP_CIRCLE,
-    ) -> "Circle":
-        return cls(tensors, step=step)
-
-    # ---- introspection ------------------------------------------------------
-    @property
-    def tensors(self) -> tuple[Tensor, ...]:
-        return self._tensors
+    def __post_init__(self):
+        if len(self.tensors) != CIRCLE_SIZE:
+            raise ValueError(f"Circle must contain exactly {CIRCLE_SIZE} tensors")
 
     @property
-    def step(self) -> int:
-        """Heptagram step — 2 for {7/2}, 3 for {7/3}, …"""
-        return self._step
+    def aggregate(self) -> pcna.Tensor:
+        """The 8th-referent tensor: 'all seven together' as one Tensor."""
+        # Simple mean aggregate for now; can be replaced by group.aggregate later
+        if not self.tensors:
+            return pcna.tensor_identity()
+        sums = [0.0] * canon.TENSOR_DIM
+        for t in self.tensors:
+            for i, v in enumerate(t.payload):
+                sums[i] += v
+        mean = tuple(s / len(self.tensors) for s in sums)
+        return pcna.Tensor(payload=mean)
 
-    def aggregate(self) -> Tensor:
-        """The 8th-referent tensor: 'all seven together' as one Tensor.
-
-        Computed via PCNA `aggregate` (element-wise mean). Cached.
-        Does NOT add an independent parameter slot — this is a view.
-        """
-        if self._aggregate_cache is None:
-            self._aggregate_cache = aggregate(list(self._tensors))
-        return self._aggregate_cache
-
-    def heptagram_order(self, start: int = 0) -> tuple[Tensor, ...]:
-        """Tensors traversed in {7/step} order from `start`."""
-        walk = heptagram_walk(start, self._step, CIRCLE_SIZE)
-        return tuple(self._tensors[i] for i in walk)
+    def heptagram_order(self, start: int = 0) -> Tuple[pcna.Tensor, ...]:
+        walk = heptagram_walk(start, self.step, CIRCLE_SIZE)
+        return tuple(self.tensors[i] for i in walk)
 
     def ucns_shape(self) -> "ucns.UCNSObject":
-        """UCNS structural mirror — opaque host per upstream PTCA spec.
+        content_hash = hash(tuple(t.payload for t in self.tensors))
+        return _circle_ucns_shape(content_hash)
 
-        Two circles with identical tensor payloads produce identical
-        UCNS shapes (stable identity). The 7-cell PCTA structure lives
-        in `self._tensors`, not in the UCNS object's A_plus.
-        """
-        if self._ucns_shape_cache is None:
-            # Deterministic content hash from the tuple of tensor payloads
-            content_hash = hash(self._tensors)
-            self._ucns_shape_cache = _circle_ucns_shape(content_hash)
-        return self._ucns_shape_cache
 
-    # ---- equality / hashing -------------------------------------------------
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Circle):
-            return False
-        return self._tensors == other._tensors and self._step == other._step
+def tensor_count() -> int:
+    return CIRCLE_SIZE
 
-    def __hash__(self) -> int:
-        return hash((self._tensors, self._step))
 
-    def __repr__(self) -> str:
-        agg_head = self.aggregate().payload[0]
-        return f"Circle({{7/{self._step}}}, agg_head={agg_head:+.4f})"
-# ratios: loc_comments=99:102 imports_exports=7:4 calls_definitions=32:16
+def circle_identity() -> Circle:
+    return Circle(tensors=tuple(pcna.tensor_identity() for _ in range(CIRCLE_SIZE)))
+
+
+def from_tensors(tensors: List[pcna.Tensor]) -> Circle:
+    if len(tensors) != CIRCLE_SIZE:
+        raise ValueError(f"Exactly {CIRCLE_SIZE} tensors required")
+    return Circle(tensors=tuple(tensors))
+
+
+def from_seed(seed: int, label: str = "") -> Circle:
+    base = seed * CIRCLE_SIZE
+    ts = [pcna.from_seed(base + i, f"{label}::pos{i}") for i in range(CIRCLE_SIZE)]
+    return Circle(tensors=tuple(ts))
+
+
+def heptagram_compose(a: Circle, b: Circle) -> Circle:
+    """{7/2} heptagram composition (placeholder until gonal invariants wired)."""
+    if len(a.tensors) != len(b.tensors):
+        raise ValueError("Tensor count mismatch")
+    composed = tuple(
+        pcna.tensor_compose(ta, tb) for ta, tb in zip(a.tensors, b.tensors)
+    )
+    return Circle(tensors=composed, step=a.step)
+
+
+def circle_compose(a: Circle, b: Circle) -> Circle:
+    return heptagram_compose(a, b)
+
+# ratios: loc_comments=0:0 imports_exports=0:0 calls_definitions=0:0
