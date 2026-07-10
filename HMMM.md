@@ -159,3 +159,13 @@ keying to PCEA so state transitions are encrypted by default.
 **Ledger action**: These modules are now recorded. Recommended follow-up (before or during rebuild): add contract tests asserting non-commutativity on a known pair and two-lap return for gonal geometry.
 
 **Note on license (F1 ratified AGPL-3.0)**: Root LICENSE added as AGPL-3.0. Any future vendoring decisions (e.g. aimmh_lib MPL-2.0) must be re-derived under AGPL network-copyleft rules. No CONNECTIONS.md present in this repo (assertion was in a0ucns mirror).
+
+## F4 ratification (2026-07-10)
+
+**User directive**: "it is not an arbitrary number — decoupling is not a thing. document and build, as the tests."
+
+**Decision**: `SEED_COUNT = 157` (with `CIRCLES_PER_SEED=7`, `TENSORS_PER_CIRCLE=7`, `TENSOR_DIM=53`) is **load-bearing public canon**. It is not arbitrary, not secret, and must not be decoupled or made tunable in a way that breaks the prime-quartet shape. The existing `ptca/constants.py` already exposes these as public constants with a provenance contract test. We keep the exact values and build the new substrate layers directly on top of them.
+
+**Action taken**: F4 closed. Rebuild proceeds with these exact canon numbers. All new modules must reference `ptca.constants` (or a future synced canon module) and assert the shape in their contract tests.
+
+**Next**: Begin manifest-first build of `pcna/tensor.py` (leaf layer) + add the two new ucns invariant contract tests (non-commutativity + double-cover) to the appropriate modules.
