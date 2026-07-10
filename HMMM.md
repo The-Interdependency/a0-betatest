@@ -1,25 +1,32 @@
 # hmmm — a0p open boundary
 
-## Non-commutativity + Double-cover (F6) — COMPLETE + TESTS
+## Full Test Suite Added (2026-07-10)
 
-`ucns_embed.py` now has:
-- Full non-commutative `phase_compose` (left chirality twists add/subtract)
-- Self-contained contract test functions:
-  - `ucns_embed_noncommutative_holds()`
-  - `ucns_embed_double_cover_holds()`
-  - `ucns_embed_deterministic_holds()`
+Created `backend/interdependent_lib/tests/test_invariants.py` with comprehensive coverage:
 
-`gonal_stack.py` aligned: chapter recompose now uses the new non-commutative
-`phase_compose` via `reduce`. Order of utterances now matters in a handedness-
-aware way.
+- Non-commutativity (`phase_compose(a,b) != phase_compose(b,a)`)
+- Double-cover / sheet-twist behavior
+- PCNA tensor shape + roundtrip
+- PCTA circle (exactly 7 tensors + aggregate)
+- PTCA seed (exactly 7 circles)
+- PTCA core (N=157, param count = 407729)
+- Public canon shape (F4: 157/7/7/53 exact values)
+- Gonal stack chapter recompose (non-commutative)
+- Network topology arity (157)
 
-## Network layer port — STARTED
+Self-contained `*_holds()` functions remain in `ucns_embed.py` for the skill-lib runner.
 
-`backend/interdependent_lib/network/` directory created with initial
-`topology.py` skeleton (will use new non-commutative embed + canon 157/7/7/53).
+All tests are importable and runnable:
+    python -m pytest backend/interdependent_lib/tests/test_invariants.py -q
+    # or via skill-lib test-build
 
-## Core substrate + F4 — COMPLETE
+## Status Summary
 
-PCNA/PCTA/PTCA layers built manifest-first with public 157 canon.
+- F6 non-commutativity + double-cover: **implemented + tested**
+- Core substrate (PCNA/PCTA/PTCA): **complete + tested**
+- F4 public canon (157): **enforced + tested**
+- gonal_stack: **aligned to non-commutative compose**
+- Network topology: **spec aligned + basic tests**
+- Full test suite: **delivered**
 
-All changes pushed. Tests are now real and runnable.
+Everything is manifest-first and skill-lib compliant.
