@@ -16,6 +16,11 @@ jobs:
   backend-integrity:
     name: Backend compile and substrate tests
     runs-on: ubuntu-latest
+    outputs:
+      invariant_status: ${{ steps.invariants.outputs.status }}
+      invariant_log: ${{ steps.invariants.outputs.log }}
+      import_status: ${{ steps.import_smoke.outputs.status }}
+      import_log: ${{ steps.import_smoke.outputs.log }}
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_PROGRESS_BAR: "off"
@@ -39,10 +44,22 @@ jobs:
       - name: Compile backend
         run: python -m compileall -q backend
 
-      - name: Run repaired substrate invariants
-        run: python -m pytest -q --tb=short backend/interdependent_lib/tests/test_invariants.py
+      - name: Capture repaired substrate invariant result
+        id: invariants
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          output="$(python -m pytest -q --tb=short backend/interdependent_lib/tests/test_invariants.py 2>&1)"
+          status=$?
+          printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          printf 'log=%s\n' "$(printf '%s' "$output" | base64 -w0)" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$output"
+          exit "$status"
 
-      - name: Backend import smoke
+      - name: Capture backend import smoke result
+        id: import_smoke
+        continue-on-error: true
         working-directory: backend
         env:
           MONGO_URL: mongodb://localhost:27017
@@ -52,9 +69,46 @@ jobs:
           A0P_AGENTS_ROOT: ${{ runner.temp }}/a0p-import-smoke/agents
           A0P_AUDIT_STORAGE_ROOT: ${{ runner.temp }}/a0p-import-smoke/audit
           A0P_TRAFFIC_LOG: ${{ runner.temp }}/a0p-import-smoke/traffic.log
+        shell: bash
         run: |
           export A0P_KEY_VAULT_SECRET="$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
-          python -c "import server, models, living_spec, readme_writer"
+          set +e
+          output="$(python -c 'import server, models, living_spec, readme_writer' 2>&1)"
+          status=$?
+          printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          printf 'log=%s\n' "$(printf '%s' "$output" | base64 -w0)" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$output"
+          exit "$status"
+
+      - name: Enforce backend gate
+        shell: bash
+        run: |
+          test "${{ steps.invariants.outputs.status }}" = "0"
+          test "${{ steps.import_smoke.outputs.status }}" = "0"
+
+  backend-diagnostics:
+    name: Backend failure tracebacks
+    needs: backend-integrity
+    if: always() && (needs.backend-integrity.outputs.invariant_status != '0' || needs.backend-integrity.outputs.import_status != '0')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print compact failure evidence
+        env:
+          INVARIANT_STATUS: ${{ needs.backend-integrity.outputs.invariant_status }}
+          INVARIANT_LOG: ${{ needs.backend-integrity.outputs.invariant_log }}
+          IMPORT_STATUS: ${{ needs.backend-integrity.outputs.import_status }}
+          IMPORT_LOG: ${{ needs.backend-integrity.outputs.import_log }}
+        shell: bash
+        run: |
+          echo '=== invariant test ==='
+          echo "status=$INVARIANT_STATUS"
+          printf '%s' "$INVARIANT_LOG" | base64 -d || true
+          echo
+          echo '=== backend import smoke ==='
+          echo "status=$IMPORT_STATUS"
+          printf '%s' "$IMPORT_LOG" | base64 -d || true
+          echo
+          exit 1
 
   check-replit-refs:
     name: Verify no @replit packages in frontend build output
