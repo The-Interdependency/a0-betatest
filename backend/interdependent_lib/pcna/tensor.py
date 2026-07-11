@@ -1,4 +1,4 @@
-# ratios: loc_comments=88:74 imports_exports=5:17 calls_definitions=35:20
+# ratios: loc_comments=89:74 imports_exports=4:17 calls_definitions=35:20
 # === MODULE_BUILD ===
 # id: pcna_tensor
 #   module_name: tensor
@@ -37,13 +37,13 @@
 """PCNA leaf tensor.
 
 The July 10 layered-substrate rewrite replaced the established ``Tensor`` API
-with module-level helpers only.  Existing ZFAE/PCEA/PCNA modules still depend on
+with module-level helpers only. Existing ZFAE/PCEA/PCNA modules still depend on
 ``Tensor.from_seed()``, ``Tensor.zero()``, ``energy()``, ``TENSOR_DIM``, and
-``zero_tensor()``.  This module preserves the new layered helpers while
+``zero_tensor()``. This module preserves the new layered helpers while
 restoring that compatibility contract rather than forcing unrelated callers to
 fork onto two tensor types.
 
-The leaf operation remains element-wise addition.  Higher-layer
+The leaf operation remains element-wise addition. Higher-layer
 non-commutativity and any double-cover semantics are not claimed here.
 """
 from __future__ import annotations
@@ -51,12 +51,15 @@ from __future__ import annotations
 import hashlib
 import struct
 from dataclasses import dataclass
-from typing import Iterable, Tuple
-
-import backend.interdependent_lib.ptca.constants as canon
+from typing import Tuple
 
 
-TENSOR_DIM: int = canon.TENSOR_DIM
+# Keep this leaf module importable as either ``interdependent_lib.pcna.tensor``
+# (the deployed backend layout) or ``backend.interdependent_lib.pcna.tensor``
+# (repository-root tests). Importing PTCA constants here would execute
+# ``ptca.__init__`` and create a circular package dependency. The invariant
+# suite pins this compatibility constant to PTCA's canonical TENSOR_DIM.
+TENSOR_DIM: int = 53
 
 
 def _stretch_payload(seed: int, label: str, n: int = TENSOR_DIM) -> tuple[float, ...]:
@@ -173,4 +176,4 @@ __all__ = [
     "zero_tensor",
     "tensors_equal",
 ]
-# ratios: loc_comments=88:74 imports_exports=5:17 calls_definitions=35:20
+# ratios: loc_comments=89:74 imports_exports=4:17 calls_definitions=35:20
