@@ -46,19 +46,19 @@ TENSOR_DIM=53 is public load-bearing canon. Not arbitrary. Decoupling forbidden.
 
 Non-commutativity and R/4πZ invariants enforced at gonal layer (F6).
 """
-
 from __future__ import annotations
+from dataclasses import dataclass
 from fractions import Fraction
-from typing import Sequence
+from typing import List, Tuple
 
 import ucns
 
 import backend.interdependent_lib.pcta.circle as pcta
- import backend.interdependent_lib.ptca.constants as canon
+import backend.interdependent_lib.ptca.constants as canon
 
 
-SEED_CIRCLES: int = canon.CIRCLES_PER_SEED          # 7
-HEPTAGRAM_STEP_SEED: int = canon.SEED_ROUTING_STEP    # 3
+SEED_CIRCLES: int = canon.CIRCLES_PER_SEED
+HEPTAGRAM_STEP_SEED: int = canon.SEED_ROUTING_STEP
 
 
 def _seed_ucns_shape(content_hash: int = 0) -> "ucns.UCNSObject":
@@ -93,7 +93,6 @@ class Seed:
 
     @property
     def aggregate(self) -> pcta.pcna.Tensor:  # type: ignore[attr-defined]
-        # Aggregate of the 7 circle aggregates
         if not self.circles:
             return pcta.pcna.tensor_identity()
         sums = [0.0] * canon.TENSOR_DIM
@@ -136,9 +135,7 @@ def seed_compose(a: Seed, b: Seed) -> Seed:
     """Placeholder compose until gonal invariants wired."""
     if len(a.circles) != len(b.circles):
         raise ValueError("Circle count mismatch")
-    composed = tuple(
-        pcta.heptagram_compose(ca, cb) for ca, cb in zip(a.circles, b.circles)
-    )
+    composed = tuple(pcta.heptagram_compose(ca, cb) for ca, cb in zip(a.circles, b.circles))
     return Seed(circles=composed, step=a.step)
 
 # ratios: loc_comments=0:0 imports_exports=0:0 calls_definitions=0:0

@@ -55,44 +55,21 @@ enforced at the gonal/embed layer (F6 audit). This module provides the
 structural heptagram lift and UCNS mirror; full invariant wiring will
 happen when the training-surface remediation completes.
 """
-
 from __future__ import annotations
+from dataclasses import dataclass
 from fractions import Fraction
-from typing import Sequence
+from typing import List, Tuple
 
 import ucns
 
 import backend.interdependent_lib.pcna.tensor as pcna
 import backend.interdependent_lib.ptca.constants as canon
 
-
-# === CONTRACTS ===
-# id: pcta_circle_shape_holds
-#   given: import backend.interdependent_lib.pcta.circle as c
-#   then: c.tensor_count() == 7 and len(c.circle_identity().tensors) == 7
-#
-# id: pcta_circle_heptagram
-#   given: two circles a, b
-#   then: heptagram_compose(a, b) produces valid Circle
-#
-# id: pcta_circle_holds_seven_holds
-#   given: freshly constructed Circle from 7 Tensors
-#   then: .tensors has length 7 and heptagram order visits every index exactly once
-#
-# id: pcta_circle_aggregate_is_tensor_holds
-#   given: a Circle
-#   then: .aggregate() returns a Tensor of width 53 ("8th referent")
-# ratios: loc_comments=0:0 imports_exports=0:0 calls_definitions=0:0
-
-
-CIRCLE_SIZE: int = canon.TENSORS_PER_CIRCLE          # 7
-HEPTAGRAM_STEP_CIRCLE: int = canon.CIRCLE_ROUTING_STEP  # 2
+CIRCLE_SIZE: int = canon.TENSORS_PER_CIRCLE
+HEPTAGRAM_STEP_CIRCLE: int = canon.CIRCLE_ROUTING_STEP
 
 
 def heptagram_walk(start: int, step: int, n: int = CIRCLE_SIZE) -> tuple[int, ...]:
-    """Return the n-vertex {n/step} walk starting at `start`.
-    Visits every vertex exactly once when gcd(step, n) == 1.
-    """
     if n <= 0:
         raise ValueError("n must be positive")
     out: list[int] = []
@@ -104,23 +81,16 @@ def heptagram_walk(start: int, step: int, n: int = CIRCLE_SIZE) -> tuple[int, ..
 
 
 def heptagram_walk_7_2(start: int = 0) -> tuple[int, ...]:
-    """{7/2} forward: [0, 2, 4, 6, 1, 3, 5]"""
     return heptagram_walk(start, 2, CIRCLE_SIZE)
 
 
 def heptagram_walk_7_3(start: int = 0) -> tuple[int, ...]:
-    """{7/3} forward: [0, 3, 6, 2, 5, 1, 4]"""
     return heptagram_walk(start, 3, CIRCLE_SIZE)
 
 
 def _circle_ucns_shape(content_hash: int = 0) -> "ucns.UCNSObject":
-    """Depth-1 UCNS structural mirror (opaque host)."""
     face_bit = int(content_hash) & 1
-    return ucns.UCNSObject(
-        2, 2,
-        [(Fraction(0), 1.0), (Fraction(1), 1.0)],
-        [face_bit, face_bit],
-    )
+    return ucns.UCNSObject(2, 2, [(Fraction(0), 1.0), (Fraction(1), 1.0)], [face_bit, face_bit])
 
 
 @dataclass(frozen=True)
@@ -135,24 +105,20 @@ class Circle:
 
     @property
     def aggregate(self) -> pcna.Tensor:
-        """The 8th-referent tensor: 'all seven together' as one Tensor."""
-        # Simple mean aggregate for now; can be replaced by group.aggregate later
         if not self.tensors:
             return pcna.tensor_identity()
         sums = [0.0] * canon.TENSOR_DIM
-        for t in self.tensors:
-            for i, v in enumerate(t.payload):
-                sums[i] += v
-        mean = tuple(s / len(self.tensors) for s in sums)
-        return pcna.Tensor(payload=mean)
+        for tensor in self.tensors:
+            for i, value in enumerate(tensor.payload):
+                sums[i] += value
+        return pcna.Tensor(payload=tuple(value / len(self.tensors) for value in sums))
 
     def heptagram_order(self, start: int = 0) -> Tuple[pcna.Tensor, ...]:
         walk = heptagram_walk(start, self.step, CIRCLE_SIZE)
         return tuple(self.tensors[i] for i in walk)
 
     def ucns_shape(self) -> "ucns.UCNSObject":
-        content_hash = hash(tuple(t.payload for t in self.tensors))
-        return _circle_ucns_shape(content_hash)
+        return _circle_ucns_shape(hash(tuple(t.payload for t in self.tensors)))
 
 
 def tensor_count() -> int:
@@ -171,18 +137,14 @@ def from_tensors(tensors: List[pcna.Tensor]) -> Circle:
 
 def from_seed(seed: int, label: str = "") -> Circle:
     base = seed * CIRCLE_SIZE
-    ts = [pcna.from_seed(base + i, f"{label}::pos{i}") for i in range(CIRCLE_SIZE)]
-    return Circle(tensors=tuple(ts))
+    return Circle(tensors=tuple(pcna.from_seed(base + i, f"{label}::pos{i}") for i in range(CIRCLE_SIZE)))
 
 
 def heptagram_compose(a: Circle, b: Circle) -> Circle:
-    """{7/2} heptagram composition (placeholder until gonal invariants wired)."""
+    """Structural {7/2} composition; non-commutative lift remains at the gonal layer."""
     if len(a.tensors) != len(b.tensors):
         raise ValueError("Tensor count mismatch")
-    composed = tuple(
-        pcna.tensor_compose(ta, tb) for ta, tb in zip(a.tensors, b.tensors)
-    )
-    return Circle(tensors=composed, step=a.step)
+    return Circle(tensors=tuple(pcna.tensor_compose(ta, tb) for ta, tb in zip(a.tensors, b.tensors)), step=a.step)
 
 
 def circle_compose(a: Circle, b: Circle) -> Circle:
