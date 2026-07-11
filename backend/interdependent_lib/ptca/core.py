@@ -46,18 +46,16 @@ Tensor of width 53 — "all N seeds together is one tensor".
 Non-commutativity and double-cover invariants are enforced at the
 gonal layer (F6). This completes the core substrate (PCNA → PCTA → PTCA).
 """
-
 from __future__ import annotations
+from dataclasses import dataclass
 from fractions import Fraction
-from typing import Sequence
+from typing import List, Sequence, Tuple
 
 import ucns
 
-import backend.interdependent_lib.pcta.circle as pcta
 import backend.interdependent_lib.ptca.constants as canon
 
-
-DEFAULT_N: int = canon.SEED_COUNT  # 157 — public canon
+DEFAULT_N: int = canon.SEED_COUNT
 
 
 def _core_ucns_shape(content_hash: int = 0) -> "ucns.UCNSObject":
@@ -65,23 +63,21 @@ def _core_ucns_shape(content_hash: int = 0) -> "ucns.UCNSObject":
     return ucns.UCNSObject(2, 2, [(Fraction(0), 1.0), (Fraction(1), 1.0)], [face_bit, face_bit])
 
 
-def core_aggregate(tensors: Sequence) -> "Tensor":
+def core_aggregate(tensors: Sequence):
     from backend.interdependent_lib.pcna.tensor import Tensor, tensor_identity
     if not tensors:
         return tensor_identity()
-    n = len(tensors)
     sums = [0.0] * canon.TENSOR_DIM
-    for t in tensors:
-        for i, v in enumerate(t.payload):
-            sums[i] += v
-    mean = tuple(s / n for s in sums)
-    return Tensor(payload=mean)
+    for tensor in tensors:
+        for i, value in enumerate(tensor.payload):
+            sums[i] += value
+    return Tensor(payload=tuple(value / len(tensors) for value in sums))
 
 
 @dataclass(frozen=True)
 class Core:
     """Core = UCNS object carrying N PTCA seeds (N=157 canon)."""
-    seeds: Tuple["Seed", ...]  # type: ignore[name-defined]
+    seeds: Tuple[object, ...]
     label: str = "phi"
 
     def __post_init__(self):
@@ -93,34 +89,24 @@ class Core:
         return len(self.seeds)
 
     @property
-    def aggregate(self) -> "Tensor":
-        from backend.interdependent_lib.pcna.tensor import Tensor
-        if not self.seeds:
-            from backend.interdependent_lib.pcna.tensor import tensor_identity
-            return tensor_identity()
-        sums = [0.0] * canon.TENSOR_DIM
-        for s in self.seeds:
-            agg = s.aggregate
-            for i, v in enumerate(agg.payload):
-                sums[i] += v
-        mean = tuple(s / len(self.seeds) for s in sums)
-        return Tensor(payload=mean)
+    def aggregate(self):
+        return core_aggregate([seed.aggregate for seed in self.seeds])
 
     def param_count(self) -> int:
         return self.n * canon.CIRCLES_PER_SEED * canon.TENSORS_PER_CIRCLE * canon.TENSOR_DIM
 
     def ucns_shape(self) -> "ucns.UCNSObject":
-        content_hash = hash(tuple(hash(s.circles) for s in self.seeds))
-        return _core_ucns_shape(content_hash)
+        return _core_ucns_shape(hash(tuple(hash(seed.circles) for seed in self.seeds)))
 
 
 def with_n(n: int = DEFAULT_N, label: str = "phi") -> Core:
+    if n <= 0:
+        raise ValueError("n must be positive")
     from backend.interdependent_lib.ptca.seed import from_seed as seed_from_seed
-    seeds = tuple(seed_from_seed(i, f"{label}::seed{i}") for i in range(n))
-    return Core(seeds=seeds, label=label)
+    return Core(seeds=tuple(seed_from_seed(i, f"{label}::seed{i}") for i in range(n)), label=label)
 
 
-def from_seeds(seeds: List) -> Core:
-    return Core(seeds=tuple(seeds))
+def from_seeds(seeds: List[object], label: str = "phi") -> Core:
+    return Core(seeds=tuple(seeds), label=label)
 
 # ratios: loc_comments=0:0 imports_exports=0:0 calls_definitions=0:0
