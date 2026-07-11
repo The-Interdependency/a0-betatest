@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - agent/remove-grok-damage
   pull_request:
     branches:
       - main
@@ -12,6 +13,47 @@ permissions:
   contents: read
 
 jobs:
+  backend-integrity:
+    name: Backend compile and substrate tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt
+          python -m pip install pytest pytest-asyncio
+
+      - name: Compile backend
+        run: python -m compileall -q backend
+
+      - name: Run repaired substrate invariants
+        run: python -m pytest -q backend/interdependent_lib/tests/test_invariants.py
+
+      - name: Backend import smoke
+        working-directory: backend
+        env:
+          MONGO_URL: mongodb://localhost:27017
+          DB_NAME: import_smoke
+          JWT_SECRET: ci-import-smoke-not-a-real-secret
+          CORS_ORIGINS: http://localhost:3000
+          A0P_AGENTS_ROOT: ${{ runner.temp }}/a0p-import-smoke/agents
+          A0P_AUDIT_STORAGE_ROOT: ${{ runner.temp }}/a0p-import-smoke/audit
+          A0P_TRAFFIC_LOG: ${{ runner.temp }}/a0p-import-smoke/traffic.log
+        run: |
+          export A0P_KEY_VAULT_SECRET="$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
+          python -c "import server, models, living_spec, readme_writer"
+
   check-replit-refs:
     name: Verify no @replit packages in frontend build output
     runs-on: ubuntu-latest
