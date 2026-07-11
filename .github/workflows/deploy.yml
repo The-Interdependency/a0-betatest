@@ -13,6 +13,8 @@ env:
   REGION: us-central1
   SERVICE: a0p
   REGISTRY: us-central1-docker.pkg.dev
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_PROGRESS_BAR: "off"
 
 # Least-privilege default for the whole workflow; the deploy job widens its own
 # permissions (id-token: write) below for Google Cloud auth.
@@ -41,13 +43,13 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - name: Install frontend dependencies
-        run: npm install --prefix frontend
+        run: npm install --silent --prefix frontend
 
       - name: Build frontend
-        run: CI=false npm run build --prefix frontend
+        run: CI=false npm run build --silent --prefix frontend
 
       - name: Install backend dependencies
-        run: python -m pip install -r backend/requirements.txt
+        run: python -m pip install -q -r backend/requirements.txt
 
       - name: Backend import smoke (startup)
         # py_compile only byte-compiles — it never runs server.py's imports, so an
