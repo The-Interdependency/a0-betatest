@@ -1,12 +1,12 @@
-# ratios: loc_comments=93:76 imports_exports=6:5 calls_definitions=37:6
+# ratios: loc_comments=107:86 imports_exports=5:5 calls_definitions=43:7
 # === MODULE_BUILD ===
 # id: zfae_gonal_inscription
 #   module_name: gonal_inscription
 #   module_kind: engine
-#   summary: ZFAE Route A inscription using the UCNS-owned fixed-origin PrivateGonal and A0's continuous tensor-to-glyph application
+#   summary: ZFAE Route A application projection over the UCNS-owned fixed-origin PrivateGonal without defining a UCNS rotation or complete-return law
 #   owner: Erin Spencer
 #   public_surface: PrivateGonal, inscribe_text, whiten_payload, whitened_indices, BRIDGE_IN_WIDTH, BRIDGE_OUT_WIDTH, DEFAULT_INSCRIBE_LENGTH
-#   internal_surface: _WHITEN_SCALE
+#   internal_surface: _WHITEN_SCALE, _project_field_scalar_to_vertex
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: package_import_only
@@ -14,15 +14,15 @@
 #   admin_only: false
 #   tests: a0p_skills.contracts.zfae_gonal_inscription_deterministic_holds, backend.tests.test_public_gonol_ucns_parity
 #   rollout: default_enabled
-#   rollback: revert only with a coordinated UCNS canon-ownership migration
+#   rollback: disable application projection if it is confused with the UCNS 720-degree return canon
 #   no_llm_assertion: pure mathematical inscription; MUST NOT import any provider/LLM SDK
 #   requires: ucns public gonol canon, zfae_morphology
 #   since: 2026-07-16
-#   unresolved: UCNS-native 53-to-32 whitening remains open research
+#   unresolved: the continuous UCNS public-frame bridge remains hmmm; this A0 field projection is not that bridge
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: zfae_gonal_inscription_boundaries
-#   summary: deterministic A0 inscription over the UCNS-owned public gonol; no IO and no LLM
+#   summary: deterministic A0 field-to-glyph application over the UCNS carrier; it does not define public-gonol rotation, orientation return, or origin
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: package_import_only
@@ -32,7 +32,7 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: zfae_gonal_inscription
-#   summary: continuous-tensor to glyph inscription through the UCNS-owned fixed-origin PrivateGonal
+#   summary: projects dimensionless A0 field scalars into glyphs while the fixed public frame and 720-degree return remain UCNS canon
 #   exposes: PrivateGonal, inscribe_text, whiten_payload, whitened_indices
 #   boundaries: auth:none, storage:none, network:package_import_only, user_data:none
 #   owner: Erin Spencer
@@ -47,8 +47,14 @@
 """ZFAE Native Decoder — Route A (Gonal Inscription).
 
 The canonical public gonol and its fixed-origin private phase/permutation law
-are owned by UCNS. This module retains only A0's application-specific field
-whitening, lane selection, morphology composition, and glyph emission.
+are owned by UCNS. This module retains A0's application-specific field
+whitening, lane selection, morphology composition, scalar-to-glyph projection,
+and glyph emission.
+
+The scalar projection below is not a physical or UCNS angular rotation. It does
+not define a 360-degree return, a 720-degree return, or the public-gonol origin.
+The UCNS canon remains: one 360-degree circuit changes orientation and complete
+return requires 720 degrees.
 
 Position zero remains the UCNS SPACE/ZERO Möbius twist seam. It is emitted as a
 space and is never removed by A0 inscription.
@@ -59,6 +65,7 @@ import hashlib
 import math
 import struct
 
+from ucns.public_gonol_faces import ORIGIN
 from ucns.public_gonol_private import PrivateGonal
 
 from .morphology import (
@@ -115,6 +122,24 @@ def whitened_indices(whitened: bytes, n: int, count: int) -> list[int]:
     return out
 
 
+def _project_field_scalar_to_vertex(gonal: PrivateGonal, scalar: float) -> int:
+    """Project a dimensionless A0 application scalar into one carrier vertex.
+
+    This preserves the historical A0 binning behavior without placing a `2π`
+    inscription method on the UCNS public frame. The modulo-one scalar is an
+    application lane coordinate, not a system rotation or return theorem.
+    """
+
+    value = float(scalar)
+    if not math.isfinite(value):
+        raise ValueError("application field scalar must be finite")
+    base = int((value % 1.0) * gonal.n) % gonal.n
+    if base == ORIGIN:
+        return gonal.perm[ORIGIN]
+    shifted = ((base - 1 + gonal.phase) % (gonal.n - 1)) + 1
+    return gonal.perm[shifted]
+
+
 def inscribe_text(
     gonal: PrivateGonal,
     phi53: list[float],
@@ -150,17 +175,17 @@ def inscribe_text(
         if first_word_carrier is None:
             first_word_carrier = word_carrier(word)
         psi_signal = word_signal(word)
-        angle = 2.0 * math.pi * (
+        field_scalar = (
             PHI_WEIGHT * phi_value
             + OMEGA_WEIGHT * omega_value
             + PSI_WEIGHT * psi_signal
         )
         current = current.advance(i, pcea_digest)
-        vertex = current.inscribe(angle)
+        vertex = _project_field_scalar_to_vertex(current, field_scalar)
         if first_vertex is None:
             first_vertex = vertex
         glyph = current.char_at(vertex)
-        if vertex == 0:
+        if vertex == ORIGIN:
             seam_emissions += 1
             chars.append(" ")
         elif glyph and glyph != "\x00" and not glyph.startswith("\x00"):
@@ -176,6 +201,8 @@ def inscribe_text(
         "glyph_count": len(chars),
         "word_carrier": first_word_carrier if first_word_carrier is not None else 1,
         "seam_emissions": seam_emissions,
+        "projection": "a0-dimensionless-field-scalar-v1",
+        "ucns_complete_return_degrees": 720,
     }
     return text, meta
 
@@ -189,4 +216,4 @@ __all__ = [
     "BRIDGE_OUT_WIDTH",
     "DEFAULT_INSCRIBE_LENGTH",
 ]
-# ratios: loc_comments=93:76 imports_exports=6:5 calls_definitions=37:6
+# ratios: loc_comments=107:86 imports_exports=5:5 calls_definitions=43:7
