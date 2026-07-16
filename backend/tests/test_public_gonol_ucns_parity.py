@@ -15,11 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_a0_public_arrangement_is_exact_ucns_canon():
-    assert tuple(local_gonal.EXAMPLE_157) == tuple(ucns.PUBLIC_GONAL_157)
-    assert tuple(get_default()) == tuple(ucns.PUBLIC_GONAL_157)
-    assert local_gonal.PUBLIC_GONAL_SOURCE_REPOSITORY == "The-Interdependency/a0-betatest"
-    assert local_gonal.PUBLIC_GONAL_SOURCE_COMMIT == "7af8debf6ef3905f01baff02b43d8c3bee16ccbc"
-    assert local_gonal.PUBLIC_GONAL_SHA256 == ucns.PUBLIC_GONAL_SHA256
+    assert tuple(local_gonal.EXAMPLE_157) == tuple(ucns.PUBLIC_GONOL_157)
+    assert tuple(get_default()) == tuple(ucns.PUBLIC_GONOL_157)
+    assert local_gonal.PUBLIC_GONOL_SOURCE_REPOSITORY == "The-Interdependency/a0-betatest"
+    assert local_gonal.PUBLIC_GONOL_SOURCE_COMMIT == "7af8debf6ef3905f01baff02b43d8c3bee16ccbc"
+    assert local_gonal.PUBLIC_GONOL_SHA256 == ucns.PUBLIC_GONOL_SHA256
 
 
 def test_a0_geometry_and_traversal_are_ucns_imports():
@@ -44,7 +44,7 @@ def test_a0_private_transform_is_ucns_canon():
 
 
 def test_registry_mirror_uses_ucns_origin_fixed_mirror():
-    assert get_mirror() == ucns.mirror_of(list(ucns.PUBLIC_GONAL_157))
+    assert get_mirror() == ucns.mirror_of(list(ucns.PUBLIC_GONOL_157))
     assert get_mirror()[ucns.ORIGIN] == " "
 
 
