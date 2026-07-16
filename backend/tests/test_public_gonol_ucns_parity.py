@@ -9,7 +9,7 @@ from interdependent_lib.gonal import gonal as local_gonal
 from interdependent_lib.gonal import lifted_path as local_lifted
 from interdependent_lib.gonal import mirror as local_mirror
 from interdependent_lib.gonal.registry import get_default, get_mirror
-from interdependent_lib.zfae.gonal_inscription import PrivateGonal
+from interdependent_lib.zfae.gonal_inscription import PrivateGonal, inscribe_text
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,12 +35,13 @@ def test_a0_geometry_and_traversal_are_ucns_imports():
     assert local_lifted.is_seam_event is ucns.is_seam_event
 
 
-def test_a0_private_transform_is_ucns_canon():
+def test_a0_private_transform_is_ucns_canon_without_continuous_inscription():
     assert PrivateGonal is ucns.PrivateGonal
     private = PrivateGonal.from_seed(b"a0-ucns-public-gonol-parity")
     assert private.perm[ucns.ORIGIN] == ucns.ORIGIN
     assert set(private.perm[1:]) == set(range(1, ucns.ARITY))
     assert private.char_at(ucns.ORIGIN) == " "
+    assert not hasattr(private, "inscribe")
 
 
 def test_registry_mirror_uses_ucns_origin_fixed_mirror():
@@ -61,6 +62,27 @@ def test_no_second_public_gonol_implementation_remains_in_a0():
     assert "def mirror_of(" not in mirror_text
     assert "def encode_text_path(" not in lifted_text
     assert "class PrivateGonal" not in inscription_text
+    assert "current.inscribe(" not in inscription_text
+    assert "2.0 * math.pi" not in inscription_text
+    assert "complete return requires 720 degrees" in inscription_text
+    assert "a0-dimensionless-field-scalar-v1" in inscription_text
+
+
+def test_application_projection_is_explicitly_not_ucns_rotation():
+    private = PrivateGonal.from_seed(b"a0-application-projection")
+    zeros = [0.0] * 53
+    text, meta = inscribe_text(
+        private,
+        zeros,
+        zeros,
+        zeros,
+        "deadbeef",
+        length=2,
+    )
+    assert text == "  "
+    assert meta["projection"] == "a0-dimensionless-field-scalar-v1"
+    assert meta["ucns_complete_return_degrees"] == 720
+    assert meta["seam_emissions"] == 2
 
 
 def test_public_gonol_round_trip_and_twist_origin_survive_a0_imports():
