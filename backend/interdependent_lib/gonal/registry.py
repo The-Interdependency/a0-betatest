@@ -1,66 +1,69 @@
-# ratios: loc_comments=50:51 imports_exports=7:5 calls_definitions=19:4
+# ratios: loc_comments=49:51 imports_exports=7:5 calls_definitions=19:4
 # === MODULE_BUILD ===
 # id: carrier_registry
 #   module_name: registry
 #   module_kind: service
-#   summary: three-gonal registry — default (EXAMPLE_157), mirror (mirror_of default), private (per-agent built via build_gonal from spec); resolves an agent's per-core gonal triplet
+#   summary: resolves A0 default, mirror, and optional private-spec arrangements through the UCNS-owned public-gonol implementation
 #   owner: Erin Spencer
 #   public_surface: GonalName, get_default, get_mirror, get_private, get_gonal, GONAL_NAMES, PRIVATE_GONAL_SPEC_ENV
 #   internal_surface: _DEFAULT_CACHE, _MIRROR_CACHE
 #   auth_boundary: none
 #   storage_boundary: read
-#   network_boundary: none
+#   network_boundary: package_import_only
 #   user_data_boundary: read
 #   admin_only: false
-#   tests: a0p_skills.contracts.carrier_registry_three_gonals_holds
+#   tests: a0p_skills.contracts.carrier_registry_three_gonals_holds, backend.tests.test_public_gonol_ucns_parity
 #   rollout: default_enabled
-#   rollback: revert file
+#   rollback: revert only with a coordinated UCNS canon-ownership migration
+#   requires: ucns public gonol canon
+#   since: 2026-07-16
+#   unresolved: private-spec arrangements are A0 application configuration, not competing public canon
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: carrier_registry_boundaries
-#   summary: reads gonal spec from env path for private; default and mirror are public
+#   summary: reads optional A0 private-spec configuration; default and mirror are supplied by the UCNS public canon
 #   auth_boundary: none
 #   storage_boundary: read
-#   network_boundary: none
+#   network_boundary: package_import_only
 #   user_data_boundary: read
 #   admin_only: false
 #   owner: Erin Spencer
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: carrier_registry
-#   summary: per-agent three-gonal triplet resolver — phi/default, psi/mirror, omega/private
+#   summary: resolves A0 compatibility arrangements while deferring public canon to UCNS
 #   exposes: GonalName, get_default, get_mirror, get_private, get_gonal
-#   boundaries: auth:none, storage:read, network:none, user_data:read
+#   boundaries: auth:none, storage:read, network:package_import_only, user_data:read
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
-"""Three-gonal registry.
+"""A0 compatibility registry over the UCNS-owned public gonol.
 
-Per the user-pinned canon:
-  phi   core → default gonal  (EXAMPLE_157)
-  psi   core → mirror gonal   (mirror_of(EXAMPLE_157))
-  omega core → private gonal  (per-agent, built from A0P_GONAL_SPEC_PATH or per-agent spec)
+The default arrangement and origin-fixed mirror come from UCNS. An optional
+private JSON spec remains A0 application configuration and is not public canon.
+The canonical 157-character leaf used by inscription is the UCNS default.
 """
 from __future__ import annotations
+
 import json
 import os
 from pathlib import Path
 from typing import Literal, Optional
 
-from .gonal import GonalSpec, build_gonal, validate_gonal, EXAMPLE_157
+from .gonal import EXAMPLE_157, GonalSpec, build_gonal, validate_gonal
 from .mirror import mirror_of
-
 
 GonalName = Literal["default", "mirror", "private"]
 GONAL_NAMES: tuple[GonalName, ...] = ("default", "mirror", "private")
 
-PRIVATE_GONAL_SPEC_ENV: str = "A0P_GONAL_SPEC_PATH"
+PRIVATE_GONAL_SPEC_ENV = "A0P_GONAL_SPEC_PATH"
 
 _DEFAULT_CACHE: Optional[list[str]] = None
 _MIRROR_CACHE: Optional[list[str]] = None
 
 
 def get_default() -> list[str]:
-    """The public default arrangement (EXAMPLE_157)."""
+    """Return a caller-owned copy of the UCNS canonical public arrangement."""
+
     global _DEFAULT_CACHE
     if _DEFAULT_CACHE is None:
         _DEFAULT_CACHE = list(EXAMPLE_157)
@@ -68,7 +71,8 @@ def get_default() -> list[str]:
 
 
 def get_mirror() -> list[str]:
-    """The public mirror of the default (position-reflection)."""
+    """Return the UCNS origin-fixed public mirror."""
+
     global _MIRROR_CACHE
     if _MIRROR_CACHE is None:
         _MIRROR_CACHE = mirror_of(get_default())
@@ -76,38 +80,45 @@ def get_mirror() -> list[str]:
 
 
 def get_private(spec_path: Optional[str] = None) -> list[str]:
-    """Build the private gonal from a JSON spec file. Raises if no path or invalid."""
+    """Build an A0 private-spec arrangement; this is not public gonol canon."""
+
     path = spec_path or os.environ.get(PRIVATE_GONAL_SPEC_ENV)
     if not path:
         raise FileNotFoundError(
-            f"private gonal requested but {PRIVATE_GONAL_SPEC_ENV} not set"
+            "private A0 arrangement requested but {} not set".format(PRIVATE_GONAL_SPEC_ENV)
         )
-    p = Path(path).expanduser()
-    if not p.is_file():
-        raise FileNotFoundError(f"private gonal spec not found at {p}")
-    spec_data = json.loads(p.read_text(encoding="utf-8"))
+    source = Path(path).expanduser()
+    if not source.is_file():
+        raise FileNotFoundError("private A0 arrangement spec not found at {}".format(source))
+    spec_data = json.loads(source.read_text(encoding="utf-8"))
     spec = GonalSpec(**spec_data)
     arrangement = build_gonal(spec)
     report = validate_gonal(arrangement, spec)
     if not report["valid"]:
-        raise ValueError(f"private gonal spec invalid: {report['violations']}")
+        raise ValueError("private A0 arrangement spec invalid: {}".format(report["violations"]))
     return arrangement
 
 
 def get_gonal(name: GonalName, private_spec_path: Optional[str] = None) -> list[str]:
-    """Resolve a gonal by name. `private` requires a spec path (env or arg)."""
+    """Resolve a compatibility arrangement by name."""
+
     if name == "default":
         return get_default()
     if name == "mirror":
         return get_mirror()
     if name == "private":
         return get_private(private_spec_path)
-    raise ValueError(f"unknown gonal name {name!r}; expected one of {GONAL_NAMES}")
+    raise ValueError("unknown gonal name {!r}; expected one of {}".format(name, GONAL_NAMES))
 
 
 __all__ = [
-    "GonalName", "GONAL_NAMES", "PRIVATE_GONAL_SPEC_ENV",
-    "get_default", "get_mirror", "get_private", "get_gonal",
+    "GonalName",
+    "GONAL_NAMES",
+    "PRIVATE_GONAL_SPEC_ENV",
+    "get_default",
+    "get_mirror",
+    "get_private",
+    "get_gonal",
 ]
 
 # === CONTRACTS ===
@@ -117,5 +128,4 @@ __all__ = [
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-
-# ratios: loc_comments=50:51 imports_exports=7:5 calls_definitions=19:4
+# ratios: loc_comments=49:51 imports_exports=7:5 calls_definitions=19:4
