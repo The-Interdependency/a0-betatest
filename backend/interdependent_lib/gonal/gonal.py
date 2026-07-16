@@ -5,7 +5,7 @@
 #   module_kind: adapter
 #   summary: compatibility imports for the UCNS-owned canonical public gonol promoted from this repository
 #   owner: Erin Spencer
-#   public_surface: GonalSpec, build_gonal, validate_gonal, print_gonal, EXAMPLE_157, PUBLIC_GONAL_157, make_example_157, get_default, public_gonol_sha256
+#   public_surface: GonalSpec, build_gonal, validate_gonal, print_gonal, EXAMPLE_157, PUBLIC_GONOL_157, make_example_157, get_default, public_gonol_sha256
 #   internal_surface: UPPERCASE, LOWERCASE, DIGITS_ODD, DIGITS_EVEN, PAIRED_OPEN, PAIRED_CLOSE, UNPAIRED_ALL
 #   auth_boundary: none
 #   storage_boundary: none
@@ -35,11 +35,11 @@ from ucns.public_gonol import (
     LOWERCASE,
     PAIRED_CLOSE,
     PAIRED_OPEN,
-    PUBLIC_GONAL_157,
-    PUBLIC_GONAL_SHA256,
-    PUBLIC_GONAL_SOURCE_COMMIT,
-    PUBLIC_GONAL_SOURCE_PATH,
-    PUBLIC_GONAL_SOURCE_REPOSITORY,
+    PUBLIC_GONOL_157,
+    PUBLIC_GONOL_SHA256,
+    PUBLIC_GONOL_SOURCE_COMMIT,
+    PUBLIC_GONOL_SOURCE_PATH,
+    PUBLIC_GONOL_SOURCE_REPOSITORY,
     UNPAIRED_ALL,
     UPPERCASE,
     build_gonal,
@@ -50,13 +50,13 @@ from ucns.public_gonol import (
     validate_gonal,
 )
 
-if PUBLIC_GONAL_SOURCE_REPOSITORY != "The-Interdependency/a0-betatest":
+if PUBLIC_GONOL_SOURCE_REPOSITORY != "The-Interdependency/a0-betatest":
     raise RuntimeError("UCNS public-gonol source repository drift")
-if PUBLIC_GONAL_SOURCE_COMMIT != "7af8debf6ef3905f01baff02b43d8c3bee16ccbc":
+if PUBLIC_GONOL_SOURCE_COMMIT != "7af8debf6ef3905f01baff02b43d8c3bee16ccbc":
     raise RuntimeError("UCNS public-gonol source commit drift")
-if PUBLIC_GONAL_SOURCE_PATH != "backend/interdependent_lib/gonal/gonal.py":
+if PUBLIC_GONOL_SOURCE_PATH != "backend/interdependent_lib/gonal/gonal.py":
     raise RuntimeError("UCNS public-gonol source path drift")
-if public_gonol_sha256(tuple(PUBLIC_GONAL_157)) != PUBLIC_GONAL_SHA256:
+if public_gonol_sha256(tuple(PUBLIC_GONOL_157)) != PUBLIC_GONOL_SHA256:
     raise RuntimeError("UCNS public-gonol arrangement drift")
 
 __all__ = [
@@ -65,11 +65,11 @@ __all__ = [
     "validate_gonal",
     "print_gonal",
     "EXAMPLE_157",
-    "PUBLIC_GONAL_157",
+    "PUBLIC_GONOL_157",
     "make_example_157",
     "get_default",
     "public_gonol_sha256",
-    "PUBLIC_GONAL_SHA256",
+    "PUBLIC_GONOL_SHA256",
     "UPPERCASE",
     "LOWERCASE",
     "DIGITS_ODD",
