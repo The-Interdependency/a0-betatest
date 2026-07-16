@@ -3,8 +3,8 @@
 > _changes constant. refinements welcome._  
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-06-30 17:38:47 UTC._  
-_164 modules · 14 kinds · 23 subsystems._
+_Living spec — auto-regenerated on backend startup at 2026-07-16 07:00:26 UTC._  
+_172 modules · 15 kinds · 23 subsystems._
 
 > This file is generated from the codebase's own documentation. Don't edit it by hand — edit a module's `# === MODULE_BUILD ===` block (its `summary` is the narrative you read below) and it regenerates on the next backend start.
 
@@ -16,11 +16,13 @@ _164 modules · 14 kinds · 23 subsystems._
 
 The walkthrough below moves from the outer service inward to the inference substrate, then out to the frontend. Each subsystem opens with what it is and why it exists, followed by its modules and their narratives.
 
-### Core service & API surface · 10
+### Core service & API surface · 12
 
 The FastAPI application and its REST surfaces — health, BYOK key vault, per-site env vault, model inventory, sessions, drafts, the AIMMH chat endpoints, the inspector, the tools/MCP/skills surface, admin-editable settings, and the living-spec endpoint. MongoDB (Motor) is the only datastore; credentials are Fernet-encrypted at rest.
 
-- **`api_tools_mcp_skills`** — REST surface for the tools / MCP-client / skills layer — /api/tools (list, register user-webhook tool, invoke), /api/mcp/servers (CRUD external MCP servers, refresh their tools), /api/skills (list, register w/ overlap warning, delete, sync from skill-lib)  
+- **`agent_lab`** — the Agent Creation Lab — a composer that lets a user assemble ANY permutation of the agent-creation logic explored across the a0 family and get back a validated, ordered execution plan. GET /api/agent-lab/permutations returns the full catalogue of creation stages (identity/mode from the 6-lattice, instance create + fresh three-core ZFAE weight bank, multi-teacher distill unlock, native-readiness gate, mode inference, sentinel/override config, volatile MemoryCore sub-instancing, safetensors checkpoint) plus the a0-canonical merge strategies (InstanceMerge fork/absorb/converge, sub_agent_spawn/executor) each tagged native vs cross-repo with its real entrypoint. POST /api/agent-lab/identity-preview composes the canonical a0(<energy>)<auditor> name. POST /api/agent-lab/plan validates a chosen recipe and returns the ordered steps, each mapped to the REAL route/primitive it executes against (or flagged plan-only for the _legacy_a0-only strategies) with preconditions + firewalls. POST /api/agent-lab/sub-memory actually runs the a0p-native volatile MemoryCore spawn_sub/merge_sub primitive (ephemeral, no persistence). The lab never re-implements create/train/sentinel logic — it plans permutations and drives the existing endpoints; cross-repo (a0-canonical) strategies are surfaced as doctrine, never falsely executed here.  
+  `backend/api_agent_lab.py`
+- **`api_tools_mcp_skills`** — REST surface for the tools / MCP-client / Odysseus-client / skills layer — /api/tools (list, register user-webhook tool, invoke), /api/mcp/servers (CRUD external MCP servers, refresh their tools), /api/odysseus/servers (CRUD registered Odysseus workspaces, refresh their scoped /api/codex/* catalogue tools), /api/skills (list, register w/ overlap warning, delete, sync from skill-lib)  
   `backend/api_tools_mcp_skills.py`
 - **`app_settings`** — admin-editable runtime settings — single Mongo doc with key/value overrides for non-secret URLs (Emergent Google OAuth widget URL, etc.); /api/settings GET for everyone, PATCH for admin only; values shadow env vars at runtime  
   `backend/app_settings.py`
@@ -40,6 +42,8 @@ The FastAPI application and its REST surfaces — health, BYOK key vault, per-si
   `backend/server.py`
 - **`traffic_log`** — append-only traffic logger — an ASGI middleware that records one JSONL line of request METADATA per HTTP call (ts, method, path, status, latency_ms, client ip, user-agent, best-effort user id) to an append-only sink; never logs request/response bodies, headers, cookies, or any secret material  
   `backend/traffic_log.py`
+- **`training`** — backend for the standalone Chat Training tab — turns the inference-engine chat-training loop into three inspectable readouts wired to the same primitives the ZFAE engine trains on. POST /api/training/readout lifts one turn (with optional prior) into its UCNS-native embedding (unit-circle phase streams on the 157-gonal carrier), its six-family EDCM projection (CM/DA/DRIFT/DVG/INT/TBF with 0.80/0.20 alert bands), and its three-core gonal disk (phi content-phase / omega bone-density / psi unit-circle coherence). POST /api/training/disk-stack folds a whole session of utterances into a cylindrical disk stack of chapter-scale gonols — one 157-gonal disk per depth-rung (leaf..chapter), the chapter rung being the ⊠ (unit-circle phase-product) recomposition of the per-utterance embeddings. Pure read-only computation over the request text; actual weight training stays on the existing /api/instances/{id}/train route. Recompose-only, public-fixture carrier, UCNS-G / non-absolute (no theorem transfer).  
+  `backend/api_training.py`
 
 ### Authentication · 1
 
@@ -96,7 +100,7 @@ The heart of the instrument: a pure, deterministic symbolic/state engine with no
   `backend/interdependent_lib/zfae/closed_tokens.py`
 - **`fiq_emit`** — ZFAE-level provenance emitter — appends hash-chained zfae_* events (training_step, chat_reply, sentinel_verdict, override_created, override_resolved) to fiq_audit_log  
   `backend/interdependent_lib/zfae/fiq_emit.py`
-- **`gonal_inscription`** — ZFAE Native Decoder Route A — Gonal Inscription. A per-agent PrivateGonal (secret phase + permutation, seeded at instantiation) inscribes the continuous Φ/Ψ/Ω tensor field onto polygon vertices to compose a deterministic glyph stream; includes the hash-whitened 53→32 bridge  
+- **`gonal_inscription`** — ZFAE Route A inscription using the UCNS-owned fixed-origin PrivateGonal and A0's continuous tensor-to-glyph application  
   `backend/interdependent_lib/zfae/gonal_inscription.py`
 - **`inference`** — a0(ZFAE) inference engine — native deterministic symbolic/state engine; no LLM dependency; returns {assistantText, nextSnapshot, trace}  
   `backend/interdependent_lib/zfae/inference.py`
@@ -152,7 +156,7 @@ The seed stratum of the layered model: prime-indexed tensors and the 'seed-as-te
 
 - **`constants`** — canon PTCA composition counts — synced from The-Interdependency/PTCA/prime_core/constants.py  
   `backend/interdependent_lib/ptca/constants.py`
-- **`core`** — PTCA Core — N PTCA Seeds (N=157 canon for Φ/Ψ/Ω; tunable for Θ/Σ) plus aggregate-as-tensor projection upward; param count is N × 7 × 7 × 53  
+- **`core`** — PTCA Core — N=157 seeds (public canon) + aggregate. F4 ratified: 157 is load-bearing public canon, no decoupling. Manifest-first.  
   `backend/interdependent_lib/ptca/core.py`
 - **`exchange`** — deterministic prime-circular state-exchange protocol — advances a PTCA state against a counterpart using the prime circle so two engines can hand state back and forth reproducibly, with no randomness and a verifiable round-trip  
   `backend/interdependent_lib/ptca/exchange.py`
@@ -164,7 +168,7 @@ The seed stratum of the layered model: prime-indexed tensors and the 'seed-as-te
   `backend/interdependent_lib/ptca/provenance.py`
 - **`ptca`** — seeds-layer wrapper — re-exports current PTCAInstance plus prime utilities (canon stratified prime_core rebuild pending)  
   `backend/interdependent_lib/ptca/__init__.py`
-- **`seed`** — PTCA Seed — 7 PCTA circles on a {7/3} heptagram with a UCNS opaque-host shape and an aggregate "seed-as-tensor" projection upward  
+- **`seed`** — PTCA Seed — UCNS object carrying exactly 7 PCTA circles. {7/3} heptagram. F4: 157/7/7/53 public canon (no decoupling). Manifest-first.  
   `backend/interdependent_lib/ptca/seed.py`
 - **`sentinels`** — tagged signal lanes with priority ordering — SentinelChannel + SentinelMessage  
   `backend/interdependent_lib/ptca/sentinels.py`
@@ -175,7 +179,7 @@ The seed stratum of the layered model: prime-indexed tensors and the 'seed-as-te
 
 Seven PCNA tensors arranged on a {7/2} heptagram, wrapped in a UCNS structural mirror, with an aggregate 'circle-as-tensor' projection into the next layer.
 
-- **`circle`** — PCTA Circle — 7 PCNA tensors on a {7/2} heptagram with a UCNS structural mirror and an aggregate "circle-as-tensor" projection upward  
+- **`circle`** — PCTA circle — UCNS object carrying exactly 7 PCNA leaf tensors. {7/2} heptagram composition. Manifest-first. F4: 157/7/7/53 is public load-bearing canon (no decoupling).  
   `backend/interdependent_lib/pcta/circle.py`
 - **`pcta`** — PCTA — circle layer of the layered model; 7 PCNA tensors arranged on a {7/2} heptagram, wrapped in a UCNS structural mirror  
   `backend/interdependent_lib/pcta/__init__.py`
@@ -196,7 +200,7 @@ The simplified six-ring engine (Φ Ψ Ω Θ Σ Ε): three 157-prime cores plus s
   `backend/interdependent_lib/pcna/pcna.py`
 - **`sigma`** — substrate signature encoder — deterministic blake2b digest + band mapping (canon Σ is N=41 observer ring; current impl is scalar shim)  
   `backend/interdependent_lib/pcna/sigma.py`
-- **`tensor`** — leaf Tensor — d=53 scalar payload, deterministic from a (seed, label) pair; the substrate of the layered (PCNA leaf → PCTA circle → PTCA seed → core) model  
+- **`tensor`** — PCNA leaf tensor — fixed d=53 scalar payload with both the current layered-construction API and the pre-existing Tensor compatibility contract used by ZFAE, PCEA, and PCNA callers.  
   `backend/interdependent_lib/pcna/tensor.py`
 - **`theta`** — phase-modulation ring — bounded sinusoidal map over 7 phase bands (canon Θ is N=29 microkernel gate; pending tensor lift)  
   `backend/interdependent_lib/pcna/theta.py`
@@ -247,31 +251,31 @@ The boundary law for audited motion between strata: the smallest auditable gate,
 - **`tick_schedule`** — ψ/φ/ω consciousness-prime tick constants (3/5/7); orthogonal stratum + core attention axes; logical default with optional real-time toggle  
   `backend/interdependent_lib/fiq/tick_schedule.py`
 
-### Gonal — the 157-gonal carrier · 11
+### Gonal — UCNS public-gonol consumer · 11
 
-The structural carrier: public invariants (face, chirality, class tags, adjacency, bones) over a 157-position polygon, a position-reflection mirror, and a three-gonal registry (default / mirror / private) that resolves an agent's per-core triplet. Private disk material is only ever loaded behind the Θ microkernel, never inline.
+The exact public 157-gonal originated in A0 and is canon for all UCNS. UCNS now owns the fixed SPACE/ZERO twist origin, arrangement, faces, chirality, mirror, lifted traversal, and fixed-origin private transform; A0 imports those surfaces and retains application-specific classes, disks, morphology, and inscription. No second public-gonol implementation lives here.
 
 - **`adjacency`** — hard invariants on the carrier — no L-L adjacent, no N-N adjacent; works against any CarrierDisk implementation  
   `backend/interdependent_lib/gonal/adjacency.py`
 - **`bones`** — face-crossing detection over a bone's constituent positions; measurable structural property, not a violation  
   `backend/interdependent_lib/gonal/bones.py`
-- **`carrier`** — 157-gonal carrier — public structural invariants (face, chirality, class tags, adjacency, bones); private disk material loaded only via theta_microkernel  
+- **`carrier`** — A0 compatibility package over the UCNS-owned public gonol plus A0 application-specific classes, disk protocol, adjacency, and bones  
   `backend/interdependent_lib/gonal/__init__.py`
 - **`classes`** — public type-class enumeration (L literal, N aggregate, P, X) for the 157 carrier slots — the distinction between literal-type positions and aggregate-slot positions that the adjacency and face invariants are defined over  
   `backend/interdependent_lib/gonal/classes.py`
 - **`disk_protocol`** — CarrierDisk Protocol — what any disk implementation (public fixture or private canon) must provide; CarrierDiskUnavailable error type  
   `backend/interdependent_lib/gonal/disk_protocol.py`
-- **`faces`** — face + chirality + adjacency formulas over the 157-gonal carrier; no disk material  
+- **`faces`** — compatibility imports for UCNS-owned public-gonol faces, chirality, adjacency, arity, and origin  
   `backend/interdependent_lib/gonal/faces.py`
-- **`gonal`** — builds and validates a gonal character carrier arrangement from a declarative spec (user-provided canonical module)  
+- **`gonal`** — compatibility imports for the UCNS-owned canonical public gonol promoted from this repository  
   `backend/interdependent_lib/gonal/gonal.py`
-- **`lifted_path`** — lossless lifted text traversal over the 157-gonal carrier — encode_text_path lifts a string to an ordered, strictly-monotonic path on the universal cover (vertex = pos mod 157); a repeated character costs a full 157-step revolution; SPACE is the seam at ORIGIN (vertex 0); the digit "0" is an ordinary glyph vertex; decode_text_path is the exact inverse (decode(encode(text)) == text over the carrier alphabet)  
+- **`lifted_path`** — compatibility imports for the UCNS-owned lossless lifted public-gonol traversal  
   `backend/interdependent_lib/gonal/lifted_path.py`
-- **`mirror`** — position-reflection mirror of a gonal arrangement across the diameter through position 0 — an involution (mirror_of(mirror_of(x)) == x) that inverts upper and lower arcs while preserving every hard adjacency invariant (no L-L / N-N adjacency survives the reflection)  
+- **`mirror`** — compatibility import for the UCNS-owned origin-fixed public-gonol mirror  
   `backend/interdependent_lib/gonal/mirror.py`
 - **`public_fixture`** — public fixture disk generator — binary-order rule per user spec; deterministic, committable, satisfies hard invariants, NOT the canon  
   `backend/interdependent_lib/gonal/public_fixture.py`
-- **`registry`** — three-gonal registry — default (EXAMPLE_157), mirror (mirror_of default), private (per-agent built via build_gonal from spec); resolves an agent's per-core gonal triplet  
+- **`registry`** — resolves A0 default, mirror, and optional private-spec arrangements through the UCNS-owned public-gonol implementation  
   `backend/interdependent_lib/gonal/registry.py`
 
 ### AIMMH — multi-model orchestration · 2
@@ -283,7 +287,7 @@ Pure-async orchestration patterns over a single ``call_fn(model_id, messages)`` 
 - **`patterns`** — pure-async multi-model orchestration patterns over call_fn(model_id, messages)  
   `backend/interdependent_lib/aimmh/patterns.py`
 
-### Tools & MCP · 8
+### Tools & MCP · 9
 
 A sentinel-gated tool layer: an in-process registry whose every invocation is evaluated by the 13 sentinels (a cliff halts and raises a pending override), built-in native tools, user-registered webhook tools (HMAC-signed), a provider-agnostic agentic tool-use loop, an outbound MCP relay, and a0p exposed inbound as an MCP server.
 
@@ -297,6 +301,8 @@ A sentinel-gated tool layer: an in-process registry whose every invocation is ev
   `backend/tools/mcp_relay.py`
 - **`mcp_server`** — expose a0p AS an MCP server — JSON-RPC 2.0 over HTTP at /api/mcp; methods: initialize, tools/list, tools/call (sentinel-gated), resources/list (living-spec modules), resources/read; bearer-token authenticated against a per-user MCP_PUBLISH_TOKEN  
   `backend/tools/mcp_server.py`
+- **`odysseus_relay`** — relay a0p tool calls to a registered Odysseus workspace over its scoped /api/codex/* REST surface — outbound httpx client attaching the per-connection Bearer api_token; the destination host is the operator-registered base_url (never agent-supplied) and the path is pinned to the /api/codex/ prefix; an SSRF guard refuses non-global hosts unless the connection is explicitly allow_private (self-hosted/localhost opt-in), so Odysseus's own api_token scopes bound every capability while a0p sentinels gate each call  
+  `backend/tools/odysseus_relay.py`
 - **`registry`** — in-process Tool registry + invocation surface — Tool, ToolError, register, lookup, list_tools, invoke; every invocation routes through the sentinel evaluator (gated_invoke) so cliff-mode S4/S12 etc. can halt before any side effect; tools may be native (python callable), webhook (user-registered URL with HMAC), or mcp (relayed to a registered MCP server)  
   `backend/tools/registry.py`
 - **`tools`** — tools subpackage entry — re-exports the registry public surface and triggers register_builtins() so native tools are available immediately on import  
@@ -347,21 +353,31 @@ The pure-stdlib block parser and single-line RATIOS reader, synced from the upst
 - **`runner`** — msdmd CAPABILITIES coverage runner (deprecated in favour of skills.module_build_runner)  
   `backend/interdependent_lib/_msdmd/runner.py`
 
-### interdependent_lib — meta-package · 2
+### interdependent_lib — meta-package · 5
 
 The umbrella package that exposes the pcea / ptca / pcna / aimmh / zfae substrata.
 
+- **`edcm_readout`** — self-contained EDCM readout for the training view — computes the six-family projection metrics (CM constraint-mismatch, DA dissonance-accumulation, DRIFT, DVG divergence, INT intensity, TBF turn-balance-fairness) deterministically from a transcript turn / turn-pair using measurable text features (operator/bone overlap, negation density, TTR delta, length balance), each bounded to [0,1] with 0.80/0.20 alert bands. Reports raised_field_count (bone operators present) and honors the EDCM empty-field intuition. This is a lightweight readout inspired by the edcmbone metrics/projection + pcna core/edcm families — NOT the full edcmbone stats engine, and it transfers no theorem/proof status.  
+  `backend/interdependent_lib/edcm_readout.py`
+- **`gonal_stack`** — assemble a cylindrical disk stack of chapter-scale gonols from a training session — one 157-gonal carrier disk per depth-rung (leaf/157-char, circle/word, seed/phrase-clause, core/utterance, chapter/session), each disk a UCNS-native embedding (ucns_embed) plus the three-core gonal scalars (phi content-phase, omega bone-density, psi unit-circle phase-coherence), stacked along the depth/Z axis (the edcmbone GrainTensor shape). CHAPTER is the new top rung = the unit-circle phase-product (⊠ = multiplyFuel) recomposition of the session's per-utterance embeddings into one gonol. Recompose-only (decomposition stays proof-gated); built on the PUBLIC-FIXTURE carrier disk (the canonical 157-gonal disk is non-committable private key material); the cylinder geometry is UCNS-G / non-absolute and inherits NO theorem/proof status from the proven UCNS-A composition algebra.  
+  `backend/interdependent_lib/gonal_stack.py`
 - **`interdependent_lib`** — meta-package exposing pcea, ptca, pcna, aimmh, zfae submodules  
   `backend/interdependent_lib/__init__.py`
 - **`ucns_bridge`** — thin A0-safe wrapper around the ucns package — will route through ucns.a0_safe when v1.0 ships on PyPI  
   `backend/interdependent_lib/ucns_bridge.py`
+- **`ucns_embed`** — UCNS-native phase-stream embedding with FULL non-commutative composition + self-contained contract tests. F6 complete.  
+  `backend/interdependent_lib/ucns_embed.py`
 
-### Frontend — pages · 17
+### Frontend — pages · 19
 
 The routed screens: Workspace (chat + audit tape + override modal), Agents, Sentinels, Overrides, Inspector, Inventory, Key & Custom-key vaults, Env Vault, Drafts, Skills, Tools, MCP, Training Room, Living Spec, plus the public splash and auth screens.
 
+- **`AgentLabPage`** — the Agent Creation Lab — compose ANY permutation of a0 agent-creation logic and run it. Loads the permutation catalogue (GET /api/agent-lab/permutations), lets the user pick the a0(<energy>)<auditor> mode from the 6-lattice with a live identity preview (POST /api/agent-lab/identity-preview), toggle the optional/plan-only stages (distill unlock, sentinel config, volatile sub-memory, and the cross-repo a0-canonical fork/absorb/converge), and compose a validated ordered plan (POST /api/agent-lab/plan) whose steps each show the real route/primitive they execute against — native stages badged executable, cross-repo stages badged plan-only. A "create" action actually mints the native agent (POST /api/instances) from the composed character sheet, and a sub-memory panel runs the real volatile MemoryCore spawn_sub/merge_sub primitive (POST /api/agent-lab/sub-memory). Surfaces the recompose-only / non-committable-checkpoint / no-theorem-transfer firewalls.  
+  `frontend/src/pages/AgentLabPage.jsx`
 - **`AgentsPage`** — agent CRUD — list every instance with zfae metrics, create via CharacterSheetForm, edit existing sheet, archive/delete  
   `frontend/src/pages/AgentsPage.jsx`
+- **`ChatTrainingPage`** — standalone Chat Training tab — inspect the substrate a training turn touches. A single-turn readout (POST /api/training/readout) renders the turn's UCNS-native embedding as a unit-circle phase disk (one dot per lane, placed by angle, colored by Mobius face) with its phase coherence, the six-family EDCM projection (CM/DA/DRIFT/DVG/INT/TBF) with 0.80/0.20 alert bands, and the three-core gonal disk (phi content-phase / omega bone-density / psi coherence). A session builder (POST /api/training/disk-stack) folds a batch of utterances into a cylindrical disk stack of chapter-scale gonols — one 157-gonal disk per depth-rung (leaf..chapter), the chapter rung being the phase-product (⊠) recomposition. Read-only inspection; weight training stays on the Training Room. Surfaces the recompose-only + UCNS-G/non-absolute firewalls on every result.  
+  `frontend/src/pages/ChatTrainingPage.jsx`
 - **`CustomKeysPage`** — user-owned developer key vault — name + value (Fernet-encrypted at rest) + kind + label; supports rotation (PUT same name) and reveal (decrypt on demand); for GitHub PATs, GCP service accounts, AWS access keys, anything non-LLM  
   `frontend/src/pages/CustomKeysPage.jsx`
 - **`DraftsPage`** — local prompt drafts — list / create / edit / delete; persists via /api/drafts  
@@ -418,7 +434,7 @@ Reusable presentational pieces: the live FIQ audit tape, the fully-editable char
 
 The axios REST clients for every API surface, the auth context / ProtectedRoute, and the client-side sentinel metadata helpers.
 
-- **`api`** — axios-based REST client for every /api endpoint — health, BYOK keys, env vault, inventory, sessions, drafts, skill reports, fanout/daisy/synthesize chat, inspector, agents+slugs, instances CRUD, chat/instance, sentinels canon+modes+weights, overrides queue, gonals, usage  
+- **`api`** — axios-based REST client for every /api endpoint — health, BYOK keys, env vault, inventory, sessions, drafts, skill reports, fanout/daisy/synthesize chat, inspector, agents+slugs, instances CRUD, chat/instance, sentinels canon+modes+weights, overrides queue, chat-training readout/disk-stack, agent-lab permutations/plan/identity/sub-memory, gonals, usage  
   `frontend/src/lib/api.js`
 - **`api_tools`** — axios client for the tools / mcp servers / skills REST surface — list/register/invoke tools, MCP server CRUD with refresh, skills CRUD with overlap check, skill-lib sync, MCP publish token  
   `frontend/src/lib/api_tools.js`
@@ -463,18 +479,19 @@ Pytest and end-to-end regression suites covering the tool-use loop, the Training
 
 | kind | count | modules |
 |---|---|---|
-| adapter | 12 | `_theta_private_loader`, `anthropic_provider`, `base`, `gemini_provider`, `mcp_relay`, `openai_provider`, `providers`, `sigma_source`, `teacher`, `ucns_bridge`, `webhook`, `xai_provider` |
+| adapter | 20 | `_theta_private_loader`, `anthropic_provider`, `base`, `carrier`, `edcm_readout`, `faces`, `gemini_provider`, `gonal`, `lifted_path`, `mcp_relay`, `mirror`, `odysseus_relay`, `openai_provider`, `providers`, `sigma_source`, `teacher`, `ucns_bridge`, `ucns_embed`, `webhook`, `xai_provider` |
 | client | 2 | `api`, `api_tools` |
-| engine | 62 | `_decoder`, `_intent`, `_parser`, `_transition`, `adjacency`, `agent_loop`, `aimmh`, `bones`, `builtin`, `carrier`, `cipher`, `circle`, `codec`, `coherence`, `core`, `edcm`, `engine`, `exchange`, `ficks`, `fiq`, `gated_invoke`, `gonal`, `gonal_inscription`, `group`, `inference`, `instance`, `instance`, `kernel`, `lifted_path`, `memory_core`, `mirror`, `morphology`, `motion`, `native_tools`, `network`, `patterns`, `pcea`, `pcna`, `pcna`, `pcta`, `propagate`, `provenance`, `ptca`, `registry`, `registry`, `rings`, `runtime`, `seed`, `sentinel_eval`, `sentinels`, `sentinels`, `sentinels`, `sigma`, `tensor`, `tensor`, `theta`, `theta_microkernel`, `trainer`, `weight_init`, `weights`, `zeta`, `zfae` |
+| core | 4 | `circle`, `core`, `seed`, `tensor` |
+| engine | 55 | `_decoder`, `_intent`, `_parser`, `_transition`, `adjacency`, `agent_loop`, `aimmh`, `bones`, `builtin`, `cipher`, `codec`, `coherence`, `edcm`, `engine`, `exchange`, `ficks`, `fiq`, `gated_invoke`, `gonal_inscription`, `gonal_stack`, `group`, `inference`, `instance`, `instance`, `kernel`, `memory_core`, `morphology`, `motion`, `native_tools`, `network`, `patterns`, `pcea`, `pcna`, `pcna`, `pcta`, `propagate`, `provenance`, `ptca`, `registry`, `registry`, `rings`, `runtime`, `sentinel_eval`, `sentinels`, `sentinels`, `sentinels`, `sigma`, `tensor`, `theta`, `theta_microkernel`, `trainer`, `weight_init`, `weights`, `zeta`, `zfae` |
 | experiment | 3 | `contracts`, `public_fixture`, `test_zfae_gonal_inscription` |
-| route | 7 | `api_tools_mcp_skills`, `app_settings`, `extensions`, `mcp_server`, `routes`, `routes`, `server` |
-| schema | 15 | `classes`, `closed_tokens`, `constants`, `disk_protocol`, `events`, `faces`, `gate`, `models`, `primes`, `primes`, `schema`, `sentinel_modes`, `sentinel_weights`, `tick_schedule`, `topology` |
+| route | 9 | `agent_lab`, `api_tools_mcp_skills`, `app_settings`, `extensions`, `mcp_server`, `routes`, `routes`, `server`, `training` |
+| schema | 14 | `classes`, `closed_tokens`, `constants`, `disk_protocol`, `events`, `gate`, `models`, `primes`, `primes`, `schema`, `sentinel_modes`, `sentinel_weights`, `tick_schedule`, `topology` |
 | service | 15 | `agents`, `archive`, `audit`, `crypto_vault`, `db`, `fiq_emit`, `living_spec`, `long_memory`, `overrides`, `readme_writer`, `registry`, `skills`, `store`, `sync`, `tools` |
 | skill | 11 | `_msdmd`, `a0p_skills`, `boundaries_runner`, `capabilities_runner`, `frontend_module_build_runner`, `interdependent_lib`, `module_build_runner`, `parser`, `ratios_runner`, `runner`, `test_build_runner` |
 | test | 9 | `backend_test`, `conftest`, `test_lifted_path`, `test_morphology_ladder`, `test_security`, `test_tool_use_loop`, `test_training_room`, `test_zfae_api_sentinels`, `test_zfae_three_core_sentinels` |
 | ui_component | 7 | `AuditTape`, `CharacterSheetForm`, `MarkdownView`, `OverrideModal`, `Panel`, `SentinelVerdictRibbon`, `Shell` |
 | ui_lib | 2 | `auth`, `sentinels` |
-| ui_page | 17 | `AgentsPage`, `CustomKeysPage`, `DraftsPage`, `InspectorPage`, `InventoryPage`, `KeyVaultPage`, `LivingSpecPage`, `LoginPage`, `MCPPage`, `OverridesPage`, `SentinelsPage`, `SkillsPage`, `SplashPage`, `ToolsPage`, `TrainingRoom`, `VaultPage`, `WorkspacePage` |
+| ui_page | 19 | `AgentLabPage`, `AgentsPage`, `ChatTrainingPage`, `CustomKeysPage`, `DraftsPage`, `InspectorPage`, `InventoryPage`, `KeyVaultPage`, `LivingSpecPage`, `LoginPage`, `MCPPage`, `OverridesPage`, `SentinelsPage`, `SkillsPage`, `SplashPage`, `ToolsPage`, `TrainingRoom`, `VaultPage`, `WorkspacePage` |
 | ui_root | 1 | `App` |
 | worker | 1 | `traffic_log` |
 

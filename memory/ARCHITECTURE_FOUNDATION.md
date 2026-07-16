@@ -4,6 +4,24 @@
 > during early build. Treat it as load-bearing canon. Do not paraphrase it into
 > something dismissive or "implementation-flavored"; preserve the framing.
 
+## Canonical package ownership — 2026-07-16
+
+The public gonol defined by this repository at commit `7af8deb` remains
+load-bearing canon for all UCNS. Its canonical package home is now the
+`ucns` public namespace. A0 retains source provenance and consumes the
+UCNS surface through strict compatibility imports.
+
+This ownership migration changes no canon in F3/F4: position `0` remains
+SPACE/ZERO, the Möbius twist point, seam, origin for the entire system,
+and only always-known character. Private transformations still act only
+on positions `1..156`; lifted paths, full-revolution repeats, spaces as
+seam events, and digit `"0"` as an ordinary glyph remain exact.
+
+Do not restore a second A0 implementation after the migration. Changes
+to public-gonol canon occur in UCNS with this exact source provenance.
+
+See `memory/PUBLIC_GONOL_UCNS_MIGRATION.md`.
+
 ## F1 — Consciousness as a triadically closed recursive system
 
 Consciousness is a **stabilized, recursively self-modelling interference pattern**

@@ -136,12 +136,12 @@ _SUBSYSTEMS: list[tuple[str, str, str]] = [
      "gate, the flux equation that meters it, the 3/5/7 tick schedule, the nine "
      "base sentinels plus R0 orchestration root, and an append-only, hash-chained "
      "audit log mirrored to MongoDB and verifiable end-to-end."),
-    ("gonal", "Gonal — the 157-gonal carrier",
-     "The structural carrier: public invariants (face, chirality, class tags, "
-     "adjacency, bones) over a 157-position polygon, a position-reflection mirror, "
-     "and a three-gonal registry (default / mirror / private) that resolves an "
-     "agent's per-core triplet. Private disk material is only ever loaded behind "
-     "the Θ microkernel, never inline."),
+    ("gonal", "Gonal — UCNS public-gonol consumer",
+     "The exact public 157-gonal originated in A0 and is canon for all UCNS. "
+     "UCNS now owns the fixed SPACE/ZERO twist origin, arrangement, faces, "
+     "chirality, mirror, lifted traversal, and fixed-origin private transform; "
+     "A0 imports those surfaces and retains application-specific classes, disks, "
+     "morphology, and inscription. No second public-gonol implementation lives here."),
     ("aimmh", "AIMMH — multi-model orchestration",
      "Pure-async orchestration patterns over a single ``call_fn(model_id, "
      "messages)`` — single, fan-out, daisy-chain, synthesize, and council — that "
