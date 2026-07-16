@@ -110,24 +110,13 @@ jobs:
         run: python .agents/skills/manifest/generate.py --root . --pyproject backend/pyproject.toml --write
 
       - name: Regenerate living README
-        working-directory: target/backend
         run: |
-          python - <<'PY'
+          sudo rm -rf /app
+          sudo ln -s "$GITHUB_WORKSPACE/target" /app
+          PYTHONPATH=/app/backend python - <<'PY'
           from pathlib import Path
-          import living_spec
-          root = Path.cwd().parent.resolve()
-          living_spec.REPO_ROOTS = [
-              root / "backend/interdependent_lib",
-              root / "backend/agents",
-              root / "backend/providers",
-              root / "backend/auth",
-              root / "backend/a0p_skills",
-              root / "backend/tests",
-              root / "backend",
-              root / "frontend/src",
-          ]
           from readme_writer import write_readme
-          count = write_readme(root / "README.md")
+          count = write_readme(Path("/app/README.md"))
           if count < 1:
               raise SystemExit("README regeneration found no modules")
           print(f"regenerated {count} modules")
