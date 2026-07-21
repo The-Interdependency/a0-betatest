@@ -1,0 +1,78 @@
+name: Apply owner-bound state core
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/apply-owner-state-core.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Repair 02 branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/per-user-agent-state
+          fetch-depth: 0
+      - name: Replace process-global state with owner-bound proxy
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          path = Path("backend/server.py")
+          text = path.read_text(encoding="utf-8")
+
+          pairs = [
+              (
+                  "from interdependent_lib.zfae import ZFAEAgent, A0ZFAEInferenceEngine",
+                  "from interdependent_lib.zfae import A0ZFAEInferenceEngine",
+              ),
+              (
+                  "from interdependent_lib.zfae.runtime import ZFAERuntime\n",
+                  "from interdependent_lib.zfae.runtime import ZFAERuntime\n"
+                  "from interdependent_lib.zfae.state_store import OwnerScopedAgentProxy\n",
+              ),
+              (
+                  dedent('''\
+                  # ---------- shared persistent ZFAE agent ----------
+                  AGENT = ZFAEAgent(name="a0(zfae)", base_seed=157)
+                  '''),
+                  dedent('''\
+                  # ---------- authenticated-owner-scoped ephemeral legacy state ----------
+                  AGENT = OwnerScopedAgentProxy()
+                  '''),
+              ),
+              (
+                  '        "agent": {"id": AGENT.id, "name": AGENT.name, "born_ms": AGENT.born_ms},\n',
+                  '        "mutable_agent_state_exposed": False,\n',
+              ),
+              (
+                  '    user = await get_current_user(request)\n    return user["id"]\n',
+                  '    user = await get_current_user(request)\n'
+                  '    AGENT.bind_owner(user["id"])\n'
+                  '    return user["id"]\n',
+              ),
+          ]
+          for old, new in pairs:
+              if text.count(old) != 1:
+                  raise SystemExit(f"expected one source block, found {text.count(old)}: {old[:70]!r}")
+              text = text.replace(old, new)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+          python -m compileall -q backend
+      - name: Commit owner-state core
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/server.py
+          git commit -m 'fix(state): bind legacy agent state to authenticated owner'
+          git push origin HEAD:agent/per-user-agent-state
