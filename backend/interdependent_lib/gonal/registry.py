@@ -9,7 +9,7 @@
 #   internal_surface: _DEFAULT_CACHE, _MIRROR_CACHE
 #   auth_boundary: none
 #   storage_boundary: read
-#   network_boundary: package_import_only
+#   network_boundary: none
 #   user_data_boundary: read
 #   admin_only: false
 #   tests: a0p_skills.contracts.carrier_registry_three_gonals_holds, backend.tests.test_public_gonol_ucns_parity
@@ -24,7 +24,7 @@
 #   summary: reads optional A0 private-spec configuration; default and mirror are supplied by the UCNS public canon
 #   auth_boundary: none
 #   storage_boundary: read
-#   network_boundary: package_import_only
+#   network_boundary: none
 #   user_data_boundary: read
 #   admin_only: false
 #   owner: Erin Spencer
@@ -33,7 +33,7 @@
 # id: carrier_registry
 #   summary: resolves A0 compatibility arrangements while deferring public canon to UCNS
 #   exposes: GonalName, get_default, get_mirror, get_private, get_gonal
-#   boundaries: auth:none, storage:read, network:package_import_only, user_data:read
+#   boundaries: auth:none, storage:read, network:none, user_data:read
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
 """A0 compatibility registry over the UCNS-owned public gonol.

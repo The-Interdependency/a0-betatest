@@ -9,7 +9,7 @@
 #   internal_surface: UPPERCASE, LOWERCASE, DIGITS_ODD, DIGITS_EVEN, PAIRED_OPEN, PAIRED_CLOSE, UNPAIRED_ALL
 #   auth_boundary: none
 #   storage_boundary: none
-#   network_boundary: package_import_only
+#   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
 #   tests: backend.tests.test_public_gonol_ucns_parity
@@ -19,6 +19,23 @@
 #   since: 2026-07-16
 #   unresolved: none
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: carrier_gonal_boundaries
+#   summary: compatibility imports for the UCNS-owned canonical public gonol promoted from this repository
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: Erin Spencer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: carrier_gonal
+#   summary: compatibility imports for the UCNS-owned canonical public gonol promoted from this repository
+#   exposes: GonalSpec, build_gonal, validate_gonal, print_gonal, EXAMPLE_157, PUBLIC_GONOL_157, make_example_157, get_default, public_gonol_sha256
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: Erin Spencer
+# === END CAPABILITIES ===
 """Compatibility surface for the UCNS-owned public gonol.
 
 The exact public gonol originated here at commit

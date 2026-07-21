@@ -9,7 +9,7 @@
 #   internal_surface: none
 #   auth_boundary: none
 #   storage_boundary: none
-#   network_boundary: package_import_only
+#   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
 #   tests: a0p_skills.contracts.carrier_pkg_exports_holds, backend.tests.test_public_gonol_ucns_parity
@@ -24,7 +24,7 @@
 #   summary: public arrangement, origin, face, chirality, mirror, and lifted traversal come from UCNS; A0 retains application-specific disk and bone surfaces
 #   auth_boundary: none
 #   storage_boundary: none
-#   network_boundary: package_import_only
+#   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
 #   owner: Erin Spencer
@@ -33,7 +33,7 @@
 # id: carrier_pkg
 #   summary: exposes UCNS-owned public-gonol invariants alongside A0-specific disk and bone helpers
 #   exposes: face, chirality, n_plus, n_minus, ClassTag, CarrierDisk, CarrierDiskUnavailable, hard_invariant_holds, face_crossing, build_public_fixture_disk
-#   boundaries: auth:none, storage:none, network:package_import_only, user_data:none
+#   boundaries: auth:none, storage:none, network:none, user_data:none
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
 """A0 compatibility package over the UCNS-owned public gonol.

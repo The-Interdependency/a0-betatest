@@ -9,7 +9,7 @@
 #   internal_surface: none
 #   auth_boundary: none
 #   storage_boundary: none
-#   network_boundary: package_import_only
+#   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
 #   tests: backend.tests.test_public_gonol_ucns_parity
@@ -19,6 +19,23 @@
 #   since: 2026-07-16
 #   unresolved: none
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: carrier_faces_boundaries
+#   summary: compatibility imports for UCNS-owned public-gonol faces, chirality, adjacency, arity, and origin
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: Erin Spencer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: carrier_faces
+#   summary: compatibility imports for UCNS-owned public-gonol faces, chirality, adjacency, arity, and origin
+#   exposes: face, chirality, n_plus, n_minus, ARITY, ORIGIN, UPPER_ARC_RANGE, LOWER_ARC_RANGE
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: Erin Spencer
+# === END CAPABILITIES ===
 """Compatibility imports for the UCNS-owned public-gonol geometry."""
 from __future__ import annotations
 

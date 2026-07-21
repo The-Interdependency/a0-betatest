@@ -9,7 +9,7 @@
 #   internal_surface: none
 #   auth_boundary: none
 #   storage_boundary: none
-#   network_boundary: package_import_only
+#   network_boundary: none
 #   user_data_boundary: read
 #   admin_only: false
 #   tests: backend.tests.test_lifted_path, backend.tests.test_public_gonol_ucns_parity
@@ -19,6 +19,23 @@
 #   since: 2026-07-16
 #   unresolved: none
 # === END MODULE_BUILD ===
+# === BOUNDARIES ===
+# id: carrier_lifted_path_boundaries
+#   summary: compatibility imports for the UCNS-owned lossless lifted public-gonol traversal
+#   auth_boundary: none
+#   storage_boundary: none
+#   network_boundary: none
+#   user_data_boundary: none
+#   admin_only: false
+#   owner: Erin Spencer
+# === END BOUNDARIES ===
+# === CAPABILITIES ===
+# id: carrier_lifted_path
+#   summary: compatibility imports for the UCNS-owned lossless lifted public-gonol traversal
+#   exposes: encode_text_path, decode_text_path, vertex_of_char, char_of_vertex, is_seam_event, path_vertices, CarrierCharError, ARITY, ORIGIN
+#   boundaries: auth:none, storage:none, network:none, user_data:none
+#   owner: Erin Spencer
+# === END CAPABILITIES ===
 """Compatibility imports for the UCNS-owned lossless lifted traversal.
 
 The implementation originated in this repository and is now canonically owned

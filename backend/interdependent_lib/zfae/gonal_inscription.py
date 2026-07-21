@@ -9,7 +9,7 @@
 #   internal_surface: _WHITEN_SCALE, _project_field_scalar_to_vertex
 #   auth_boundary: none
 #   storage_boundary: none
-#   network_boundary: package_import_only
+#   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
 #   tests: a0p_skills.contracts.zfae_gonal_inscription_deterministic_holds, backend.tests.test_public_gonol_ucns_parity
@@ -25,7 +25,7 @@
 #   summary: deterministic A0 field-to-glyph application over the UCNS carrier; it does not define public-gonol rotation, orientation return, or origin
 #   auth_boundary: none
 #   storage_boundary: none
-#   network_boundary: package_import_only
+#   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
 #   owner: Erin Spencer
@@ -34,7 +34,7 @@
 # id: zfae_gonal_inscription
 #   summary: projects dimensionless A0 field scalars into glyphs while the fixed public frame and 720-degree return remain UCNS canon
 #   exposes: PrivateGonal, inscribe_text, whiten_payload, whitened_indices
-#   boundaries: auth:none, storage:none, network:package_import_only, user_data:none
+#   boundaries: auth:none, storage:none, network:none, user_data:none
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
 # === CONTRACTS ===
