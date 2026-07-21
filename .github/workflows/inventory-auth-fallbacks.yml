@@ -1,0 +1,49 @@
+name: Inventory shared demo authentication fallbacks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/inventory-auth-fallbacks.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out strict-auth branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/strict-auth-demo-isolation
+          fetch-depth: 0
+      - name: Record active auth fallback references
+        shell: bash
+        run: |
+          mkdir -p repair/generated
+          {
+            echo '# Pre-repair shared-auth fallback inventory'
+            echo
+            echo 'Snapshot taken before Repair 01 changes.'
+            echo
+            echo '```text'
+            grep -RInE 'get_current_user_or_demo|_auth_uid|user_id: str = "local"|user_id="local"|"user_id": "local"|user_id.*local|local.*user_id' backend \
+              --include='*.py' \
+              --exclude-dir='__pycache__' \
+              --exclude-dir='.pytest_cache' \
+              | sort || true
+            echo '```'
+          } > repair/generated/PRE_REPAIR_AUTH_FALLBACKS.md
+      - name: Commit inventory to strict-auth branch
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add repair/generated/PRE_REPAIR_AUTH_FALLBACKS.md
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'audit: inventory shared authentication fallbacks'
+          git push origin HEAD:agent/strict-auth-demo-isolation
