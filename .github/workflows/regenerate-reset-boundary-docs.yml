@@ -1,4 +1,4 @@
-name: Regenerate reset-boundary docs
+name: Regenerate reset-boundary README
 
 on:
   push:
@@ -23,25 +23,16 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Regenerate living documentation
-        shell: bash
-        run: |
-          A0P_ALLOW_DOC_WRITE=1 python backend/readme_writer.py
-          python .agents/skills/manifest/generate.py \
-            --pyproject backend/pyproject.toml \
-            --write
-          PYTHONPATH=.agents/skills python -m msdmd.collect \
-            --root . \
-            --repo a0-betatest \
-            --out a0-betatest_msdmd.ts
-      - name: Commit generated outputs to repair branch
+      - name: Regenerate README from current declarations
+        run: A0P_ALLOW_DOC_WRITE=1 python backend/readme_writer.py
+      - name: Commit README to repair branch
         shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add README.md CLAUDE.md a0-betatest_msdmd.ts
+          git add README.md
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m 'docs: regenerate UCNS reset-boundary surfaces'
+          git commit -m 'docs: regenerate UCNS reset-boundary README'
           git push origin HEAD:agent/suspend-pre-reset-ucns
