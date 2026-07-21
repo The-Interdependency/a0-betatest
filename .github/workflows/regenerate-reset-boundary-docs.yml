@@ -1,0 +1,47 @@
+name: Regenerate reset-boundary docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/regenerate-reset-boundary-docs.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/suspend-pre-reset-ucns
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Regenerate living documentation
+        shell: bash
+        run: |
+          A0P_ALLOW_DOC_WRITE=1 python backend/readme_writer.py
+          python .agents/skills/manifest/generate.py \
+            --pyproject backend/pyproject.toml \
+            --write
+          PYTHONPATH=.agents/skills python -m msdmd.collect \
+            --root . \
+            --repo a0-betatest \
+            --out a0-betatest_msdmd.ts
+      - name: Commit generated outputs to repair branch
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add README.md CLAUDE.md a0-betatest_msdmd.ts
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'docs: regenerate UCNS reset-boundary surfaces'
+          git push origin HEAD:agent/suspend-pre-reset-ucns
