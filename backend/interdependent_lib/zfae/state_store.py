@@ -2,10 +2,10 @@
 # id: zfae_state_store
 #   module_name: state_store
 #   module_kind: service
-#   summary: owner-keyed ephemeral ZFAEAgent state with per-state async serialization and explicit eviction
+#   summary: request-owner-bound ephemeral ZFAEAgent proxy with per-owner reentrant update locks and explicit eviction
 #   owner: Erin Spencer
-#   public_surface: AgentStateStore, AgentStateKey
-#   internal_surface: _states, _locks, _guard, _seed_for, _agent_id_for
+#   public_surface: OwnerScopedAgentProxy
+#   internal_surface: _owner_context, _states, _locks, _guard, _EngineView
 #   auth_boundary: owner_id
 #   storage_boundary: ephemeral
 #   network_boundary: none
@@ -13,13 +13,13 @@
 #   admin_only: false
 #   tests: backend.tests.test_agent_state_isolation
 #   rollout: default_enabled
-#   rollback: remove legacy chat/inspector state rather than restore a process-global agent
+#   rollback: remove legacy chat/inspector state rather than restore one process-global agent
 #   since: 2026-07-21
 #   unresolved: restart persistence is intentionally unavailable until an atomic versioned state schema exists
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: zfae_state_store_boundaries
-#   summary: each mutable legacy state is keyed by authenticated owner plus state id and serialized by one asyncio lock
+#   summary: each mutable legacy state is keyed by the authenticated request owner and every state mutation is protected by that owner's lock
 #   auth_boundary: owner_id
 #   storage_boundary: ephemeral
 #   network_boundary: none
@@ -29,133 +29,185 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: zfae_state_store
-#   summary: creates, reads, mutates, and evicts isolated in-process ZFAEAgent states
-#   exposes: AgentStateStore, AgentStateKey
+#   summary: preserves the legacy AGENT call surface while resolving every call to isolated owner state
+#   exposes: OwnerScopedAgentProxy
 #   boundaries: auth:owner_id, storage:ephemeral, network:none, user_data:write
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
 # === CONTRACTS ===
 # id: zfae_state_owner_isolation
-#   given: two owners use the same state id
-#   then: each receives a distinct agent and neither snapshot contains the other's memory marker
+#   given: two authenticated owners use the legacy agent surface
+#   then: each resolves to a distinct state and neither snapshot contains the other's memory marker
 #   class: security
 # id: zfae_state_updates_serialized
-#   given: concurrent mutations target one owner/state key
-#   then: one per-key lock serializes updates without lost ticks
+#   given: concurrent mutations target one owner
+#   then: each receive, absorb, snapshot, and heartbeat operation is protected by one per-owner lock with no lost ticks
 #   class: concurrency
 # id: zfae_state_lifecycle_explicit
 #   given: a state is evicted or the process restarts
 #   then: its in-memory state is gone; no persistence is implied
 #   class: provenance
 # === END CONTRACTS ===
-"""Owner-keyed ephemeral state for the legacy ZFAE inspector/chat surface.
+"""Owner-scoped compatibility proxy for the legacy mutable ZFAE agent.
 
-The store deliberately does not persist state. That prevents cross-user leakage
-without pretending that an atomic durable state schema already exists. Persistent
-character-sheet agents and weight banks remain under ``backend/agents``.
+The proxy keeps existing ``AGENT.receive()``, ``AGENT.absorb()``, ``AGENT.card()``,
+and ``AGENT.engine`` call sites working while binding each request to a distinct
+owner state. State is explicitly ephemeral; persistent character-sheet agents
+and weight banks remain under ``backend/agents``.
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
-from typing import AsyncIterator
+import threading
+from contextvars import ContextVar, Token
 
 from . import ZFAEAgent
 
 
-@dataclass(frozen=True, order=True)
-class AgentStateKey:
-    owner_id: str
-    state_id: str
+class _EngineView:
+    def __init__(self, proxy: "OwnerScopedAgentProxy", owner_id: str) -> None:
+        self._proxy = proxy
+        self._owner_id = owner_id
 
-    def __post_init__(self) -> None:
-        if not self.owner_id or not self.state_id:
-            raise ValueError("owner_id and state_id are required")
+    @property
+    def tick_count(self) -> int:
+        with self._proxy._lock_for(self._owner_id):
+            return self._proxy._agent_for(self._owner_id).engine.tick_count
+
+    def heartbeat(self, intent: str | None = None) -> dict:
+        return self._proxy.heartbeat(intent=intent, owner_id=self._owner_id)
+
+    def snapshot(self) -> dict:
+        with self._proxy._lock_for(self._owner_id):
+            return self._proxy._agent_for(self._owner_id).engine.snapshot()
 
 
-class AgentStateStore:
-    """In-process state map with one lock per authenticated owner/state pair."""
+class OwnerScopedAgentProxy:
+    """Bind the legacy agent API to one authenticated owner per request context."""
 
     def __init__(self) -> None:
-        self._states: dict[AgentStateKey, ZFAEAgent] = {}
-        self._locks: dict[AgentStateKey, asyncio.Lock] = {}
-        self._guard = asyncio.Lock()
+        self._owner_context: ContextVar[str | None] = ContextVar(
+            "a0p_agent_owner", default=None
+        )
+        self._states: dict[str, ZFAEAgent] = {}
+        self._locks: dict[str, threading.RLock] = {}
+        self._guard = threading.RLock()
 
     @staticmethod
-    def _seed_for(key: AgentStateKey) -> int:
+    def _seed_for(owner_id: str) -> int:
         digest = hashlib.blake2b(
-            f"{key.owner_id}\x00{key.state_id}".encode("utf-8"), digest_size=8
+            f"a0-state\x00{owner_id}".encode("utf-8"), digest_size=8
         ).digest()
         return max(1, int.from_bytes(digest, "big") % 2_147_483_647)
 
     @staticmethod
-    def _agent_id_for(key: AgentStateKey) -> str:
+    def _agent_id_for(owner_id: str) -> str:
         return hashlib.blake2b(
-            f"a0-state\x00{key.owner_id}\x00{key.state_id}".encode("utf-8"),
-            digest_size=16,
+            f"a0-agent\x00{owner_id}".encode("utf-8"), digest_size=16
         ).hexdigest()
 
-    async def _lock_for(self, key: AgentStateKey) -> asyncio.Lock:
-        async with self._guard:
-            return self._locks.setdefault(key, asyncio.Lock())
+    def bind_owner(self, owner_id: str) -> Token:
+        owner = str(owner_id).strip()
+        if not owner:
+            raise ValueError("owner_id is required")
+        return self._owner_context.set(owner)
 
-    def _get_or_create_unlocked(self, key: AgentStateKey) -> ZFAEAgent:
-        agent = self._states.get(key)
-        if agent is None:
-            agent = ZFAEAgent(
-                name=f"a0(zfae):{key.state_id}",
-                base_seed=self._seed_for(key),
-            )
-            agent.id = self._agent_id_for(key)
-            self._states[key] = agent
-        return agent
+    def reset_owner(self, token: Token) -> None:
+        self._owner_context.reset(token)
 
-    @asynccontextmanager
-    async def locked(
+    def current_owner(self) -> str:
+        owner = self._owner_context.get()
+        if owner is None:
+            raise RuntimeError("no authenticated agent owner is bound to this request")
+        return owner
+
+    def _lock_for(self, owner_id: str) -> threading.RLock:
+        with self._guard:
+            return self._locks.setdefault(owner_id, threading.RLock())
+
+    def _agent_for(self, owner_id: str) -> ZFAEAgent:
+        with self._guard:
+            agent = self._states.get(owner_id)
+            if agent is None:
+                agent = ZFAEAgent(
+                    name="a0(zfae)",
+                    base_seed=self._seed_for(owner_id),
+                )
+                agent.id = self._agent_id_for(owner_id)
+                self._states[owner_id] = agent
+            return agent
+
+    @property
+    def id(self) -> str:
+        owner = self.current_owner()
+        with self._lock_for(owner):
+            return self._agent_for(owner).id
+
+    @property
+    def name(self) -> str:
+        owner = self.current_owner()
+        with self._lock_for(owner):
+            return self._agent_for(owner).name
+
+    @property
+    def born_ms(self) -> int:
+        owner = self.current_owner()
+        with self._lock_for(owner):
+            return self._agent_for(owner).born_ms
+
+    @property
+    def engine(self) -> _EngineView:
+        return _EngineView(self, self.current_owner())
+
+    def receive(self, user_text: str, *, owner_id: str | None = None) -> dict:
+        owner = owner_id or self.current_owner()
+        with self._lock_for(owner):
+            return self._agent_for(owner).receive(user_text)
+
+    def absorb(
         self,
-        owner_id: str,
-        state_id: str = "default",
-    ) -> AsyncIterator[ZFAEAgent]:
-        key = AgentStateKey(str(owner_id), str(state_id))
-        lock = await self._lock_for(key)
-        async with lock:
-            yield self._get_or_create_unlocked(key)
+        model_id: str,
+        text: str,
+        usage: dict | None = None,
+        *,
+        owner_id: str | None = None,
+    ) -> None:
+        owner = owner_id or self.current_owner()
+        with self._lock_for(owner):
+            self._agent_for(owner).absorb(model_id, text, usage)
 
-    async def snapshot(self, owner_id: str, state_id: str = "default") -> dict:
-        async with self.locked(owner_id, state_id) as agent:
-            return agent.card()
+    def card(self, *, owner_id: str | None = None) -> dict:
+        owner = owner_id or self.current_owner()
+        with self._lock_for(owner):
+            card = self._agent_for(owner).card()
+            card["state_owner"] = owner
+            card["persistence"] = "ephemeral"
+            return card
 
-    async def heartbeat(
+    def heartbeat(
         self,
-        owner_id: str,
-        state_id: str = "default",
         intent: str | None = None,
+        *,
+        owner_id: str | None = None,
     ) -> dict:
-        async with self.locked(owner_id, state_id) as agent:
-            return agent.engine.heartbeat(intent=intent)
+        owner = owner_id or self.current_owner()
+        with self._lock_for(owner):
+            result = self._agent_for(owner).engine.heartbeat(intent=intent)
+            result["state_owner"] = owner
+            result["persistence"] = "ephemeral"
+            return result
 
-    async def evict(self, owner_id: str, state_id: str = "default") -> bool:
-        key = AgentStateKey(str(owner_id), str(state_id))
-        lock = await self._lock_for(key)
-        async with lock:
-            existed = self._states.pop(key, None) is not None
-        async with self._guard:
-            if not lock.locked():
-                self._locks.pop(key, None)
+    def evict(self, owner_id: str | None = None) -> bool:
+        owner = owner_id or self.current_owner()
+        with self._lock_for(owner):
+            existed = self._states.pop(owner, None) is not None
+        with self._guard:
+            self._locks.pop(owner, None)
         return existed
 
-    async def evict_owner(self, owner_id: str) -> int:
-        async with self._guard:
-            keys = [key for key in self._states if key.owner_id == str(owner_id)]
-        removed = 0
-        for key in keys:
-            removed += int(await self.evict(key.owner_id, key.state_id))
-        return removed
-
     def state_count(self) -> int:
-        return len(self._states)
+        with self._guard:
+            return len(self._states)
 
 
-__all__ = ["AgentStateKey", "AgentStateStore"]
+__all__ = ["OwnerScopedAgentProxy"]
