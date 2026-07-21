@@ -1,9 +1,8 @@
-# ratios: loc_comments=51:73 imports_exports=8:5 calls_definitions=20:5
 # === MODULE_BUILD ===
 # id: api_training_routes
 #   module_name: training
 #   module_kind: route
-#   summary: backend for the standalone Chat Training tab — turns the inference-engine chat-training loop into three inspectable readouts wired to the same primitives the ZFAE engine trains on. POST /api/training/readout lifts one turn (with optional prior) into its UCNS-native embedding (unit-circle phase streams on the 157-gonal carrier), its six-family EDCM projection (CM/DA/DRIFT/DVG/INT/TBF with 0.80/0.20 alert bands), and its three-core gonal disk (phi content-phase / omega bone-density / psi unit-circle coherence). POST /api/training/disk-stack folds a whole session of utterances into a cylindrical disk stack of chapter-scale gonols — one 157-gonal disk per depth-rung (leaf..chapter), the chapter rung being the ⊠ (unit-circle phase-product) recomposition of the per-utterance embeddings. Pure read-only computation over the request text; actual weight training stays on the existing /api/instances/{id}/train route. Recompose-only, public-fixture carrier, UCNS-G / non-absolute (no theorem transfer).
+#   summary: authenticated training-inspection endpoints for A0 phase embedding, local interaction heuristics, and A0 experimental disk stacks
 #   owner: Erin Spencer
 #   public_surface: router
 #   internal_surface: ReadoutBody, DiskStackBody
@@ -12,13 +11,15 @@
 #   network_boundary: none
 #   user_data_boundary: read
 #   admin_only: false
-#   tests: a0p_skills.contracts.api_training_readout_holds
+#   tests: backend.tests.test_reset_boundaries
 #   rollout: default_enabled
-#   rollback: revert + unmount from server.py; the Chat Training tab loses its readout/disk-stack endpoints
+#   rollback: revert and unmount
+#   since: 2026-07-21
+#   unresolved: maintained EDCM and current UCNS producers are not attached
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: api_training_routes_boundaries
-#   summary: REST endpoints computing embedding/EDCM/gonal readouts + disk stacks from request text
+#   summary: pure authenticated A0-local readouts; no EDCM validity or UCNS geometry claim
 #   auth_boundary: bearer
 #   storage_boundary: none
 #   network_boundary: none
@@ -28,56 +29,37 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: api_training_routes
-#   summary: UCNS-native embedding + EDCM projection + cylindrical gonal disk-stack readouts for the training tab
+#   summary: exposes inspectable A0-local training readouts
 #   exposes: router
 #   boundaries: auth:bearer, storage:none, network:none, user_data:read
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
 # === CONTRACTS ===
-# id: api_training_readout
-#   given: the training router and a turn (with and without a prior)
-#   then: /readout and /disk-stack handlers return the embedding + EDCM + gonal
-#         disk / cylindrical stack shapes, flagged recompose-only + non-absolute
-#   class: correctness
-#   call: a0p_skills.contracts.api_training_readout_holds
+# id: api_training_local_authority
+#   given: an authenticated training readout request
+#   then: the response labels phase, heuristic, and disk authorities explicitly and reports ucns_state=NA
+#   class: provenance
 # === END CONTRACTS ===
-"""Chat Training tab backend: embedding + EDCM + cylindrical gonal disk-stack readouts.
+"""Training inspection endpoints.
 
-Three primitives, one tab. Each POST is a pure, deterministic read over the
-request text (no storage, no network) so the frontend can render the substrate a
-training turn touches:
-
-  * the UCNS-native embedding (``interdependent_lib.ucns_embed``) — unit-circle
-    phase streams on the 157-gonal carrier;
-  * the six-family EDCM projection (``interdependent_lib.edcm_readout``);
-  * the three-core gonal disk / cylindrical stack
-    (``interdependent_lib.gonal_stack``) — the chapter rung is the ⊠
-    (phase-product) recomposition of the session.
-
-Actual weight training (teacher distillation into the per-instance ZFAE
-checkpoint) stays on the existing ``/api/instances/{id}/train`` route; this module
-only exposes the inspectable readouts beside it. Firewalls inherited from the
-underlying modules hold: recompose-only, public-fixture carrier, UCNS-G /
-non-absolute (no theorem/proof transfer from UCNS-A).
+These endpoints expose A0-local phase and text heuristics. They do not present
+the results as UCNS-native or maintained EDCM measurement.
 """
 from __future__ import annotations
+
 from typing import Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from auth import get_current_user
-from interdependent_lib.ucns_embed import embed_text
-from interdependent_lib.edcm_readout import readout
-from interdependent_lib.gonal_stack import single_disk, build_disk_stack, GEOMETRY_STATUS
-
+from interdependent_lib.gonal_stack import GEOMETRY_STATUS, build_disk_stack, single_disk
+from interdependent_lib.interaction_heuristics import interaction_readout
+from interdependent_lib.phase_embedding import embed_text
 
 router = APIRouter(prefix="/api/training", tags=["training"])
-
 _MAX_TURNS = 200
 _MAX_CHARS = 20_000
-# Explicit aggregate cap for a whole session (build_disk_stack joins + tokenizes +
-# hashes it synchronously) — a small fixed limit, NOT _MAX_TURNS * _MAX_CHARS.
 _MAX_SESSION_CHARS = 200_000
 
 
@@ -95,53 +77,43 @@ class DiskStackBody(BaseModel):
 
     @field_validator("turns")
     @classmethod
-    def _bound_turn_text(cls, v: list[str]) -> list[str]:
-        # Cap each turn AND the aggregate session text — the count cap alone lets a
-        # few very large strings block the event loop when build_disk_stack joins /
-        # tokenizes / hashes them synchronously. Mirrors ReadoutBody.text's cap.
+    def _bound_turn_text(cls, turns: list[str]) -> list[str]:
         total = 0
-        for t in v:
-            if len(t) > _MAX_CHARS:
+        for text in turns:
+            if len(text) > _MAX_CHARS:
                 raise ValueError(f"each turn must be <= {_MAX_CHARS} chars")
-            total += len(t)
+            total += len(text)
         if total > _MAX_SESSION_CHARS:
-            raise ValueError(f"aggregate session text must be <= {_MAX_SESSION_CHARS} chars")
-        return v
+            raise ValueError(
+                f"aggregate session text must be <= {_MAX_SESSION_CHARS} chars"
+            )
+        return turns
 
 
 @router.post("/readout")
 async def training_readout(body: ReadoutBody, user=Depends(get_current_user)):
-    """One training turn -> UCNS-native embedding + EDCM projection + gonal disk.
-
-    The three panels of the Chat Training tab for a single turn. ``prev_text``
-    (the previous turn) sharpens the EDCM drift/divergence/turn-balance families;
-    without it EDCM uses its no-prior handling.
-    """
-    emb = embed_text(body.text)
-    edcm = readout(body.text, body.prev_text, grain=body.grain)
+    embedding = embed_text(body.text)
+    heuristics = interaction_readout(
+        body.text, body.prev_text, grain=body.grain
+    )
     disk = single_disk(body.text, grain=body.grain)
     return {
         "grain": body.grain,
-        "embedding": emb.as_dict(),
-        "coherence": round(emb.coherence(), 6),
-        "edcm": edcm.as_dict(),
+        "phase_embedding": embedding.as_dict(),
+        "coherence": round(embedding.coherence(), 6),
+        "interaction_heuristics": heuristics.as_dict(),
         "disk": disk.as_dict(),
         "geometry_status": GEOMETRY_STATUS,
-        "recompose_only": True,
+        "ucns_state": "NA",
+        "edcm_measurement_attached": False,
+        "theorem_status_transfer": False,
     }
 
 
 @router.post("/disk-stack")
 async def training_disk_stack(body: DiskStackBody, user=Depends(get_current_user)):
-    """A whole session -> a cylindrical disk stack of chapter-scale gonols.
-
-    One 157-gonal disk per depth-rung (leaf/circle/seed/core/chapter); the chapter
-    rung is the ⊠ (unit-circle phase-product) recomposition of every utterance's
-    embedding. Recompose-only, public-fixture carrier, UCNS-G / non-absolute.
-    """
     stack = build_disk_stack(body.turns, agent_id=body.agent_id)
     return stack.as_dict()
 
 
 __all__ = ["router"]
-# ratios: loc_comments=51:73 imports_exports=8:5 calls_definitions=20:5
