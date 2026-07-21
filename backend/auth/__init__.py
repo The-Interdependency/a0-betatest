@@ -190,22 +190,13 @@ async def get_current_user(request: Request) -> dict:
 
 
 async def get_current_user_or_demo(request: Request) -> dict:
-    """Return current user OR a synthetic 'demo' user (user_id='local').
+    """Deprecated strict alias retained for compatibility.
 
-    Lets legacy endpoints keep working without auth while we migrate.
+    Anonymous callers no longer receive a shared persistent ``local`` identity.
+    Public demo behavior, if reintroduced, must live on a separate non-persistent
+    router and must never expose BYOK credentials or durable user state.
     """
-    tok = _extract_token(request)
-    if tok:
-        user = await _get_user_by_token(tok)
-        if user:
-            return user
-    return {
-        "id": "local",
-        "username": "demo",
-        "email": "demo@local",
-        "role": "demo",
-        "auth_methods": [],
-    }
+    return await get_current_user(request)
 
 
 # ---- Brute force ---------------------------------------------------------

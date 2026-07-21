@@ -281,7 +281,7 @@ async def living_spec():
 
 
 @router.get("/audit/feed")
-async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = ""):
+async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = "", user=Depends(get_current_user)):
     """Return the most recent hash-chained FIQ events.
 
     Filters: ``agent_id`` (exact match), ``kind`` (event_type prefix). Public
@@ -290,7 +290,7 @@ async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = ""):
     so any client can verify chain integrity locally.
     """
     from db import fiq_audit_col
-    q: dict = {}
+    q: dict = {"user_id": user["id"]}
     if agent_id:
         q["agent_id"] = agent_id
     if kind:
