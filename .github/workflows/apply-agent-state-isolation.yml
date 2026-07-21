@@ -1,0 +1,481 @@
+name: Apply per-user agent state isolation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/apply-agent-state-isolation.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Repair 02 branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/per-user-agent-state
+          fetch-depth: 0
+      - name: Replace global mutable state and scope agent records
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          server = Path("backend/server.py")
+          text = server.read_text(encoding="utf-8")
+          text = text.replace(
+              "from interdependent_lib.zfae import ZFAEAgent, A0ZFAEInferenceEngine",
+              "from interdependent_lib.zfae import A0ZFAEInferenceEngine",
+          )
+          anchor = "from interdependent_lib.zfae.runtime import ZFAERuntime\n"
+          if text.count(anchor) != 1:
+              raise SystemExit("server import anchor drift")
+          text = text.replace(
+              anchor,
+              anchor + "from interdependent_lib.zfae.state_store import AgentStateStore\n",
+          )
+
+          old = dedent('''\
+          # ---------- shared persistent ZFAE agent ----------
+          AGENT = ZFAEAgent(name="a0(zfae)", base_seed=157)
+          ''')
+          new = dedent('''\
+          # ---------- owner-keyed ephemeral legacy state ----------
+          # Persistent character-sheet agents live under backend/agents. The legacy
+          # chat/inspector surface is explicitly ephemeral and isolated by owner + state id.
+          LEGACY_AGENT_STATES = AgentStateStore()
+          ''')
+          if text.count(old) != 1:
+              raise SystemExit("global AGENT block drift")
+          text = text.replace(old, new)
+
+          old = '''    return {
+              "status": "ok",
+              "service": "a0p",
+              "ts": _utc_now_iso(),
+              "providers": list(REGISTRY.keys()),
+              "agent": {"id": AGENT.id, "name": AGENT.name, "born_ms": AGENT.born_ms},
+          }
+          '''
+          new = '''    return {
+              "status": "ok",
+              "service": "a0p",
+              "ts": _utc_now_iso(),
+              "providers": list(REGISTRY.keys()),
+              "mutable_agent_state_exposed": False,
+          }
+          '''
+          if text.count(old) != 1:
+              raise SystemExit("health response drift")
+          text = text.replace(old, new)
+
+          single_start = text.index('@api.post("/chat/single")')
+          single_end = text.index('\n\n# ---------- Fan-out', single_start)
+          single = dedent('''\
+          @api.post("/chat/single")
+          async def chat_single(body: SingleChatRequest, request: Request):
+              uid = await _auth_uid(request)
+              state_id = body.session_id or "default"
+              async with LEGACY_AGENT_STATES.locked(uid, state_id) as agent:
+                  agent.receive((body.messages[-1]["content"] if body.messages else "") or "")
+                  result = await _call_model(
+                      user_id=uid,
+                      model_id=body.model_id,
+                      messages=body.messages,
+                      system=body.system or None,
+                  )
+                  agent.absorb(body.model_id, result.get("content", ""), result.get("usage"))
+                  agent_tick = agent.engine.tick_count
+              await _record_usage(uid, body.model_id, result.get("usage", {}), "single")
+
+              if body.session_id:
+                  turn_user = (
+                      ChatTurn(role="user", content=body.messages[-1]["content"]).model_dump()
+                      if body.messages else None
+                  )
+                  turn_asst = ChatTurn(
+                      role="assistant",
+                      content=result.get("content", ""),
+                      model_id=body.model_id,
+                      usage=result.get("usage", {}),
+                  ).model_dump()
+                  push_turns = [turn for turn in (turn_user, turn_asst) if turn]
+                  await sessions_col.update_one(
+                      {"_id": body.session_id, "user_id": uid},
+                      {"$push": {"turns": {"$each": push_turns}},
+                       "$set": {"updated_at": _utc_now_iso()}},
+                  )
+              return {
+                  "result": result,
+                  "agent_state_id": state_id,
+                  "agent_tick": agent_tick,
+              }
+          ''')
+          text = text[:single_start] + single + text[single_end:]
+
+          fan_start = text.index('@api.post("/chat/fanout")')
+          fan_end = text.index('\n\n# ---------- Daisy chain', fan_start)
+          fan = dedent('''\
+          @api.post("/chat/fanout")
+          async def chat_fanout(body: FanOutRequest, request: Request):
+              uid = await _auth_uid(request)
+              state_id = body.session_id or "default"
+              messages = [{"role": "user", "content": body.prompt}]
+              system = body.system_context or None
+
+              async def call_fn(model_id: str, msgs: list[dict]):
+                  return await _call_model(uid, model_id, msgs, system)
+
+              async with LEGACY_AGENT_STATES.locked(uid, state_id) as agent:
+                  agent.receive(body.prompt)
+                  results = await aimmh_fan_out(call_fn, body.model_ids, messages)
+                  for result in results:
+                      agent.absorb(result.model_id, result.content, result.usage)
+                  agent_tick = agent.engine.tick_count
+
+              run_id = new_id()
+              record = {
+                  "_id": run_id,
+                  "user_id": uid,
+                  "session_id": body.session_id,
+                  "prompt": body.prompt,
+                  "system_context": body.system_context,
+                  "results": [{
+                      "model_id": result.model_id,
+                      "content": result.content,
+                      "usage": result.usage,
+                      "error": result.error,
+                  } for result in results],
+                  "created_at": _utc_now_iso(),
+              }
+              await fanout_col.insert_one(record)
+              for result in results:
+                  await _record_usage(uid, result.model_id, result.usage or {}, "fanout")
+
+              if body.session_id:
+                  turns = [ChatTurn(role="user", content=body.prompt).model_dump()]
+                  turns.extend(
+                      ChatTurn(
+                          role="assistant",
+                          content=result.content,
+                          model_id=result.model_id,
+                          usage=result.usage,
+                      ).model_dump()
+                      for result in results
+                  )
+                  await sessions_col.update_one(
+                      {"_id": body.session_id, "user_id": uid},
+                      {"$push": {"turns": {"$each": turns}},
+                       "$set": {"updated_at": _utc_now_iso()}},
+                  )
+              return {
+                  "run_id": run_id,
+                  "results": record["results"],
+                  "agent_state_id": state_id,
+                  "agent_tick": agent_tick,
+              }
+          ''')
+          text = text[:fan_start] + fan + text[fan_end:]
+
+          daisy_start = text.index('@api.post("/chat/daisychain")')
+          daisy_end = text.index('\n\n# ---------- Synthesize', daisy_start)
+          daisy = dedent('''\
+          @api.post("/chat/daisychain")
+          async def chat_daisychain(body: DaisyChainRequest, request: Request):
+              uid = await _auth_uid(request)
+              state_id = body.session_id or "default"
+              messages = [{"role": "user", "content": body.prompt}]
+              system = body.system_context or None
+              rounds = max(1, min(body.rounds, 6))
+
+              async def call_fn(model_id: str, msgs: list[dict]):
+                  return await _call_model(uid, model_id, msgs, system)
+
+              async with LEGACY_AGENT_STATES.locked(uid, state_id) as agent:
+                  agent.receive(body.prompt)
+                  results = await aimmh_daisy(
+                      call_fn, body.model_ids, messages, rounds=rounds
+                  )
+                  for result in results:
+                      agent.absorb(result.model_id, result.content, result.usage)
+                  agent_tick = agent.engine.tick_count
+
+              run_id = new_id()
+              serialised = [{
+                  "step": index + 1,
+                  "model_id": result.model_id,
+                  "content": result.content,
+                  "usage": result.usage,
+                  "error": result.error,
+              } for index, result in enumerate(results)]
+              await chain_col.insert_one({
+                  "_id": run_id,
+                  "user_id": uid,
+                  "session_id": body.session_id,
+                  "prompt": body.prompt,
+                  "system_context": body.system_context,
+                  "rounds": rounds,
+                  "model_ids": body.model_ids,
+                  "steps": serialised,
+                  "created_at": _utc_now_iso(),
+              })
+              for result in results:
+                  await _record_usage(uid, result.model_id, result.usage or {}, "daisy")
+
+              if body.session_id:
+                  turns = [ChatTurn(role="user", content=body.prompt).model_dump()]
+                  turns.extend(
+                      ChatTurn(
+                          role="assistant",
+                          content=result.content,
+                          model_id=result.model_id,
+                          usage=result.usage,
+                      ).model_dump()
+                      for result in results
+                  )
+                  await sessions_col.update_one(
+                      {"_id": body.session_id, "user_id": uid},
+                      {"$push": {"turns": {"$each": turns}},
+                       "$set": {"updated_at": _utc_now_iso()}},
+                  )
+              return {
+                  "run_id": run_id,
+                  "steps": serialised,
+                  "agent_state_id": state_id,
+                  "agent_tick": agent_tick,
+              }
+          ''')
+          text = text[:daisy_start] + daisy + text[daisy_end:]
+
+          synth_start = text.index('@api.post("/chat/synthesize")')
+          synth_end = text.index('\n\n# ---------- Inspector', synth_start)
+          synth = dedent('''\
+          @api.post("/chat/synthesize")
+          async def chat_synthesize(body: SynthesizeRequest, request: Request):
+              uid = await _auth_uid(request)
+              state_id = "default"
+              panel = "\\n\\n".join(
+                  f"[{response.get('model_id')}]:\\n{response.get('content', '')}"
+                  for response in body.responses
+              )
+              synth_prompt = (
+                  "You are the synthesizer. Below are responses from multiple models "
+                  "to the same prompt. Synthesize them into one cohesive, accurate "
+                  "answer, using the strongest reasoning and noting disagreements.\\n\\n"
+                  f"ORIGINAL PROMPT:\\n{body.prompt}\\n\\n"
+                  f"MODEL RESPONSES:\\n{panel}\\n\\nSYNTHESIS:"
+              )
+              async with LEGACY_AGENT_STATES.locked(uid, state_id) as agent:
+                  agent.receive(body.prompt)
+                  result = await _call_model(
+                      user_id=uid,
+                      model_id=body.synth_model,
+                      messages=[{"role": "user", "content": synth_prompt}],
+                      system=None,
+                  )
+                  agent.absorb(
+                      body.synth_model,
+                      result.get("content", ""),
+                      result.get("usage"),
+                  )
+                  agent_tick = agent.engine.tick_count
+              await _record_usage(
+                  uid, body.synth_model, result.get("usage", {}), "synthesis"
+              )
+              return {
+                  "synthesis": result,
+                  "agent_state_id": state_id,
+                  "agent_tick": agent_tick,
+              }
+          ''')
+          text = text[:synth_start] + synth + text[synth_end:]
+
+          inspector_start = text.index('# ---------- Inspector')
+          usage_start = text.index('# ---------- Usage log', inspector_start)
+          replacement = dedent('''\
+          # ---------- Owner-scoped legacy inspector state ----------
+          @api.get("/inspector/snapshot")
+          async def inspector_snapshot(request: Request, state_id: str = "default"):
+              uid = await _auth_uid(request)
+              return {
+                  "state_id": state_id,
+                  "agent_card": await LEGACY_AGENT_STATES.snapshot(uid, state_id),
+                  "persistence": "ephemeral",
+              }
+
+
+          @api.post("/inspector/heartbeat")
+          async def inspector_heartbeat(
+              request: Request,
+              state_id: str = "default",
+              intent: Optional[str] = Body(default=None, embed=True),
+          ):
+              uid = await _auth_uid(request)
+              result = await LEGACY_AGENT_STATES.heartbeat(uid, state_id, intent=intent)
+              result["state_id"] = state_id
+              result["persistence"] = "ephemeral"
+              return result
+
+
+          @api.delete("/inspector/state/{state_id}")
+          async def evict_inspector_state(state_id: str, request: Request):
+              uid = await _auth_uid(request)
+              return {"ok": await LEGACY_AGENT_STATES.evict(uid, state_id)}
+
+
+          # ---------- Owner-scoped detachable agents and public templates ----------
+          def _agent_view(document: dict, owner_id: str | None = None) -> dict:
+              public_template = bool(document.get("is_public_template"))
+              owned = owner_id is not None and document.get("user_id") == owner_id
+              view = {
+                  "id": document.get("_id"),
+                  "slug": document.get("slug"),
+                  "name": document.get("name"),
+                  "description": document.get("description", ""),
+                  "capabilities": list(document.get("capabilities") or []),
+                  "aimmh_pattern": document.get("aimmh_pattern", "fan_out"),
+                  "rounds": document.get("rounds", 1),
+                  "tier": "premium" if document.get("is_premium") else "free",
+                  "is_public_template": public_template,
+                  "owned": owned,
+              }
+              if owned and not public_template:
+                  view.update({
+                      "system_context": document.get("system_context", ""),
+                      "persona": document.get("persona", ""),
+                      "default_models": list(document.get("default_models") or []),
+                  })
+              return view
+
+
+          @api.get("/agent-templates")
+          async def list_agent_templates():
+              out = []
+              async for document in agents_col.find(
+                  {"is_public_template": True}
+              ).sort("name", 1):
+                  out.append(_agent_view(document))
+              return {"templates": out}
+
+
+          @api.get("/agents")
+          async def list_agents(request: Request):
+              uid = await _auth_uid(request)
+              out = []
+              query = {"$or": [{"user_id": uid}, {"is_public_template": True}]}
+              async for document in agents_col.find(query).sort("created_at", -1):
+                  out.append(_agent_view(document, uid))
+              return {"agents": out}
+
+
+          @api.post("/agents")
+          async def create_agent(body: AgentExport, request: Request):
+              uid = await _auth_uid(request)
+              existing = await agents_col.find_one({
+                  "slug": body.slug,
+                  "$or": [{"user_id": uid}, {"is_public_template": True}],
+              })
+              if existing:
+                  raise HTTPException(409, "slug already exists for this owner or template")
+              now = _utc_now_iso()
+              document = {
+                  "_id": new_id(),
+                  "user_id": uid,
+                  "is_public_template": False,
+                  **body.model_dump(),
+                  "created_at": now,
+                  "updated_at": now,
+              }
+              await agents_col.insert_one(document)
+              return _agent_view(document, uid)
+
+
+          @api.get("/agents/{slug}/manifest")
+          async def agent_manifest(slug: str, request: Request):
+              uid = await _auth_uid(request)
+              document = await agents_col.find_one({"slug": slug, "user_id": uid})
+              if document is None:
+                  document = await agents_col.find_one({
+                      "slug": slug,
+                      "is_public_template": True,
+                  })
+              if document is None:
+                  raise HTTPException(404, "agent not found")
+              view = _agent_view(document, uid)
+              view.update({
+                  "manifest_version": "a0p-agent-v1",
+                  "exported_at": _utc_now_iso(),
+              })
+              return view
+
+
+          @api.delete("/agents/{slug}")
+          async def delete_agent(slug: str, request: Request):
+              uid = await _auth_uid(request)
+              result = await agents_col.delete_one({
+                  "slug": slug,
+                  "user_id": uid,
+                  "is_public_template": {"$ne": True},
+              })
+              if result.deleted_count == 0:
+                  raise HTTPException(404, "owned agent not found")
+              return {"ok": True}
+
+
+          ''')
+          text = text[:inspector_start] + replacement + text[usage_start:]
+
+          starter_old = 'await agents_col.insert_one({"_id": new_id(), **a.model_dump(),\n                                         "created_at": now, "updated_at": now})'
+          starter_new = 'await agents_col.insert_one({\n                    "_id": new_id(),\n                    "user_id": None,\n                    "is_public_template": True,\n                    **a.model_dump(),\n                    "created_at": now,\n                    "updated_at": now,\n                })'
+          if text.count(starter_old) != 1:
+              raise SystemExit("starter insert block drift")
+          text = text.replace(starter_old, starter_new)
+
+          migration_anchor = '    # Seed a few starter detachable agents if the collection is empty.\n'
+          migration = dedent('''\
+              # Mark only the exact historical built-in starter slugs as public templates.
+              # No arbitrary unowned agent is promoted or assigned to a user.
+              await agents_col.update_many(
+                  {
+                      "slug": {"$in": [
+                          "research-council", "daisy-prover", "zfae-classic",
+                          "premium-symphony",
+                      ]},
+                      "user_id": {"$exists": False},
+                  },
+                  {"$set": {"user_id": None, "is_public_template": True}},
+              )
+          ''')
+          if text.count(migration_anchor) != 1:
+              raise SystemExit("starter migration anchor drift")
+          text = text.replace(migration_anchor, migration + migration_anchor)
+          server.write_text(text, encoding="utf-8")
+
+          db = Path("backend/db.py")
+          text = db.read_text(encoding="utf-8")
+          old = '    await agents_col.create_index([("slug", 1)])\n'
+          new = '''    await agents_col.create_index(
+              [("user_id", 1), ("slug", 1)],
+              unique=True,
+              name="agent_owner_slug_unique",
+          )
+          '''
+          if text.count(old) != 1:
+              raise SystemExit("agents index drift")
+          db.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+
+          python -m compileall -q backend
+      - name: Commit Repair 02 source changes
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/server.py backend/db.py
+          git commit -m 'fix(state): isolate mutable agents by owner'
+          git push origin HEAD:agent/per-user-agent-state
