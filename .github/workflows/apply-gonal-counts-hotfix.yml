@@ -24,40 +24,42 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
 
           gonal = Path('backend/interdependent_lib/gonal/gonal.py')
           text = gonal.read_text(encoding='utf-8')
           old = '    return {"valid": not violations, "violations": violations, "n": n}\n'
-          new = '''    def category(ch: str) -> str:
-              if ch in UPPERCASE:
-                  return "uppercase"
-              if ch in LOWERCASE:
-                  return "lowercase"
-              if ch in string.digits:
-                  return "digit"
-              if ch in PAIRED_OPEN:
-                  return "paired_open"
-              if ch in PAIRED_CLOSE:
-                  return "paired_close"
-              if ch == spec.origin:
-                  return "origin"
-              return "unpaired"
+          new = dedent('''\
+              def category(ch: str) -> str:
+                  if ch in UPPERCASE:
+                      return "uppercase"
+                  if ch in LOWERCASE:
+                      return "lowercase"
+                  if ch in string.digits:
+                      return "digit"
+                  if ch in PAIRED_OPEN:
+                      return "paired_open"
+                  if ch in PAIRED_CLOSE:
+                      return "paired_close"
+                  if ch == spec.origin:
+                      return "origin"
+                  return "unpaired"
 
-          counts = {
-              name: sum(1 for ch in slot if category(ch) == name)
-              for name in (
-                  "uppercase", "lowercase", "digit", "paired_open",
-                  "paired_close", "unpaired", "origin",
-              )
-          }
-          return {
-              "valid": not violations,
-              "violations": violations,
-              "warnings": [],
-              "counts": counts,
-              "n": n,
-          }
-          '''
+              counts = {
+                  name: sum(1 for ch in slot if category(ch) == name)
+                  for name in (
+                      "uppercase", "lowercase", "digit", "paired_open",
+                      "paired_close", "unpaired", "origin",
+                  )
+              }
+              return {
+                  "valid": not violations,
+                  "violations": violations,
+                  "warnings": [],
+                  "counts": counts,
+                  "n": n,
+              }
+          ''')
           if text.count(old) != 1:
               raise SystemExit('validate_gonal return block drift')
           gonal.write_text(text.replace(old, new), encoding='utf-8')
@@ -65,7 +67,7 @@ jobs:
           test = Path('backend/tests/test_reset_boundaries.py')
           text = test.read_text(encoding='utf-8')
           marker = '\n\ndef test_ucns_runtime_is_typed_absence():\n'
-          addition = '''
+          addition = dedent('''\
 
           def test_public_gonol_validation_counts_are_available():
               from interdependent_lib.gonal.gonal import (
@@ -81,11 +83,13 @@ jobs:
               assert report["counts"]["lowercase"] == 26
               assert report["counts"]["digit"] == 10
 
+
           def test_public_gonals_endpoint_count_contract_is_preserved():
-              report_keys = {"valid", "violations", "warnings", "counts", "n"}
               from interdependent_lib.gonal.gonal import GonalSpec, get_default, validate_gonal
+
+              report_keys = {"valid", "violations", "warnings", "counts", "n"}
               assert report_keys <= set(validate_gonal(get_default(), GonalSpec()))
-          '''
+          ''')
           if text.count(marker) != 1:
               raise SystemExit('reset test insertion marker drift')
           test.write_text(text.replace(marker, addition + marker), encoding='utf-8')
