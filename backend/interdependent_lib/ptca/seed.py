@@ -1,25 +1,25 @@
-# ratios: loc_comments=0:0 imports_exports=0:0 calls_definitions=0:0
 # === MODULE_BUILD ===
 # id: ptca_seed
 #   module_name: seed
 #   module_kind: core
-#   summary: PTCA Seed — UCNS object carrying exactly 7 PCTA circles. {7/3} heptagram. F4: 157/7/7/53 public canon (no decoupling). Manifest-first.
+#   summary: PTCA seed containing exactly seven PCTA circles with {7/3} routing and A0-local structural identity
 #   owner: a0p maintainer
-#   public_surface: Seed, seed_identity, seed_compose, from_circles, from_seed, aggregate, ucns_shape, heptagram_order, param_count
-#   internal_surface: _seed_ucns_shape
+#   public_surface: Seed, seed_identity, seed_compose, from_circles, from_seed, aggregate, structural_shape, heptagram_order, param_count
+#   internal_surface: _seed_structural_shape
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
-#   tests: a0p_skills.contracts.ptca_seed_shape_holds, a0p_skills.contracts.ptca_seed_heptagram, a0p_skills.contracts.ptca_seed_holds_seven_holds, a0p_skills.contracts.ptca_seed_aggregate_is_tensor_holds
+#   tests: backend.interdependent_lib.tests.test_invariants, backend.tests.test_reset_boundaries
 #   rollout: default_enabled
-#   rollback: revert file from git
-#   unresolved: hmmm (non-commutativity + double-cover lift pending gonal remediation)
+#   rollback: revert only with explicit object-epoch migration
+#   since: 2026-07-21
+#   unresolved: lawful projection into current UCNS remains hmmm
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: ptca_seed_boundaries
-#   summary: PTCA Seed — 7 circles per seed; seed itself is a tensor at this layer
+#   summary: seven-circle A0 structure; no current UCNS geometry or theorem claim
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: none
@@ -29,52 +29,43 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: ptca_seed
-#   summary: PTCA Seed layer — 7-circle UCNS aggregate with {7/3} heptagram
-#   exposes: Seed, seed_identity, seed_compose, from_circles, from_seed, aggregate, ucns_shape, heptagram_order, param_count
+#   summary: validates, aggregates, and heptagram-orders seven PCTA circles
+#   exposes: Seed, seed_identity, seed_compose, structural_shape
 #   boundaries: auth:none, storage:none, network:none, user_data:none
 #   owner: a0p maintainer
 # === END CAPABILITIES ===
-"""
-PTCA Seed layer (Part 2 rebuild — step 3).
-
-A Seed carries exactly 7 PCTA Circles.
-The seed itself is a tensor at this level (recursive).
-Composition via {7/3} heptagram (SEED_ROUTING_STEP = 3).
-
-**F4 Ratification**: SEED_COUNT=157, CIRCLES_PER_SEED=7, TENSORS_PER_CIRCLE=7,
-TENSOR_DIM=53 is public load-bearing canon. Not arbitrary. Decoupling forbidden.
-
-Non-commutativity and R/4πZ invariants enforced at gonal layer (F6).
-"""
+# === CONTRACTS ===
+# id: ptca_seed_seven_circle_structure
+#   given: a PTCA Seed
+#   then: it holds exactly seven PCTA circles and its aggregate is deterministic
+#   class: correctness
+# id: ptca_seed_ucns_absent
+#   given: structural_shape is requested
+#   then: the returned identity declares ucns_state=NA and no theorem transfer
+#   class: provenance
+# === END CONTRACTS ===
+"""PTCA seed layer with current UCNS explicitly absent."""
 from __future__ import annotations
-from dataclasses import dataclass
-from fractions import Fraction
-from typing import List, Tuple
 
-import ucns
+from dataclasses import dataclass
+from typing import List, Tuple
 
 import backend.interdependent_lib.pcta.circle as pcta
 import backend.interdependent_lib.ptca.constants as canon
+from backend.interdependent_lib.structural_shape import A0StructuralShape, shape_from_content
+
+SEED_CIRCLES = canon.CIRCLES_PER_SEED
+HEPTAGRAM_STEP_SEED = canon.SEED_ROUTING_STEP
 
 
-SEED_CIRCLES: int = canon.CIRCLES_PER_SEED
-HEPTAGRAM_STEP_SEED: int = canon.SEED_ROUTING_STEP
-
-
-def _seed_ucns_shape(content_hash: int = 0) -> "ucns.UCNSObject":
-    face_bit = int(content_hash) & 1
-    return ucns.UCNSObject(2, 2, [(Fraction(0), 1.0), (Fraction(1), 1.0)], [face_bit, face_bit])
+def _seed_structural_shape(content) -> A0StructuralShape:
+    return shape_from_content("ptca.seed", content)
 
 
 def heptagram_walk(start: int, step: int, n: int = SEED_CIRCLES) -> tuple[int, ...]:
     if n <= 0:
         raise ValueError("n must be positive")
-    out: list[int] = []
-    cur = start % n
-    for _ in range(n):
-        out.append(cur)
-        cur = (cur + step) % n
-    return tuple(out)
+    return tuple((start + i * step) % n for i in range(n))
 
 
 def heptagram_walk_7_3(start: int = 0) -> tuple[int, ...]:
@@ -83,7 +74,6 @@ def heptagram_walk_7_3(start: int = 0) -> tuple[int, ...]:
 
 @dataclass(frozen=True)
 class Seed:
-    """Seed = UCNS object carrying exactly 7 PCTA circles."""
     circles: Tuple[pcta.Circle, ...]
     step: int = HEPTAGRAM_STEP_SEED
 
@@ -93,49 +83,48 @@ class Seed:
 
     @property
     def aggregate(self) -> pcta.pcna.Tensor:  # type: ignore[attr-defined]
-        if not self.circles:
-            return pcta.pcna.tensor_identity()
         sums = [0.0] * canon.TENSOR_DIM
-        for c in self.circles:
-            agg = c.aggregate
-            for i, v in enumerate(agg.payload):
-                sums[i] += v
-        mean = tuple(s / len(self.circles) for s in sums)
-        return pcta.pcna.Tensor(payload=mean)
+        for circle in self.circles:
+            for i, value in enumerate(circle.aggregate.payload):
+                sums[i] += value
+        return pcta.pcna.Tensor(payload=tuple(value / SEED_CIRCLES for value in sums))
 
     def heptagram_order(self, start: int = 0) -> Tuple[pcta.Circle, ...]:
-        walk = heptagram_walk(start, self.step, SEED_CIRCLES)
-        return tuple(self.circles[i] for i in walk)
+        return tuple(self.circles[i] for i in heptagram_walk(start, self.step))
 
-    def ucns_shape(self) -> "ucns.UCNSObject":
-        content_hash = hash(tuple(hash(c.tensors) for c in self.circles))
-        return _seed_ucns_shape(content_hash)
+    def structural_shape(self) -> A0StructuralShape:
+        return _seed_structural_shape(
+            [circle.structural_shape().content_digest for circle in self.circles]
+        )
 
     def param_count(self) -> int:
         return SEED_CIRCLES * canon.TENSORS_PER_CIRCLE * canon.TENSOR_DIM
 
 
 def seed_identity() -> Seed:
-    return Seed(circles=tuple(pcta.circle_identity() for _ in range(SEED_CIRCLES)))
+    return Seed(tuple(pcta.circle_identity() for _ in range(SEED_CIRCLES)))
 
 
 def from_circles(circles: List[pcta.Circle]) -> Seed:
-    if len(circles) != SEED_CIRCLES:
-        raise ValueError(f"Exactly {SEED_CIRCLES} circles required")
-    return Seed(circles=tuple(circles))
+    return Seed(tuple(circles))
 
 
 def from_seed(seed: int, label: str = "") -> Seed:
     base = seed * SEED_CIRCLES
-    circles = [pcta.from_seed(base + i, f"{label}::circle{i}") for i in range(SEED_CIRCLES)]
-    return Seed(circles=tuple(circles))
+    return Seed(tuple(pcta.from_seed(base + i, f"{label}::circle{i}") for i in range(SEED_CIRCLES)))
 
 
 def seed_compose(a: Seed, b: Seed) -> Seed:
-    """Placeholder compose until gonal invariants wired."""
     if len(a.circles) != len(b.circles):
         raise ValueError("Circle count mismatch")
-    composed = tuple(pcta.heptagram_compose(ca, cb) for ca, cb in zip(a.circles, b.circles))
-    return Seed(circles=composed, step=a.step)
+    return Seed(
+        tuple(pcta.heptagram_compose(ca, cb) for ca, cb in zip(a.circles, b.circles)),
+        step=a.step,
+    )
 
-# ratios: loc_comments=0:0 imports_exports=0:0 calls_definitions=0:0
+
+__all__ = [
+    "Seed", "SEED_CIRCLES", "HEPTAGRAM_STEP_SEED",
+    "heptagram_walk", "heptagram_walk_7_3",
+    "seed_identity", "from_circles", "from_seed", "seed_compose",
+]
