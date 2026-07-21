@@ -115,7 +115,7 @@ def test_startup_contains_no_local_to_admin_transfer():
     source = (root / "backend" / "server.py").read_text(encoding="utf-8")
     assert "Migrate legacy user_id='local'" not in source
     assert '{"user_id": "local"}, {"$set": {"user_id": admin["_id"]}}' not in source
-    assert "Historical `local` rows are never transferred automatically" in source
+    assert "rows are never transferred automatically" in source
 
 
 def test_auth_helper_has_no_synthetic_local_user():
