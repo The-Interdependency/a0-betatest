@@ -24,20 +24,15 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
           import re
-
-          def replace_once(path: str, old: str, new: str) -> None:
-              file = Path(path)
-              text = file.read_text(encoding="utf-8")
-              if text.count(old) != 1:
-                  raise SystemExit(f"{path}: expected one exact match, got {text.count(old)}")
-              file.write_text(text.replace(old, new), encoding="utf-8")
 
           auth = Path("backend/auth/__init__.py")
           text = auth.read_text(encoding="utf-8")
           start = text.index("async def get_current_user_or_demo")
           end = text.index("\n\n# ---- Brute force", start)
-          replacement = '''async def get_current_user_or_demo(request: Request) -> dict:
+          replacement = dedent('''\
+          async def get_current_user_or_demo(request: Request) -> dict:
               """Deprecated strict alias retained for compatibility.
 
               Anonymous callers no longer receive a shared persistent ``local`` identity.
@@ -45,13 +40,14 @@ jobs:
               router and must never expose BYOK credentials or durable user state.
               """
               return await get_current_user(request)
-          '''
+          ''')
           text = text[:start] + replacement + text[end:]
           auth.write_text(text, encoding="utf-8")
 
           server = Path("backend/server.py")
           text = server.read_text(encoding="utf-8")
-          old = '''async def _auth_uid(request: Request) -> str:
+          old = dedent('''\
+          async def _auth_uid(request: Request) -> str:
               """Resolve the acting user id from the auth cookie only.
 
               The BYOK key vault, env vault and inventory are per authenticated user — the
@@ -64,8 +60,9 @@ jobs:
               from auth import get_current_user_or_demo
               user = await get_current_user_or_demo(request)
               return user["id"]
-          '''
-          new = '''async def _auth_uid(request: Request) -> str:
+          ''')
+          new = dedent('''\
+          async def _auth_uid(request: Request) -> str:
               """Return the authenticated user id or raise HTTP 401.
 
               Persistence, credentials, provider calls, usage, sessions, drafts, tools,
@@ -74,56 +71,42 @@ jobs:
               from auth import get_current_user
               user = await get_current_user(request)
               return user["id"]
-          '''
-          if old not in text:
-              raise SystemExit("server.py strict _auth_uid source did not match")
+          ''')
+          if text.count(old) != 1:
+              raise SystemExit(f"server.py: expected one _auth_uid block, got {text.count(old)}")
           text = text.replace(old, new)
-
-          # Remove legacy query parameters whose values were ignored after owner resolution.
           text = re.sub(r', user_id: str = "local"(?=[,)])', '', text)
           text = re.sub(r'user_id: str = "local", ', '', text)
 
-          # Protect process-global inspector and detachable-agent Mongo surfaces.
-          text = text.replace(
-              'async def inspector_snapshot():\n    return {',
-              'async def inspector_snapshot(request: Request):\n    await _auth_uid(request)\n    return {',
-          )
-          text = text.replace(
-              'async def inspector_heartbeat(intent: Optional[str] = Body(default=None, embed=True)):\n    return AGENT.engine.heartbeat(intent=intent)',
-              'async def inspector_heartbeat(request: Request, intent: Optional[str] = Body(default=None, embed=True)):\n    await _auth_uid(request)\n    return AGENT.engine.heartbeat(intent=intent)',
-          )
-          text = text.replace(
-              'async def list_agents():\n    out = []',
-              'async def list_agents(request: Request):\n    await _auth_uid(request)\n    out = []',
-          )
-          text = text.replace(
-              'async def create_agent(body: AgentExport):\n    existing =',
-              'async def create_agent(body: AgentExport, request: Request):\n    await _auth_uid(request)\n    existing =',
-          )
-          text = text.replace(
-              'async def agent_manifest(slug: str):\n    d =',
-              'async def agent_manifest(slug: str, request: Request):\n    await _auth_uid(request)\n    d =',
-          )
-          text = text.replace(
-              'async def delete_agent(slug: str):\n    r =',
-              'async def delete_agent(slug: str, request: Request):\n    await _auth_uid(request)\n    r =',
-          )
+          replacements = {
+              'async def inspector_snapshot():\n    return {':
+                  'async def inspector_snapshot(request: Request):\n    await _auth_uid(request)\n    return {',
+              'async def inspector_heartbeat(intent: Optional[str] = Body(default=None, embed=True)):\n    return AGENT.engine.heartbeat(intent=intent)':
+                  'async def inspector_heartbeat(request: Request, intent: Optional[str] = Body(default=None, embed=True)):\n    await _auth_uid(request)\n    return AGENT.engine.heartbeat(intent=intent)',
+              'async def list_agents():\n    out = []':
+                  'async def list_agents(request: Request):\n    await _auth_uid(request)\n    out = []',
+              'async def create_agent(body: AgentExport):\n    existing =':
+                  'async def create_agent(body: AgentExport, request: Request):\n    await _auth_uid(request)\n    existing =',
+              'async def agent_manifest(slug: str):\n    d =':
+                  'async def agent_manifest(slug: str, request: Request):\n    await _auth_uid(request)\n    d =',
+              'async def delete_agent(slug: str):\n    r =':
+                  'async def delete_agent(slug: str, request: Request):\n    await _auth_uid(request)\n    r =',
+              'async def get_override(override_id: str):\n    rec = await zfae_overrides.get(pending_overrides_col, override_id)\n    if rec is None:':
+                  'async def get_override(override_id: str, request: Request):\n    uid = await _auth_uid(request)\n    rec = await zfae_overrides.get(pending_overrides_col, override_id)\n    if rec is None or rec.user_id != uid:',
+              'async def expire_overrides():\n    n = await zfae_overrides.expire(pending_overrides_col)':
+                  'async def expire_overrides(request: Request):\n    uid = await _auth_uid(request)\n    n = await zfae_overrides.expire(pending_overrides_col, user_id=uid)',
+          }
+          for old_value, new_value in replacements.items():
+              if text.count(old_value) != 1:
+                  raise SystemExit(f"server.py: expected one route block: {old_value[:60]!r}")
+              text = text.replace(old_value, new_value)
 
-          text = text.replace(
-              'async def get_override(override_id: str):\n    rec = await zfae_overrides.get(pending_overrides_col, override_id)\n    if rec is None:',
-              'async def get_override(override_id: str, request: Request):\n    uid = await _auth_uid(request)\n    rec = await zfae_overrides.get(pending_overrides_col, override_id)\n    if rec is None or rec.user_id != uid:',
-          )
-          text = text.replace(
-              'async def expire_overrides():\n    n = await zfae_overrides.expire(pending_overrides_col)',
-              'async def expire_overrides(request: Request):\n    uid = await _auth_uid(request)\n    n = await zfae_overrides.expire(pending_overrides_col, user_id=uid)',
-          )
-
-          # Remove automatic transfer of historical anonymous rows into admin.
-          migration_start = text.index('    # Migrate legacy user_id=\'local\' agents to the admin user')
-          migration_end = text.index('    # Regenerate README.md from the living spec', migration_start)
-          text = text[:migration_start] + '''    # Historical ``local`` rows are never transferred automatically. Any recovery
-              # must use an explicit, inspectable, reversible migration outside runtime.
-          ''' + text[migration_end:]
+          migration_start = text.index("    # Migrate legacy user_id='local' agents to the admin user")
+          migration_end = text.index("    # Regenerate README.md from the living spec", migration_start)
+          text = text[:migration_start] + (
+              "    # Historical `local` rows are never transferred automatically. Any recovery\n"
+              "    # must use an explicit, inspectable, reversible migration outside runtime.\n"
+          ) + text[migration_end:]
           text = text.replace(
               'from auth import init_auth as _init_auth, get_current_user_or_demo',
               'from auth import init_auth as _init_auth, get_current_user',
@@ -132,9 +115,10 @@ jobs:
 
           agents = Path("backend/agents/routes.py")
           text = agents.read_text(encoding="utf-8")
-          start = text.index('async def _resolve_user_id')
-          end = text.index('\n\ndef init_routes', start)
-          replacement = '''async def _resolve_user_id(request: Request) -> str:
+          start = text.index("async def _resolve_user_id")
+          end = text.index("\n\ndef init_routes", start)
+          replacement = dedent('''\
+          async def _resolve_user_id(request: Request) -> str:
               uid, _ = await _resolve_user(request)
               return uid
 
@@ -144,7 +128,7 @@ jobs:
               from auth import get_current_user
               user = await get_current_user(request)
               return user["id"], user.get("username")
-          '''
+          ''')
           text = text[:start] + replacement + text[end:]
           text = re.sub(r', user_id: str = "local"(?=[,)])', '', text)
           text = re.sub(r'user_id: str = "local", ', '', text)
@@ -155,23 +139,40 @@ jobs:
 
           ext = Path("backend/api_extensions.py")
           text = ext.read_text(encoding="utf-8")
-          text = text.replace(
-              'async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = ""):\n',
-              'async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = "", user=Depends(get_current_user)):\n',
-          )
-          text = text.replace(
-              '    q: dict = {}\n    if agent_id:',
-              '    q: dict = {"user_id": user["id"]}\n    if agent_id:',
-          )
+          old = 'async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = ""):\n'
+          new = 'async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = "", user=Depends(get_current_user)):\n'
+          if text.count(old) != 1:
+              raise SystemExit("api_extensions.py: audit_feed signature drift")
+          text = text.replace(old, new)
+          old = '    q: dict = {}\n    if agent_id:'
+          new = '    q: dict = {"user_id": user["id"]}\n    if agent_id:'
+          if text.count(old) != 1:
+              raise SystemExit("api_extensions.py: audit query drift")
+          text = text.replace(old, new)
           ext.write_text(text, encoding="utf-8")
 
           overrides = Path("backend/interdependent_lib/zfae/overrides.py")
           text = overrides.read_text(encoding="utf-8")
-          text = text.replace(
-              'async def expire(col) -> int:\n    """Mark all pending overrides past their expiry as expired. Returns count."""\n    now = _utc_now_ms()\n    r = await col.update_many(\n        {"status": "pending", "expires_ms": {"$lt": now}},',
-              'async def expire(col, user_id: str | None = None) -> int:\n    """Expire pending overrides, optionally restricted to one authenticated owner."""\n    now = _utc_now_ms()\n    query = {"status": "pending", "expires_ms": {"$lt": now}}\n    if user_id is not None:\n        query["user_id"] = user_id\n    r = await col.update_many(\n        query,',
-          )
-          overrides.write_text(text, encoding="utf-8")
+          old = dedent('''\
+          async def expire(col) -> int:
+              """Mark all pending overrides past their expiry as expired. Returns count."""
+              now = _utc_now_ms()
+              r = await col.update_many(
+                  {"status": "pending", "expires_ms": {"$lt": now}},
+          ''')
+          new = dedent('''\
+          async def expire(col, user_id: str | None = None) -> int:
+              """Expire pending overrides, optionally restricted to one owner."""
+              now = _utc_now_ms()
+              query = {"status": "pending", "expires_ms": {"$lt": now}}
+              if user_id is not None:
+                  query["user_id"] = user_id
+              r = await col.update_many(
+                  query,
+          ''')
+          if text.count(old) != 1:
+              raise SystemExit("overrides.py: expire block drift")
+          overrides.write_text(text.replace(old, new), encoding="utf-8")
           PY
 
           python -m compileall -q backend
