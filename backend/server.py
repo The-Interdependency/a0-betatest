@@ -1,4 +1,4 @@
-# ratios: loc_comments=850:128 imports_exports=50:55 calls_definitions=313:64
+# ratios: loc_comments=890:123 imports_exports=48:56 calls_definitions=324:66
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -66,6 +66,7 @@ load_dotenv(Path(__file__).parent / ".env")
 from fastapi import FastAPI, APIRouter, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from pymongo.errors import DuplicateKeyError
 from typing import Optional, List, Any
 
 from db import (
@@ -84,12 +85,13 @@ from models import (
 import crypto_vault as cv
 from providers import REGISTRY
 from interdependent_lib.aimmh import fan_out as aimmh_fan_out, daisy_chain as aimmh_daisy
-from interdependent_lib.zfae import ZFAEAgent, A0ZFAEInferenceEngine
+from interdependent_lib.zfae import A0ZFAEInferenceEngine
 from interdependent_lib._msdmd import report as msdmd_report
 from a0p_skills import test_build_runner, module_build_runner
 from a0p_skills import boundaries_runner, capabilities_runner, ratios_runner
 from agents.routes import router as agents_router, init_routes as init_agents_routes
 from interdependent_lib.zfae.runtime import ZFAERuntime
+from interdependent_lib.zfae.state_store import OwnerScopedAgentProxy
 from interdependent_lib.zfae.teacher import TeacherClient
 from interdependent_lib.zfae import (
     sentinel_modes as zfae_sentinel_modes,
@@ -122,8 +124,8 @@ app.middleware("http")(traffic_middleware)
 api = APIRouter(prefix="/api")
 
 
-# ---------- shared persistent ZFAE agent ----------
-AGENT = ZFAEAgent(name="a0(zfae)", base_seed=157)
+# ---------- authenticated-owner-scoped ephemeral legacy state ----------
+AGENT = OwnerScopedAgentProxy()
 
 # ---------- native a0(zfae) inference engine ----------
 # This engine is the ONLY source of `assistantText` for /api/chat/zfae.
@@ -139,7 +141,7 @@ async def health():
         "service": "a0p",
         "ts": _utc_now_iso(),
         "providers": list(REGISTRY.keys()),
-        "agent": {"id": AGENT.id, "name": AGENT.name, "born_ms": AGENT.born_ms},
+        "mutable_agent_state_exposed": False,
     }
 
 
@@ -152,6 +154,7 @@ async def _auth_uid(request: Request) -> str:
     """
     from auth import get_current_user
     user = await get_current_user(request)
+    AGENT.bind_owner(user["id"])
     return user["id"]
 
 
@@ -680,57 +683,110 @@ async def inspector_heartbeat(request: Request, intent: Optional[str] = Body(def
     return AGENT.engine.heartbeat(intent=intent)
 
 
-# ---------- Detachable Agents ----------
+# ---------- Owner-scoped detachable agents and public templates ----------
+def _agent_view(document: dict, owner_id: str | None = None) -> dict:
+    public_template = bool(document.get("is_public_template"))
+    owned = owner_id is not None and document.get("user_id") == owner_id
+    view = {
+        "id": document.get("_id"),
+        "slug": document.get("slug"),
+        "name": document.get("name"),
+        "description": document.get("description", ""),
+        "capabilities": list(document.get("capabilities") or []),
+        "aimmh_pattern": document.get("aimmh_pattern", "fan_out"),
+        "rounds": document.get("rounds", 1),
+        "tier": "premium" if document.get("is_premium") else "free",
+        "is_public_template": public_template,
+        "owned": owned,
+    }
+    if owned and not public_template:
+        view.update({
+            "system_context": document.get("system_context", ""),
+            "persona": document.get("persona", ""),
+            "default_models": list(document.get("default_models") or []),
+        })
+    return view
+
+
+@api.get("/agent-templates")
+async def list_agent_templates():
+    out = []
+    async for document in agents_col.find(
+        {"is_public_template": True}
+    ).sort("name", 1):
+        out.append(_agent_view(document))
+    return {"templates": out}
+
+
 @api.get("/agents")
 async def list_agents(request: Request):
-    await _auth_uid(request)
+    uid = await _auth_uid(request)
     out = []
-    async for d in agents_col.find({}).sort("created_at", -1):
-        out.append({"id": d["_id"], **{k: d[k] for k in d if k != "_id"}})
+    query = {"$or": [{"user_id": uid}, {"is_public_template": True}]}
+    async for document in agents_col.find(query).sort("created_at", -1):
+        out.append(_agent_view(document, uid))
     return {"agents": out}
 
 
 @api.post("/agents")
 async def create_agent(body: AgentExport, request: Request):
-    await _auth_uid(request)
-    existing = await agents_col.find_one({"slug": body.slug})
+    uid = await _auth_uid(request)
+    existing = await agents_col.find_one({
+        "slug": body.slug,
+        "$or": [{"user_id": uid}, {"is_public_template": True}],
+    })
     if existing:
-        raise HTTPException(409, "slug already exists")
-    _id = new_id()
+        raise HTTPException(409, "slug already exists for this owner or template")
     now = _utc_now_iso()
-    doc = {"_id": _id, **body.model_dump(), "created_at": now, "updated_at": now}
-    await agents_col.insert_one(doc)
-    return {"id": _id, **{k: v for k, v in doc.items() if k != "_id"}}
+    document = {
+        "_id": new_id(),
+        "user_id": uid,
+        "is_public_template": False,
+        **body.model_dump(),
+        "created_at": now,
+        "updated_at": now,
+    }
+    try:
+        await agents_col.insert_one(document)
+    except DuplicateKeyError:
+        # A concurrent create for the same (user_id, slug) passed the
+        # non-atomic find_one check above and lost the race to the unique
+        # index; return the same 409 as a sequential duplicate rather than
+        # letting DuplicateKeyError surface as a 500.
+        raise HTTPException(409, "slug already exists for this owner or template")
+    return _agent_view(document, uid)
 
 
 @api.get("/agents/{slug}/manifest")
 async def agent_manifest(slug: str, request: Request):
-    await _auth_uid(request)
-    d = await agents_col.find_one({"slug": slug})
-    if not d:
+    uid = await _auth_uid(request)
+    document = await agents_col.find_one({"slug": slug, "user_id": uid})
+    if document is None:
+        document = await agents_col.find_one({
+            "slug": slug,
+            "is_public_template": True,
+        })
+    if document is None:
         raise HTTPException(404, "agent not found")
-    manifest = {
-        "manifest_version": "a0p-agent-v0",
-        "slug": d["slug"],
-        "name": d["name"],
-        "description": d.get("description", ""),
-        "system_context": d.get("system_context", ""),
-        "persona": d.get("persona", ""),
-        "default_models": d.get("default_models", []),
-        "capabilities": d.get("capabilities", []),
-        "aimmh_pattern": d.get("aimmh_pattern", "fan_out"),
-        "rounds": d.get("rounds", 1),
-        "tier": "premium" if d.get("is_premium") else "free",
+    view = _agent_view(document, uid)
+    view.update({
+        "manifest_version": "a0p-agent-v1",
         "exported_at": _utc_now_iso(),
-    }
-    return manifest
+    })
+    return view
 
 
 @api.delete("/agents/{slug}")
 async def delete_agent(slug: str, request: Request):
-    await _auth_uid(request)
-    r = await agents_col.delete_one({"slug": slug})
-    return {"ok": r.deleted_count == 1}
+    uid = await _auth_uid(request)
+    result = await agents_col.delete_one({
+        "slug": slug,
+        "user_id": uid,
+        "is_public_template": {"$ne": True},
+    })
+    if result.deleted_count == 0:
+        raise HTTPException(404, "owned agent not found")
+    return {"ok": True}
 
 
 # ---------- Usage log ----------
@@ -1080,6 +1136,18 @@ async def _on_startup():
     except Exception as _e:
         import logging as _lg3
         _lg3.getLogger("a0p").warning("README regeneration failed: %s", _e)
+    # Mark only exact built-in starter slugs as public templates. No arbitrary
+    # unowned agent is promoted or assigned to a user.
+    await agents_col.update_many(
+        {
+            "slug": {"$in": [
+                "research-council", "daisy-prover", "zfae-classic",
+                "premium-symphony",
+            ]},
+            "user_id": {"$exists": False},
+        },
+        {"$set": {"user_id": None, "is_public_template": True}},
+    )
     # Seed a few starter detachable agents if the collection is empty.
     n = await agents_col.count_documents({})
     if n == 0:
@@ -1111,6 +1179,12 @@ async def _on_startup():
         ]
         now = _utc_now_iso()
         for a in starters:
-            await agents_col.insert_one({"_id": new_id(), **a.model_dump(),
-                                         "created_at": now, "updated_at": now})
-# ratios: loc_comments=850:128 imports_exports=50:55 calls_definitions=313:64
+            await agents_col.insert_one({
+          "_id": new_id(),
+          "user_id": None,
+          "is_public_template": True,
+          **a.model_dump(),
+          "created_at": now,
+          "updated_at": now,
+      })
+# ratios: loc_comments=890:123 imports_exports=48:56 calls_definitions=324:66

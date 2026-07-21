@@ -71,7 +71,8 @@ jobs:
             backend/tests/test_lifted_path.py \
             backend/tests/test_morphology_ladder.py \
             backend/tests/test_zfae_gonal_inscription.py \
-            backend/tests/test_strict_auth_demo_isolation.py 2>&1)"
+            backend/tests/test_strict_auth_demo_isolation.py \
+            backend/tests/test_agent_state_isolation.py 2>&1)"
           status=$?
           printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
           printf 'log=%s\n' "$(printf '%s' "$output" | base64 -w0)" >> "$GITHUB_OUTPUT"
