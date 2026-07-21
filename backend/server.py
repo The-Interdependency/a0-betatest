@@ -1,4 +1,4 @@
-# ratios: loc_comments=850:128 imports_exports=50:55 calls_definitions=313:64
+# ratios: loc_comments=890:123 imports_exports=48:56 calls_definitions=324:66
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -66,6 +66,7 @@ load_dotenv(Path(__file__).parent / ".env")
 from fastapi import FastAPI, APIRouter, HTTPException, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from pymongo.errors import DuplicateKeyError
 from typing import Optional, List, Any
 
 from db import (
@@ -745,7 +746,14 @@ async def create_agent(body: AgentExport, request: Request):
         "created_at": now,
         "updated_at": now,
     }
-    await agents_col.insert_one(document)
+    try:
+        await agents_col.insert_one(document)
+    except DuplicateKeyError:
+        # A concurrent create for the same (user_id, slug) passed the
+        # non-atomic find_one check above and lost the race to the unique
+        # index; return the same 409 as a sequential duplicate rather than
+        # letting DuplicateKeyError surface as a 500.
+        raise HTTPException(409, "slug already exists for this owner or template")
     return _agent_view(document, uid)
 
 
@@ -1179,4 +1187,4 @@ async def _on_startup():
           "created_at": now,
           "updated_at": now,
       })
-# ratios: loc_comments=850:128 imports_exports=50:55 calls_definitions=313:64
+# ratios: loc_comments=890:123 imports_exports=48:56 calls_definitions=324:66
