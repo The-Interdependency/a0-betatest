@@ -1,0 +1,29 @@
+name: Synchronize UCNS repair branch
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sync-ucns-repair-branch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repair branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/suspend-pre-reset-ucns
+          fetch-depth: 0
+      - name: Merge current main without changing the repair tree
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin main
+          git merge --no-edit origin/main
+          git push origin HEAD:agent/suspend-pre-reset-ucns
