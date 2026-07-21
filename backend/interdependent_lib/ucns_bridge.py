@@ -1,26 +1,25 @@
-# ratios: loc_comments=55:79 imports_exports=4:9 calls_definitions=16:8
 # === MODULE_BUILD ===
 # id: ucns_bridge
 #   module_name: ucns_bridge
 #   module_kind: adapter
-#   summary: thin A0-safe wrapper around the ucns package — will route through ucns.a0_safe when v1.0 ships on PyPI
+#   summary: typed A0 boundary reporting current UCNS runtime geometry unavailable after the object reset
 #   owner: a0p maintainer
-#   public_surface: is_unit, multiply, left_quotient, right_quotient, object_record, describe, seq_prime_safe, UNIT, UCNSObject, lcm, has_a0_safe_facade
-#   internal_surface: _A0_SAFE_AVAILABLE
+#   public_surface: UCNSUnavailableError, STATUS, require_current_ucns, object_record, describe, seq_prime_safe, has_a0_safe_facade
+#   internal_surface: none
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: none
 #   user_data_boundary: none
 #   admin_only: false
-#   tests: a0p_skills.contracts.ucns_bridge_unit_holds
+#   tests: backend.tests.test_reset_boundaries
 #   rollout: default_enabled
-#   rollback: remove module and call sites
-#   ucns_version_pin: 0.8.3
-#   unresolved: switch to `from ucns import a0_safe` when PyPI publishes v1.0
+#   rollback: replace only with a versioned intrinsically twist-bearing producer contract
+#   since: 2026-07-21
+#   unresolved: current producer epoch and migration schema remain hmmm
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: ucns_bridge_boundaries
-#   summary: thin A0-safe wrapper around the ucns package — will route through ucns.a0_safe when v1.0 ships on PyPI
+#   summary: diagnostic absence only; former object, unit, multiply, quotient, factorization, and theorem surfaces are unavailable
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: none
@@ -30,136 +29,81 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: ucns_bridge
-#   summary: thin A0-safe wrapper around the ucns package — will route through ucns.a0_safe when v1.0 ships on PyPI
-#   exposes: is_unit, multiply, object_record, describe, seq_prime_safe, UNIT, has_a0_safe_facade
+#   summary: provides typed UCNS absence without importing a pre-reset package
+#   exposes: STATUS, require_current_ucns, describe, seq_prime_safe
 #   boundaries: auth:none, storage:none, network:none, user_data:none
 #   owner: a0p maintainer
 # === END CAPABILITIES ===
-"""A0-safe bridge to the ucns package.
+# === CONTRACTS ===
+# id: ucns_bridge_fails_closed
+#   given: A0 requests a current UCNS algebraic operation
+#   then: UCNSUnavailableError is raised and no archived package is imported
+#   class: provenance
+# === END CONTRACTS ===
+"""A0's current UCNS boundary.
 
-The upstream `ucns` v1.0 ships an `a0_safe` submodule with the inspection
-facade. PyPI 0.8.3 (current pin) exposes the underlying functions but
-not the submodule. This bridge gives a0p one stable import surface that
-will switch transparently to `ucns.a0_safe.*` when PyPI catches up.
-
-Per the upstream A0 rule:
-  - SEQ-PRIME is only absolute inside `ucns.VERIFIED_DOMAIN_LABELS`.
-  - A0-facing consumers should consult `domain_status_metadata` and
-    treat SEQ-PRIME outside verified domains as non-absolute.
+The former ``ucns==0.8.3`` and later pre-reset package lineage are archive
+evidence, not a current producer. A0 therefore exposes typed absence rather
+than silently continuing the old object, multiplication, quotient, or theorem
+contract.
 """
 from __future__ import annotations
-import ucns
 
-# === CONTRACTS ===
-# id: ucns_bridge_unit_consistency
-#   given: bridge.UNIT and bridge.is_unit
-#   then: is_unit(UNIT) is True and the unit identity has the canonical ucns shape
-#   class: correctness
-#   call: a0p_skills.contracts.ucns_bridge_unit_holds
-# === END CONTRACTS ===
-
-# Try to use the canonical A0-safe facade if upstream is new enough.
-try:
-    from ucns import a0_safe as _a0_safe  # type: ignore[attr-defined]
-    _A0_SAFE_AVAILABLE = True
-except ImportError:
-    _a0_safe = None
-    _A0_SAFE_AVAILABLE = False
+from typing import Any
 
 
-# UCNS "unit" identity — payload-None per upstream canon.
-UNIT = None
+class UCNSUnavailableError(RuntimeError):
+    pass
 
-# Re-export the core algebraic object + scalar lcm so consumers (the morphology
-# depth-ladder) construct carriers and read carrier widths through one surface.
-UCNSObject = ucns.UCNSObject
-from ucns_recursive.canonical import lcm
+
+STATUS = {
+    "state": "NA",
+    "producer_authoritative": False,
+    "adapter_active": False,
+    "reason": "UCNS reset on 2026-07-19; no current intrinsically twist-bearing producer contract exists",
+    "theorem_status_transfer": False,
+    "measurement_validity_claim": False,
+}
+
+
+def require_current_ucns() -> None:
+    raise UCNSUnavailableError(STATUS["reason"])
 
 
 def has_a0_safe_facade() -> bool:
-    """Did the installed ucns version ship the a0_safe submodule?"""
-    return _A0_SAFE_AVAILABLE
+    return False
 
 
-def is_unit(obj) -> bool:
-    """UCNS unit predicate."""
-    if obj is None:
-        return True
-    return bool(ucns.is_unit(obj))
-
-
-def multiply(a, b):
-    """UCNS multiplication. Pure structural composition, non-differentiable.
-
-    This is the carrier-LCM operator ⊠ (the runtime shadow of the Lean
-    `multiplyFuel` / `carrier_lcm_law`): nMin(A⊠B) divides lcm(nMin A, nMin B).
-    """
-    return ucns.multiply(a, b)
-
-
-def left_quotient(p, a):
-    """Constructive left quotient: B such that A ⊠ B ≡_seq P (None if none).
-
-    Recoverability of this inverse is the `multiply_left_cancellative`
-    guarantee — DEFENDED in prose, NOT yet machine-verified (a `sorry`-stub
-    in `ucns/formal/Ucns/Core.lean`). Callers in the morphology decomposition
-    path stay gated behind that proof.
-    """
-    return ucns.left_quotient(p, a)
-
-
-def right_quotient(p, b):
-    """Constructive right quotient: A such that A ⊠ B ≡_seq P (None if none)."""
-    return ucns.right_quotient(p, b)
-
-
-def object_record(obj) -> dict | None:
-    """A0-safe inspection record — identity, depth, canonical hash, etc.
-
-    Returns None if the installed ucns version can't produce one.
-    """
-    if _A0_SAFE_AVAILABLE and hasattr(_a0_safe, "object_record"):
-        return _a0_safe.object_record(obj)
-    if hasattr(ucns, "object_record"):
-        return ucns.object_record(obj)
+def object_record(obj: Any) -> None:
     return None
 
 
-def describe(obj) -> str:
-    """Human-readable description; safe to log."""
-    if _A0_SAFE_AVAILABLE and hasattr(_a0_safe, "describe"):
-        return str(_a0_safe.describe(obj))
-    return repr(obj)
+def describe(obj: Any) -> str:
+    return f"UCNS unavailable: {STATUS['reason']}"
 
 
-def seq_prime_safe(obj, domain_label: str) -> bool | None:
-    """Return SEQ-PRIME truth value ONLY when domain_label is verified.
-
-    Returns None for unverified domains — callers must not treat None
-    as False; it means "not absolute in this scope."
-    """
-    if not isinstance(domain_label, str) or not domain_label:
-        return None
-    verified = getattr(ucns, "VERIFIED_DOMAIN_LABELS", frozenset())
-    if domain_label not in verified:
-        return None
-    if hasattr(ucns, "seq_prime_requires_scope"):
-        return bool(ucns.seq_prime_requires_scope(obj, domain_label))
-    # Conservative fallback: any unhandled case is non-absolute
+def seq_prime_safe(obj: Any, domain_label: str) -> None:
     return None
+
+
+def is_unit(obj: Any) -> bool:
+    require_current_ucns()
+
+
+def multiply(a: Any, b: Any):
+    require_current_ucns()
+
+
+def left_quotient(p: Any, a: Any):
+    require_current_ucns()
+
+
+def right_quotient(p: Any, b: Any):
+    require_current_ucns()
 
 
 __all__ = [
-    "UNIT",
-    "UCNSObject",
-    "lcm",
-    "is_unit",
-    "multiply",
-    "left_quotient",
-    "right_quotient",
-    "object_record",
-    "describe",
-    "seq_prime_safe",
-    "has_a0_safe_facade",
+    "UCNSUnavailableError", "STATUS", "require_current_ucns",
+    "has_a0_safe_facade", "object_record", "describe", "seq_prime_safe",
+    "is_unit", "multiply", "left_quotient", "right_quotient",
 ]
-# ratios: loc_comments=55:79 imports_exports=4:9 calls_definitions=16:8
