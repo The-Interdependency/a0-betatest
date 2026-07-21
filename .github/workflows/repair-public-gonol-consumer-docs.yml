@@ -1,0 +1,141 @@
+name: repair public-gonol consumer docs
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/repair-public-gonol-consumer-docs.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out target consumer branch
+        uses: actions/checkout@v4
+        with:
+          repository: The-Interdependency/a0-betatest
+          ref: agent/consume-ucns-public-gonol-canon
+          path: target
+          fetch-depth: 0
+
+      - name: Check out pinned canonical skill-lib
+        uses: actions/checkout@v4
+        with:
+          repository: The-Interdependency/skill-lib
+          ref: 05ee7aa9b7d906664d976bf1f06ea44522110489
+          path: skill-lib
+
+      - name: Apply ownership corrections
+        working-directory: target
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one occurrence, found {count}: {old[:80]!r}")
+              p.write_text(text.replace(old, new), encoding="utf-8")
+
+          foundation_anchor = (
+              '> something dismissive or "implementation-flavored"; preserve the framing.\n\n'
+              '## F1 — Consciousness as a triadically closed recursive system'
+          )
+          foundation_replacement = (
+              '> something dismissive or "implementation-flavored"; preserve the framing.\n\n'
+              '## Canonical package ownership — 2026-07-16\n\n'
+              'The public gonol defined by this repository at commit `7af8deb` remains\n'
+              'load-bearing canon for all UCNS. Its canonical package home is now the\n'
+              '`ucns` public namespace. A0 retains source provenance and consumes the\n'
+              'UCNS surface through strict compatibility imports.\n\n'
+              'This ownership migration changes no canon in F3/F4: position `0` remains\n'
+              'SPACE/ZERO, the Möbius twist point, seam, origin for the entire system,\n'
+              'and only always-known character. Private transformations still act only\n'
+              'on positions `1..156`; lifted paths, full-revolution repeats, spaces as\n'
+              'seam events, and digit `"0"` as an ordinary glyph remain exact.\n\n'
+              'Do not restore a second A0 implementation after the migration. Changes\n'
+              'to public-gonol canon occur in UCNS with this exact source provenance.\n\n'
+              'See `memory/PUBLIC_GONOL_UCNS_MIGRATION.md`.\n\n'
+              '## F1 — Consciousness as a triadically closed recursive system'
+          )
+          replace("memory/ARCHITECTURE_FOUNDATION.md", foundation_anchor, foundation_replacement)
+
+          claude_anchor = '<!-- END GENERATED:manifest -->\n\n## What this is'
+          claude_replacement = (
+              '<!-- END GENERATED:manifest -->\n\n'
+              '## Public gonol canon ownership\n\n'
+              'The exact public gonol sourced from this repository at `7af8deb` is canon\n'
+              'for all UCNS and is now owned by the public `ucns` package. A0 imports the\n'
+              'arrangement, fixed SPACE/ZERO twist origin, faces, chirality, mirror,\n'
+              'lifted traversal, and fixed-origin `PrivateGonal` from UCNS. Do not add a\n'
+              'second implementation here.\n\n'
+              'A0 retains application behavior: morphology, field whitening, continuous\n'
+              'inscription, and glyph emission. See\n'
+              '`memory/PUBLIC_GONOL_UCNS_MIGRATION.md`.\n\n'
+              '## What this is'
+          )
+          replace("CLAUDE.md", claude_anchor, claude_replacement)
+          replace(
+              "CLAUDE.md",
+              'Apache 2.0 (skill-lib alignment). The 157-gonal carrier disk, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.',
+              'Apache 2.0 (skill-lib alignment). The public gonol is committed canon in UCNS. Private carrier-disk material, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.'
+          )
+
+          old_narrative = (
+              '("gonal", "Gonal — the 157-gonal carrier",\n'
+              '     "The structural carrier: public invariants (face, chirality, class tags, "\n'
+              '     "adjacency, bones) over a 157-position polygon, a position-reflection mirror, "\n'
+              '     "and a three-gonal registry (default / mirror / private) that resolves an "\n'
+              '     "agent\'s per-core triplet. Private disk material is only ever loaded behind "\n'
+              '     "the Θ microkernel, never inline."),'
+          )
+          new_narrative = (
+              '("gonal", "Gonal — UCNS public-gonol consumer",\n'
+              '     "The exact public 157-gonal originated in A0 and is canon for all UCNS. "\n'
+              '     "UCNS now owns the fixed SPACE/ZERO twist origin, arrangement, faces, "\n'
+              '     "chirality, mirror, lifted traversal, and fixed-origin private transform; "\n'
+              '     "A0 imports those surfaces and retains application-specific classes, disks, "\n'
+              '     "morphology, and inscription. No second public-gonol implementation lives here."),'
+          )
+          replace("backend/readme_writer.py", old_narrative, new_narrative)
+          PY
+
+      - name: Regenerate manifest
+        working-directory: target
+        run: python .agents/skills/manifest/generate.py --root . --pyproject backend/pyproject.toml --write
+
+      - name: Regenerate living README
+        run: |
+          sudo rm -rf /app
+          sudo ln -s "$GITHUB_WORKSPACE/target" /app
+          PYTHONPATH=/app/backend python - <<'PY'
+          from pathlib import Path
+          from readme_writer import write_readme
+          count = write_readme(Path("/app/README.md"))
+          if count < 1:
+              raise SystemExit("README regeneration found no modules")
+          print(f"regenerated {count} modules")
+          PY
+
+      - name: Regenerate metadata collection
+        run: |
+          PYTHONPATH=skill-lib python skill-lib/msdmd/collect.py \
+            --root target \
+            --repo The-Interdependency/a0-betatest \
+            --out target/a0-betatest_msdmd.ts
+
+      - name: Commit target corrections
+        working-directory: target
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CLAUDE.md README.md a0-betatest_msdmd.ts \
+            memory/ARCHITECTURE_FOUNDATION.md backend/readme_writer.py
+          git diff --cached --stat
+          git commit -m "docs(gonal): record UCNS canon ownership migration"
+          git push origin HEAD:agent/consume-ucns-public-gonol-canon
