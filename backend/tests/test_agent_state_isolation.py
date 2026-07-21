@@ -166,9 +166,14 @@ async def test_concurrent_owner_updates_lose_no_ticks(tmp_path, monkeypatch):
             await client.get(
                 "/api/inspector/snapshot", headers={"x-test-user": "same-owner"}
             )
-        ).json()["agent_card"]
-        assert snapshot["tick"] == count
-        assert snapshot["memory"]["counts"]["ST"] == count
+        ).json()["agent_card"]["snapshot"]
+        assert snapshot["tick_count"] == count
+        memory = snapshot["memory"]
+        # Memory rings are intentionally bounded; the lock must preserve the full
+        # tick count while the rings retain exactly their declared capacities.
+        assert len(memory["lt"]) == memory["lt_capacity"] == 19
+        assert len(memory["st"]) == memory["st_capacity"] == 17
+        assert any("tick-marker-31" in item for item in memory["lt"])
 
 
 @pytest.mark.asyncio
