@@ -1,0 +1,26 @@
+name: Export repair source
+
+on:
+  push:
+    branches:
+      - agent/suspend-pre-reset-ucns
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+      - name: Pack source tree
+        run: |
+          tar --exclude=.git -czf a0-betatest-source.tgz .
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: a0-betatest-repair-source
+          path: a0-betatest-source.tgz
+          if-no-files-found: error
+          retention-days: 1
