@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - agent/remove-grok-damage
   pull_request:
     branches:
       - main
@@ -14,11 +13,11 @@ permissions:
 
 jobs:
   backend-integrity:
-    name: Backend compile and substrate tests
+    name: Backend compile and reset-boundary tests
     runs-on: ubuntu-latest
     outputs:
-      invariant_status: ${{ steps.invariants.outputs.status }}
-      invariant_log: ${{ steps.invariants.outputs.log }}
+      test_status: ${{ steps.tests.outputs.status }}
+      test_log: ${{ steps.tests.outputs.log }}
       import_status: ${{ steps.import_smoke.outputs.status }}
       import_log: ${{ steps.import_smoke.outputs.log }}
     env:
@@ -44,13 +43,34 @@ jobs:
       - name: Compile backend
         run: python -m compileall -q backend
 
-      - name: Capture repaired substrate invariant result
-        id: invariants
+      - name: Verify archived UCNS is not installed
+        working-directory: backend
+        run: |
+          python - <<'PY'
+          import importlib.metadata
+          import ucns
+
+          assert ucns.STATUS["state"] == "NA"
+          try:
+              importlib.metadata.version("ucns")
+          except importlib.metadata.PackageNotFoundError:
+              pass
+          else:
+              raise AssertionError("archived external ucns distribution is installed")
+          PY
+
+      - name: Capture backend test result
+        id: tests
         continue-on-error: true
         shell: bash
         run: |
           set +e
-          output="$(python -m pytest -q --tb=short backend/interdependent_lib/tests/test_invariants.py 2>&1)"
+          output="$(python -m pytest -q --tb=short \
+            backend/interdependent_lib/tests/test_invariants.py \
+            backend/tests/test_reset_boundaries.py \
+            backend/tests/test_lifted_path.py \
+            backend/tests/test_morphology_ladder.py \
+            backend/tests/test_zfae_gonal_inscription.py 2>&1)"
           status=$?
           printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
           printf 'log=%s\n' "$(printf '%s' "$output" | base64 -w0)" >> "$GITHUB_OUTPUT"
@@ -83,26 +103,26 @@ jobs:
       - name: Enforce backend gate
         shell: bash
         run: |
-          test "${{ steps.invariants.outputs.status }}" = "0"
+          test "${{ steps.tests.outputs.status }}" = "0"
           test "${{ steps.import_smoke.outputs.status }}" = "0"
 
   backend-diagnostics:
     name: Backend failure tracebacks
     needs: backend-integrity
-    if: always() && (needs.backend-integrity.outputs.invariant_status != '0' || needs.backend-integrity.outputs.import_status != '0')
+    if: always() && (needs.backend-integrity.outputs.test_status != '0' || needs.backend-integrity.outputs.import_status != '0')
     runs-on: ubuntu-latest
     steps:
       - name: Print compact failure evidence
         env:
-          INVARIANT_STATUS: ${{ needs.backend-integrity.outputs.invariant_status }}
-          INVARIANT_LOG: ${{ needs.backend-integrity.outputs.invariant_log }}
+          TEST_STATUS: ${{ needs.backend-integrity.outputs.test_status }}
+          TEST_LOG: ${{ needs.backend-integrity.outputs.test_log }}
           IMPORT_STATUS: ${{ needs.backend-integrity.outputs.import_status }}
           IMPORT_LOG: ${{ needs.backend-integrity.outputs.import_log }}
         shell: bash
         run: |
-          echo '=== invariant test ==='
-          echo "status=$INVARIANT_STATUS"
-          printf '%s' "$INVARIANT_LOG" | base64 -d || true
+          echo '=== backend tests ==='
+          echo "status=$TEST_STATUS"
+          printf '%s' "$TEST_LOG" | base64 -d || true
           echo
           echo '=== backend import smoke ==='
           echo "status=$IMPORT_STATUS"
@@ -113,27 +133,22 @@ jobs:
   check-replit-refs:
     name: Verify no @replit packages in frontend build output
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
           node-version: "22"
-
       - name: Install frontend dependencies
         run: npm install --silent --prefix frontend
-
       - name: Build frontend without REPL_ID
         run: env -u REPL_ID CI=false npm run build --silent --prefix frontend
-
       - name: Check for @replit references in frontend bundle
         run: |
           MATCHES=$( (grep -r "@replit" frontend/build/static/ || true) )
           if [ -n "$MATCHES" ]; then
-            echo "::error::@replit packages leaked into the frontend bundle. Run 'env -u REPL_ID CI=false npm run build --prefix frontend' locally and check frontend imports for static @replit references."
+            echo "::error::@replit packages leaked into the frontend bundle."
             echo "$MATCHES"
             exit 1
           fi
