@@ -70,20 +70,16 @@ def get_agent_store() -> AgentStore:
     return _AGENT_STORE
 
 
-async def _resolve_user_id(request: Request, fallback: str = "local") -> str:
-    """Derive the acting user id from the auth cookie; fall back when unauth."""
-    uid, _ = await _resolve_user(request, fallback)
+async def _resolve_user_id(request: Request) -> str:
+    uid, _ = await _resolve_user(request)
     return uid
 
 
-async def _resolve_user(request: Request, fallback: str = "local") -> tuple[str, Optional[str]]:
-    """Derive (user_id, username) from the auth cookie; (fallback, None) when unauth."""
+async def _resolve_user(request: Request) -> tuple[str, Optional[str]]:
+    """Resolve a real authenticated owner; anonymous fallback is forbidden."""
     from auth import get_current_user
-    try:
-        user = await get_current_user(request)
-        return user["id"], user.get("username")
-    except Exception:
-        return fallback, None
+    user = await get_current_user(request)
+    return user["id"], user.get("username")
 
 
 def init_routes(mongo_collection, runtime=None, get_key_fn=None):
@@ -147,9 +143,9 @@ class TrainRequest(BaseModel):
 # ---- CRUD ---------------------------------------------------------------
 
 @router.get("/instances")
-async def list_instances(request: Request, user_id: str = "local", include_archived: bool = False):
+async def list_instances(request: Request, include_archived: bool = False):
     store = get_agent_store()
-    uid = await _resolve_user_id(request, user_id)
+    uid = await _resolve_user_id(request)
     agents = await store.list(uid, include_archived=include_archived)
     return {"agents": [a.model_dump() for a in agents], "count": len(agents)}
 
@@ -157,15 +153,15 @@ async def list_instances(request: Request, user_id: str = "local", include_archi
 @router.post("/instances")
 async def create_instance(body: CreateAgentRequest, request: Request):
     store = get_agent_store()
-    uid, uname = await _resolve_user(request, body.user_id)
+    uid, uname = await _resolve_user(request)
     agent = await store.create(body.sheet, user_id=uid, username=uname)
     return agent.model_dump()
 
 
 @router.get("/instances/{agent_id}")
-async def get_instance(agent_id: str, request: Request, user_id: str = "local"):
+async def get_instance(agent_id: str, request: Request):
     store = get_agent_store()
-    uid = await _resolve_user_id(request, user_id)
+    uid = await _resolve_user_id(request)
     agent = await store.get(agent_id, uid)
     if not agent:
         raise HTTPException(404, f"agent {agent_id} not found")
@@ -182,7 +178,7 @@ async def update_instance(agent_id: str, body: UpdateAgentRequest, request: Requ
     patch = body.merged_patch()
     if not patch:
         raise HTTPException(400, "request body must include `sheet` or `patch`")
-    uid = await _resolve_user_id(request, body.user_id)
+    uid = await _resolve_user_id(request)
     agent = await store.update_sheet(agent_id, patch, user_id=uid)
     if not agent:
         raise HTTPException(404, f"agent {agent_id} not found")
@@ -190,9 +186,9 @@ async def update_instance(agent_id: str, body: UpdateAgentRequest, request: Requ
 
 
 @router.delete("/instances/{agent_id}")
-async def delete_instance(agent_id: str, request: Request, user_id: str = "local", purge: bool = False):
+async def delete_instance(agent_id: str, request: Request, purge: bool = False):
     store = get_agent_store()
-    uid = await _resolve_user_id(request, user_id)
+    uid = await _resolve_user_id(request)
     ok = await store.delete(agent_id, uid)
     if not ok:
         raise HTTPException(404, f"agent {agent_id} not found")
@@ -202,9 +198,9 @@ async def delete_instance(agent_id: str, request: Request, user_id: str = "local
 
 
 @router.post("/instances/{agent_id}/archive")
-async def archive_instance(agent_id: str, request: Request, user_id: str = "local"):
+async def archive_instance(agent_id: str, request: Request):
     store = get_agent_store()
-    uid = await _resolve_user_id(request, user_id)
+    uid = await _resolve_user_id(request)
     ok = await store.archive(agent_id, uid)
     if not ok:
         raise HTTPException(404, f"agent {agent_id} not found or already archived")
@@ -348,7 +344,7 @@ async def teacher_context_preview(agent_id: str, body: TeacherPreviewRequest, re
     Verifies that surface-3 is distinct from surface-1 (raw prompt).
     """
     store = get_agent_store()
-    uid = await _resolve_user_id(request, body.user_id)
+    uid = await _resolve_user_id(request)
     agent = await store.get(agent_id, uid)
     if not agent:
         raise HTTPException(404, f"agent {agent_id} not found")

@@ -145,22 +145,18 @@ async def health():
 
 # ---------- BYOK keys ----------
 async def _auth_uid(request: Request) -> str:
-    """Resolve the acting user id from the auth cookie only.
+    """Return the authenticated user id or raise HTTP 401.
 
-    The BYOK key vault, env vault and inventory are per authenticated user — the
-    chat runtime looks keys up under the same id, so these routes must NOT trust
-    the client-supplied ``user_id``. A valid cookie yields the authenticated
-    user's id; without one the id is the shared demo bucket ``"local"`` (via
-    ``get_current_user_or_demo``) — never a caller-supplied value, so a request
-    cannot select another user's id to read/spend their data.
+    Persistence, credentials, provider calls, usage, sessions, drafts, tools,
+    overrides, and agent state never fall back to a shared anonymous identity.
     """
-    from auth import get_current_user_or_demo
-    user = await get_current_user_or_demo(request)
+    from auth import get_current_user
+    user = await get_current_user(request)
     return user["id"]
 
 
 @api.get("/keys")
-async def list_keys(request: Request, user_id: str = "local"):
+async def list_keys(request: Request):
     user_id = await _auth_uid(request)
     out: list[KeyPublic] = []
     async for doc in keys_col.find({"user_id": user_id}).sort("provider", 1):
@@ -214,7 +210,7 @@ async def upsert_key(body: KeyUpsert, request: Request):
 
 
 @api.delete("/keys/{key_id}")
-async def delete_key(key_id: str, request: Request, user_id: str = "local"):
+async def delete_key(key_id: str, request: Request):
     user_id = await _auth_uid(request)
     r = await keys_col.delete_one({"_id": key_id, "user_id": user_id})
     return {"ok": r.deleted_count == 1}
@@ -232,7 +228,7 @@ async def _get_key(user_id: str, provider: str) -> str:
 
 # ---------- Site .env vault ----------
 @api.get("/vault")
-async def list_vault(request: Request, user_id: str = "local"):
+async def list_vault(request: Request):
     user_id = await _auth_uid(request)
     out: list[SiteAccountPublic] = []
     async for doc in vault_col.find({"user_id": user_id}).sort([("site", 1), ("account_label", 1)]):
@@ -295,7 +291,7 @@ async def reveal_vault(body: VaultRevealRequest, request: Request):
 
 
 @api.delete("/vault/{vault_id}")
-async def delete_vault(vault_id: str, request: Request, user_id: str = "local"):
+async def delete_vault(vault_id: str, request: Request):
     user_id = await _auth_uid(request)
     r = await vault_col.delete_one({"_id": vault_id, "user_id": user_id})
     return {"ok": r.deleted_count == 1}
@@ -303,7 +299,7 @@ async def delete_vault(vault_id: str, request: Request, user_id: str = "local"):
 
 # ---------- Model inventory ----------
 @api.get("/models/inventory")
-async def model_inventory(request: Request, user_id: str = "local"):
+async def model_inventory(request: Request):
     """Aggregate live model inventory across BYOK providers the user has keys for."""
     user_id = await _auth_uid(request)
     inv: list[dict] = []
@@ -330,7 +326,7 @@ async def model_inventory(request: Request, user_id: str = "local"):
 
 # ---------- Sessions (editable context) ----------
 @api.get("/sessions")
-async def list_sessions(request: Request, user_id: str = "local"):
+async def list_sessions(request: Request):
     user_id = await _auth_uid(request)
     out = []
     async for d in sessions_col.find({"user_id": user_id}).sort("updated_at", -1).limit(50):
@@ -370,7 +366,7 @@ async def create_session(body: SessionUpsert, request: Request):
 
 
 @api.get("/sessions/{session_id}")
-async def get_session(session_id: str, request: Request, user_id: str = "local"):
+async def get_session(session_id: str, request: Request):
     uid = await _auth_uid(request)
     d = await sessions_col.find_one({"_id": session_id, "user_id": uid})
     if not d:
@@ -401,7 +397,7 @@ async def update_session(session_id: str, body: SessionUpsert, request: Request)
 
 
 @api.delete("/sessions/{session_id}")
-async def delete_session(session_id: str, request: Request, user_id: str = "local"):
+async def delete_session(session_id: str, request: Request):
     user_id = await _auth_uid(request)
     r = await sessions_col.delete_one({"_id": session_id, "user_id": user_id})
     return {"ok": r.deleted_count == 1}
@@ -409,7 +405,7 @@ async def delete_session(session_id: str, request: Request, user_id: str = "loca
 
 # ---------- Drafts ----------
 @api.get("/drafts")
-async def list_drafts(request: Request, user_id: str = "local"):
+async def list_drafts(request: Request):
     user_id = await _auth_uid(request)
     out = []
     async for d in drafts_col.find({"user_id": user_id}).sort("updated_at", -1).limit(100):
@@ -451,7 +447,7 @@ async def update_draft(draft_id: str, body: DraftUpsert, request: Request):
 
 
 @api.delete("/drafts/{draft_id}")
-async def delete_draft(draft_id: str, request: Request, user_id: str = "local"):
+async def delete_draft(draft_id: str, request: Request):
     user_id = await _auth_uid(request)
     r = await drafts_col.delete_one({"_id": draft_id, "user_id": user_id})
     return {"ok": r.deleted_count == 1}
@@ -671,20 +667,23 @@ async def chat_synthesize(body: SynthesizeRequest, request: Request):
 
 # ---------- Inspector (PCNA / PTCA / EDCM / Memory) ----------
 @api.get("/inspector/snapshot")
-async def inspector_snapshot():
+async def inspector_snapshot(request: Request):
+    await _auth_uid(request)
     return {
         "agent_card": AGENT.card(),
     }
 
 
 @api.post("/inspector/heartbeat")
-async def inspector_heartbeat(intent: Optional[str] = Body(default=None, embed=True)):
+async def inspector_heartbeat(request: Request, intent: Optional[str] = Body(default=None, embed=True)):
+    await _auth_uid(request)
     return AGENT.engine.heartbeat(intent=intent)
 
 
 # ---------- Detachable Agents ----------
 @api.get("/agents")
-async def list_agents():
+async def list_agents(request: Request):
+    await _auth_uid(request)
     out = []
     async for d in agents_col.find({}).sort("created_at", -1):
         out.append({"id": d["_id"], **{k: d[k] for k in d if k != "_id"}})
@@ -692,7 +691,8 @@ async def list_agents():
 
 
 @api.post("/agents")
-async def create_agent(body: AgentExport):
+async def create_agent(body: AgentExport, request: Request):
+    await _auth_uid(request)
     existing = await agents_col.find_one({"slug": body.slug})
     if existing:
         raise HTTPException(409, "slug already exists")
@@ -704,7 +704,8 @@ async def create_agent(body: AgentExport):
 
 
 @api.get("/agents/{slug}/manifest")
-async def agent_manifest(slug: str):
+async def agent_manifest(slug: str, request: Request):
+    await _auth_uid(request)
     d = await agents_col.find_one({"slug": slug})
     if not d:
         raise HTTPException(404, "agent not found")
@@ -726,14 +727,15 @@ async def agent_manifest(slug: str):
 
 
 @api.delete("/agents/{slug}")
-async def delete_agent(slug: str):
+async def delete_agent(slug: str, request: Request):
+    await _auth_uid(request)
     r = await agents_col.delete_one({"slug": slug})
     return {"ok": r.deleted_count == 1}
 
 
 # ---------- Usage log ----------
 @api.get("/usage")
-async def list_usage(request: Request, user_id: str = "local", limit: int = 100):
+async def list_usage(request: Request, limit: int = 100):
     user_id = await _auth_uid(request)
     out = []
     async for d in usage_col.find({"user_id": user_id}).sort("created_at", -1).limit(limit):
@@ -819,7 +821,7 @@ async def skill_all_report():
 app.include_router(api)
 
 # ---------- Auth (JWT + Emergent Google + GitHub OAuth) ----------
-from auth import init_auth as _init_auth, get_current_user_or_demo
+from auth import init_auth as _init_auth, get_current_user
 _init_auth(app)
 
 # ---------- API extensions: custom keys vault, demo quota, living spec ----
@@ -883,7 +885,7 @@ async def sentinels_canon():
 
 
 @sentinels_api.get("/instances/{agent_id}/sentinel-modes")
-async def get_sentinel_modes(agent_id: str, request: Request, user_id: str = "local"):
+async def get_sentinel_modes(agent_id: str, request: Request):
     user_id = await _auth_uid(request)
     doc = await agent_instances_col.find_one({"_id": agent_id, "user_id": user_id})
     if not doc:
@@ -941,7 +943,7 @@ async def bulk_sentinel_modes(agent_id: str, body: SentinelBulkMode, request: Re
 
 
 @sentinels_api.get("/instances/{agent_id}/sentinel-weights")
-async def get_sentinel_weights(agent_id: str, request: Request, user_id: str = "local"):
+async def get_sentinel_weights(agent_id: str, request: Request):
     user_id = await _auth_uid(request)
     doc = await agent_instances_col.find_one({"_id": agent_id, "user_id": user_id})
     if not doc:
@@ -982,7 +984,7 @@ async def patch_sentinel_weights(agent_id: str, body: SentinelWeightsPatch, requ
 
 # ---------- Pending overrides endpoints ----------
 @sentinels_api.get("/overrides")
-async def list_overrides(request: Request, user_id: str = "local", status: str = "pending", limit: int = 100):
+async def list_overrides(request: Request, status: str = "pending", limit: int = 100):
     user_id = await _auth_uid(request)
     if status == "pending":
         records = await zfae_overrides.list_pending(pending_overrides_col, user_id=user_id, limit=limit)
@@ -997,9 +999,10 @@ async def list_overrides(request: Request, user_id: str = "local", status: str =
 
 
 @sentinels_api.get("/overrides/{override_id}")
-async def get_override(override_id: str):
+async def get_override(override_id: str, request: Request):
+    uid = await _auth_uid(request)
     rec = await zfae_overrides.get(pending_overrides_col, override_id)
-    if rec is None:
+    if rec is None or rec.user_id != uid:
         raise HTTPException(404, f"override {override_id} not found")
     return rec.__dict__
 
@@ -1033,8 +1036,9 @@ async def reject_override(override_id: str, body: OverrideReject, request: Reque
 
 
 @sentinels_api.post("/overrides/expire")
-async def expire_overrides():
-    n = await zfae_overrides.expire(pending_overrides_col)
+async def expire_overrides(request: Request):
+    uid = await _auth_uid(request)
+    n = await zfae_overrides.expire(pending_overrides_col, user_id=uid)
     return {"expired": n}
 
 
@@ -1065,47 +1069,8 @@ async def _on_startup():
     # Seed admin from .env (idempotent)
     from auth import seed_admin
     admin = await seed_admin()
-    # Migrate legacy user_id='local' agents to the admin user (idempotent).
-    if admin and admin.get("_id"):
-        from db import agent_instances_col as _ai
-        r = await _ai.update_many(
-            {"user_id": "local"}, {"$set": {"user_id": admin["_id"]}},
-        )
-        if r.modified_count:
-            import logging as _lg
-            _lg.getLogger("a0p").info("migrated %d legacy local agents to admin", r.modified_count)
-        # Migrate legacy user_id='local' BYOK keys + env vault to admin so the
-        # authenticated chat runtime can find them (idempotent). Avoid clobbering
-        # an existing admin key for the same provider.
-        for _col, _label in ((keys_col, "byok keys"), (vault_col, "vault entries")):
-            _moved = 0
-            async for _doc in _col.find({"user_id": "local"}):
-                _q = {"user_id": admin["_id"], "provider": _doc.get("provider")} \
-                    if _label == "byok keys" else \
-                    {"user_id": admin["_id"], "site": _doc.get("site"),
-                     "account_label": _doc.get("account_label")}
-                if await _col.find_one(_q):
-                    continue  # admin already has this one; leave the local orphan
-                await _col.update_one({"_id": _doc["_id"]},
-                                      {"$set": {"user_id": admin["_id"]}})
-                _moved += 1
-            if _moved:
-                import logging as _lgk
-                _lgk.getLogger("a0p").info("migrated %d legacy local %s to admin", _moved, _label)
-        # Migrate the other per-user collections that are now resolved strictly
-        # from the cookie user (previously reachable via the legacy client
-        # user_id='local'). These rows are id-keyed with no uniqueness
-        # constraint, so a bulk move is safe and idempotent — without it,
-        # pre-auth sessions/drafts/usage/overrides would vanish from the UI.
-        for _c, _lbl in ((sessions_col, "sessions"), (drafts_col, "drafts"),
-                         (usage_col, "usage rows"),
-                         (pending_overrides_col, "pending overrides")):
-            _rm = await _c.update_many(
-                {"user_id": "local"}, {"$set": {"user_id": admin["_id"]}},
-            )
-            if _rm.modified_count:
-                import logging as _lgm
-                _lgm.getLogger("a0p").info("migrated %d legacy local %s to admin", _rm.modified_count, _lbl)
+    # Historical ``local`` rows are never transferred automatically. Any recovery
+    # must use an explicit, inspectable, reversible migration outside runtime.
     # Regenerate README.md from the living spec
     try:
         from readme_writer import write_readme

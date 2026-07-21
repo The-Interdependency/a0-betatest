@@ -145,11 +145,14 @@ async def reject(col, override_id: str, user_id: str, reason: str = "") -> Optio
     return _from_doc(r)
 
 
-async def expire(col) -> int:
-    """Mark all pending overrides past their expiry as expired. Returns count."""
+async def expire(col, user_id: str | None = None) -> int:
+    """Expire pending overrides, optionally restricted to one authenticated owner."""
     now = _utc_now_ms()
+    query = {"status": "pending", "expires_ms": {"$lt": now}}
+    if user_id is not None:
+        query["user_id"] = user_id
     r = await col.update_many(
-        {"status": "pending", "expires_ms": {"$lt": now}},
+        query,
         {"$set": {"status": "expired", "resolved_ms": now}},
     )
     return r.modified_count
