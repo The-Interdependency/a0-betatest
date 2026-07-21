@@ -43,6 +43,10 @@
 #   given: an arbitrary GonalSpec passed to build_gonal
 #   then: PUBLIC_GONOL_157 remains unchanged
 #   class: provenance
+# id: public_gonol_validation_counts_available
+#   given: validate_gonal is called on the source fixture
+#   then: the response includes stable category counts required by the public gonals endpoint
+#   class: compatibility
 # === END CONTRACTS ===
 """Exact A0 source-provenance public gonol.
 
@@ -218,7 +222,36 @@ def validate_gonal(slot: list[str] | tuple[str, ...], spec: GonalSpec) -> dict:
             violations.append(f"letter-letter at {k}-{(k + 1) % n}")
         if "digit" in spec.no_adjacent and cur in string.digits and nxt in string.digits:
             violations.append(f"digit-digit at {k}-{(k + 1) % n}")
-    return {"valid": not violations, "violations": violations, "n": n}
+
+    def category(ch: str) -> str:
+        if ch in UPPERCASE:
+            return "uppercase"
+        if ch in LOWERCASE:
+            return "lowercase"
+        if ch in string.digits:
+            return "digit"
+        if ch in PAIRED_OPEN:
+            return "paired_open"
+        if ch in PAIRED_CLOSE:
+            return "paired_close"
+        if ch == spec.origin:
+            return "origin"
+        return "unpaired"
+
+    counts = {
+        name: sum(1 for ch in slot if category(ch) == name)
+        for name in (
+            "uppercase", "lowercase", "digit", "paired_open",
+            "paired_close", "unpaired", "origin",
+        )
+    }
+    return {
+        "valid": not violations,
+        "violations": violations,
+        "warnings": [],
+        "counts": counts,
+        "n": n,
+    }
 
 
 def print_gonal(slot: list[str] | tuple[str, ...], width: int = 10) -> None:
