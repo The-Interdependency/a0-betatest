@@ -75,7 +75,11 @@ async def ensure_indexes():
     await drafts_col.create_index([("user_id", 1), ("updated_at", -1)])
     await fanout_col.create_index([("user_id", 1), ("created_at", -1)])
     await chain_col.create_index([("user_id", 1), ("created_at", -1)])
-    await agents_col.create_index([("slug", 1)])
+    await agents_col.create_index(
+    [("user_id", 1), ("slug", 1)],
+    unique=True,
+    name="agent_owner_slug_unique",
+)
     await agent_instances_col.create_index([("user_id", 1), ("updated_at", -1)])
     await usage_col.create_index([("user_id", 1), ("created_at", -1)])
     await fiq_audit_col.create_index([("timestamp_ms", -1)])
