@@ -6,6 +6,13 @@
 #   timeout: 20
 #   mutates: none
 #   cleanup: none
+# id: check_public_gonol_validation_counts_available
+#   proves: public_gonol_validation_counts_available
+#   call: self::test_public_gonol_validation_counts_are_available
+#   requires: python3
+#   timeout: 20
+#   mutates: none
+#   cleanup: none
 # id: check_pre_reset_ucns_fails_closed
 #   proves: pre_reset_ucns_fails_closed, ucns_bridge_fails_closed
 #   call: self::test_ucns_runtime_is_typed_absence
@@ -53,6 +60,23 @@ def test_public_gonol_source_fixture():
     assert public_gonol_sha256(before) == PUBLIC_GONOL_SHA256
     build_gonal(GonalSpec())
     assert PUBLIC_GONOL_157 is before
+
+
+def test_public_gonol_validation_counts_are_available():
+    from interdependent_lib.gonal.gonal import (
+        GonalSpec,
+        PUBLIC_GONOL_157,
+        validate_gonal,
+    )
+
+    report = validate_gonal(PUBLIC_GONOL_157, GonalSpec())
+    assert report["valid"] is True
+    assert report["warnings"] == []
+    assert report["counts"]["origin"] == 1
+    assert report["counts"]["uppercase"] == 26
+    assert report["counts"]["lowercase"] == 26
+    assert report["counts"]["digit"] == 10
+    assert sum(report["counts"].values()) == 157
 
 
 def test_ucns_runtime_is_typed_absence():
