@@ -1,0 +1,228 @@
+name: Apply owner-bound agent proxy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/apply-agent-state-proxy.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Repair 02 branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/per-user-agent-state
+          fetch-depth: 0
+      - name: Wire owner-bound legacy state and agent ownership
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent, indent
+
+          server = Path("backend/server.py")
+          text = server.read_text(encoding="utf-8")
+          old = "from interdependent_lib.zfae import ZFAEAgent, A0ZFAEInferenceEngine"
+          new = "from interdependent_lib.zfae import A0ZFAEInferenceEngine"
+          if text.count(old) != 1:
+              raise SystemExit("ZFAE import drift")
+          text = text.replace(old, new)
+
+          anchor = "from interdependent_lib.zfae.runtime import ZFAERuntime\n"
+          if text.count(anchor) != 1:
+              raise SystemExit("runtime import anchor drift")
+          text = text.replace(
+              anchor,
+              anchor + "from interdependent_lib.zfae.state_store import OwnerScopedAgentProxy\n",
+          )
+
+          old = dedent('''\
+          # ---------- shared persistent ZFAE agent ----------
+          AGENT = ZFAEAgent(name="a0(zfae)", base_seed=157)
+          ''')
+          new = dedent('''\
+          # ---------- authenticated-owner-scoped ephemeral legacy state ----------
+          AGENT = OwnerScopedAgentProxy()
+          ''')
+          if text.count(old) != 1:
+              raise SystemExit("global AGENT block drift")
+          text = text.replace(old, new)
+
+          old = '        "agent": {"id": AGENT.id, "name": AGENT.name, "born_ms": AGENT.born_ms},\n'
+          new = '        "mutable_agent_state_exposed": False,\n'
+          if text.count(old) != 1:
+              raise SystemExit("health agent field drift")
+          text = text.replace(old, new)
+
+          old = '    user = await get_current_user(request)\n    return user["id"]\n'
+          new = '    user = await get_current_user(request)\n    AGENT.bind_owner(user["id"])\n    return user["id"]\n'
+          if text.count(old) != 1:
+              raise SystemExit("_auth_uid owner binding drift")
+          text = text.replace(old, new)
+
+          start = text.index('# ---------- Detachable Agents ----------')
+          end = text.index('# ---------- Usage log ----------', start)
+          replacement = dedent('''\
+          # ---------- Owner-scoped detachable agents and public templates ----------
+          def _agent_view(document: dict, owner_id: str | None = None) -> dict:
+              public_template = bool(document.get("is_public_template"))
+              owned = owner_id is not None and document.get("user_id") == owner_id
+              view = {
+                  "id": document.get("_id"),
+                  "slug": document.get("slug"),
+                  "name": document.get("name"),
+                  "description": document.get("description", ""),
+                  "capabilities": list(document.get("capabilities") or []),
+                  "aimmh_pattern": document.get("aimmh_pattern", "fan_out"),
+                  "rounds": document.get("rounds", 1),
+                  "tier": "premium" if document.get("is_premium") else "free",
+                  "is_public_template": public_template,
+                  "owned": owned,
+              }
+              if owned and not public_template:
+                  view.update({
+                      "system_context": document.get("system_context", ""),
+                      "persona": document.get("persona", ""),
+                      "default_models": list(document.get("default_models") or []),
+                  })
+              return view
+
+
+          @api.get("/agent-templates")
+          async def list_agent_templates():
+              out = []
+              async for document in agents_col.find(
+                  {"is_public_template": True}
+              ).sort("name", 1):
+                  out.append(_agent_view(document))
+              return {"templates": out}
+
+
+          @api.get("/agents")
+          async def list_agents(request: Request):
+              uid = await _auth_uid(request)
+              out = []
+              query = {"$or": [{"user_id": uid}, {"is_public_template": True}]}
+              async for document in agents_col.find(query).sort("created_at", -1):
+                  out.append(_agent_view(document, uid))
+              return {"agents": out}
+
+
+          @api.post("/agents")
+          async def create_agent(body: AgentExport, request: Request):
+              uid = await _auth_uid(request)
+              existing = await agents_col.find_one({
+                  "slug": body.slug,
+                  "$or": [{"user_id": uid}, {"is_public_template": True}],
+              })
+              if existing:
+                  raise HTTPException(409, "slug already exists for this owner or template")
+              now = _utc_now_iso()
+              document = {
+                  "_id": new_id(),
+                  "user_id": uid,
+                  "is_public_template": False,
+                  **body.model_dump(),
+                  "created_at": now,
+                  "updated_at": now,
+              }
+              await agents_col.insert_one(document)
+              return _agent_view(document, uid)
+
+
+          @api.get("/agents/{slug}/manifest")
+          async def agent_manifest(slug: str, request: Request):
+              uid = await _auth_uid(request)
+              document = await agents_col.find_one({"slug": slug, "user_id": uid})
+              if document is None:
+                  document = await agents_col.find_one({
+                      "slug": slug,
+                      "is_public_template": True,
+                  })
+              if document is None:
+                  raise HTTPException(404, "agent not found")
+              view = _agent_view(document, uid)
+              view.update({
+                  "manifest_version": "a0p-agent-v1",
+                  "exported_at": _utc_now_iso(),
+              })
+              return view
+
+
+          @api.delete("/agents/{slug}")
+          async def delete_agent(slug: str, request: Request):
+              uid = await _auth_uid(request)
+              result = await agents_col.delete_one({
+                  "slug": slug,
+                  "user_id": uid,
+                  "is_public_template": {"$ne": True},
+              })
+              if result.deleted_count == 0:
+                  raise HTTPException(404, "owned agent not found")
+              return {"ok": True}
+
+
+          ''')
+          text = text[:start] + replacement + text[end:]
+
+          old = 'await agents_col.insert_one({"_id": new_id(), **a.model_dump(),\n                                         "created_at": now, "updated_at": now})'
+          new = '''await agents_col.insert_one({
+                    "_id": new_id(),
+                    "user_id": None,
+                    "is_public_template": True,
+                    **a.model_dump(),
+                    "created_at": now,
+                    "updated_at": now,
+                })'''
+          if text.count(old) != 1:
+              raise SystemExit("starter insert drift")
+          text = text.replace(old, new)
+
+          anchor = '    # Seed a few starter detachable agents if the collection is empty.\n'
+          migration = indent(dedent('''\
+          # Mark only exact built-in starter slugs as public templates. No arbitrary
+          # unowned agent is promoted or assigned to a user.
+          await agents_col.update_many(
+              {
+                  "slug": {"$in": [
+                      "research-council", "daisy-prover", "zfae-classic",
+                      "premium-symphony",
+                  ]},
+                  "user_id": {"$exists": False},
+              },
+              {"$set": {"user_id": None, "is_public_template": True}},
+          )
+          '''), "    ")
+          if text.count(anchor) != 1:
+              raise SystemExit("starter migration anchor drift")
+          text = text.replace(anchor, migration + anchor)
+          server.write_text(text, encoding="utf-8")
+
+          db = Path("backend/db.py")
+          text = db.read_text(encoding="utf-8")
+          old = '    await agents_col.create_index([("slug", 1)])\n'
+          new = '''    await agents_col.create_index(
+              [("user_id", 1), ("slug", 1)],
+              unique=True,
+              name="agent_owner_slug_unique",
+          )
+          '''
+          if text.count(old) != 1:
+              raise SystemExit("agent index drift")
+          db.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+          python -m compileall -q backend
+      - name: Commit Repair 02 wiring
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/server.py backend/db.py
+          git commit -m 'fix(state): bind mutable agents to authenticated owners'
+          git push origin HEAD:agent/per-user-agent-state
