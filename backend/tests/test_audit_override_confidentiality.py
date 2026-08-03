@@ -1,4 +1,4 @@
-# ratios: loc_comments=393:87 imports_exports=20:7 calls_definitions=130:28
+# ratios: loc_comments=397:87 imports_exports=20:7 calls_definitions=131:28
 # === MODULE_BUILD ===
 # id: tests_audit_override_confidentiality
 #   module_name: test_audit_override_confidentiality
@@ -91,6 +91,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -141,8 +142,8 @@ def _matches(doc: dict, query: dict) -> bool:
             if "$in" in expected and actual not in expected["$in"]:
                 return False
             if "$regex" in expected:
-                import re
-                if re.search(expected["$regex"], str(actual or "")) is None:
+                pattern = expected["$regex"]
+                if not pattern.startswith("^") or not re.escape(str(actual or "")).startswith(pattern[1:]):
                     return False
         elif actual != expected:
             return False
@@ -463,6 +464,7 @@ async def test_audit_owner_isolation_and_admin_redaction(tmp_path, monkeypatch):
     col = _Collection([
         {"_id": "a", "user_id": "user-a", "agent_id": "agent-a", "event_type": "zfae_override_created", "payload": {"override_id": "override-a", "token": "secret-a"}, "timestamp_ms": 1},
         {"_id": "b", "user_id": "user-b", "agent_id": "agent-b", "event_type": "zfae_override_created", "payload": {"override_id": "override-b", "token": "secret-b"}, "timestamp_ms": 2},
+        {"_id": "literal", "user_id": "user-b", "agent_id": "agent-b", "event_type": "zfae.+literal", "payload": {}, "timestamp_ms": 3},
     ])
     monkeypatch.setattr(extensions, "fiq_audit_col", col)
 
@@ -472,6 +474,8 @@ async def test_audit_owner_isolation_and_admin_redaction(tmp_path, monkeypatch):
     assert "override-a" not in encoded
     assert "secret-b" not in encoded
     assert "user_id" not in feed["events"][0]
+    literal_feed = await extensions.audit_feed(kind="zfae.+", user={"id": "user-b", "role": "user"})
+    assert [event["id"] for event in literal_feed["events"]] == ["literal"]
 
     with pytest.raises(HTTPException) as exc:
         await extensions.admin_audit_feed(user={"id": "user-b", "role": "user"})
@@ -537,4 +541,4 @@ async def test_audit_override_index_contract(tmp_path, monkeypatch):
     ]
     assert override_indexes["pending_override_expiry"][0] == [("status", 1), ("expires_ms", 1)]
 
-# ratios: loc_comments=393:87 imports_exports=20:7 calls_definitions=130:28
+# ratios: loc_comments=397:87 imports_exports=20:7 calls_definitions=131:28
