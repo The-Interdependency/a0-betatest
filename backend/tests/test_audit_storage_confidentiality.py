@@ -1,9 +1,9 @@
-# ratios: loc_comments=129:52 imports_exports=7:2 calls_definitions=41:6
+# ratios: loc_comments=201:66 imports_exports=11:4 calls_definitions=71:15
 # === MODULE_BUILD ===
 # id: tests_audit_storage_confidentiality
 #   module_name: test_audit_storage_confidentiality
 #   module_kind: test
-#   summary: regression evidence for shared audit redaction, bounded expiry, canonical JSONL pruning, and redacted legacy reads
+#   summary: regression evidence for audit confidentiality, bounded backfill, canonical pruning, and automatic override expiry
 #   owner: a0p maintainer
 #   public_surface: none
 #   internal_surface: test functions and storage doubles
@@ -28,7 +28,7 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: tests_audit_storage_confidentiality
-#   summary: executable evidence for audit payload confidentiality and retention
+#   summary: executable evidence for audit confidentiality, retention migration, and automatic override expiry
 #   exposes: pytest tests
 #   boundaries: auth:none, storage:none, network:none, user_data:read
 #   owner: a0p maintainer
@@ -49,19 +49,52 @@
 #   timeout: 20
 #   mutates: filesystem
 #   cleanup: tempdir_teardown
+# id: check_legacy_audit_expiry_backfill_bounded
+#   proves: audit_legacy_expiry_backfill_bounded
+#   call: self::test_legacy_audit_expiry_backfill_is_bounded
+#   requires: python3
+#   timeout: 20
+#   mutates: none
+#   cleanup: none
+# id: check_override_expiry_maintenance
+#   proves: zfae_override_expiry_automatic
+#   call: self::test_override_expiry_maintenance_retries_and_cancels
+#   requires: python3
+#   timeout: 20
+#   mutates: none
+#   cleanup: none
 # === END CHECKS ===
 """Repair 03 audit-storage confidentiality and retention regressions."""
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 
 
+class _AsyncCursor:
+    def __init__(self, docs):
+        self._iterator = iter(docs)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        try:
+            return next(self._iterator)
+        except StopIteration as exc:
+            raise StopAsyncIteration from exc
+
+
 class _AuditCollection:
-    def __init__(self):
-        self.docs = []
+    def __init__(self, docs=None, failures=0):
+        self.docs = [dict(doc) for doc in (docs or [])]
+        self.bulk_batches = []
+        self.failures = failures
+        self.swept = asyncio.Event()
 
     async def find_one(self, _query, **kwargs):
         if not self.docs:
@@ -71,6 +104,72 @@ class _AuditCollection:
 
     async def insert_one(self, doc):
         self.docs.append(dict(doc))
+
+    def find(self, _query, _projection=None):
+        return _AsyncCursor(doc for doc in self.docs if "expires_at" not in doc)
+
+    async def bulk_write(self, operations, ordered=False):
+        operations = list(operations)
+        self.bulk_batches.append(operations)
+        modified = 0
+        for operation in operations:
+            doc = next(item for item in self.docs if item["_id"] == operation._filter["_id"])
+            if "expires_at" not in doc:
+                doc.update(operation._doc["$set"])
+                modified += 1
+        return SimpleNamespace(modified_count=modified)
+
+    async def update_many(self, query, update):
+        if self.failures:
+            self.failures -= 1
+            raise RuntimeError("transient maintenance failure")
+        modified = 0
+        for doc in self.docs:
+            if doc.get("status") in query["status"]["$in"] and doc.get("expires_ms", 0) <= query["expires_ms"]["$lte"]:
+                doc.update(update["$set"])
+                modified += 1
+        self.swept.set()
+        return SimpleNamespace(modified_count=modified)
+
+
+@pytest.mark.asyncio
+async def test_legacy_audit_expiry_backfill_is_bounded(monkeypatch):
+    monkeypatch.setenv("MONGO_URL", "mongodb://localhost:27017")
+    monkeypatch.setenv("DB_NAME", "audit_backfill_test")
+    monkeypatch.setenv("A0P_AUDIT_RETENTION_DAYS", "30")
+    import db as database
+
+    col = _AuditCollection([
+        {"_id": "old", "timestamp_ms": 1, "this_hash": "a" * 32},
+        {"_id": "bool", "timestamp_ms": True, "this_hash": "b" * 32},
+        {"_id": "future", "timestamp_ms": 10**15, "this_hash": "c" * 32},
+    ])
+    original_hashes = [doc["this_hash"] for doc in col.docs]
+    assert await database.backfill_legacy_audit_expiry(col, batch_size=2) == 3
+    assert [len(batch) for batch in col.bulk_batches] == [2, 1]
+    assert all(isinstance(doc["expires_at"], datetime) for doc in col.docs)
+    assert [doc["this_hash"] for doc in col.docs] == original_hashes
+    assert await database.backfill_legacy_audit_expiry(col, batch_size=2) == 0
+
+
+@pytest.mark.asyncio
+async def test_override_expiry_maintenance_retries_and_cancels():
+    from interdependent_lib.zfae import overrides as ov
+
+    now = int(datetime.now(timezone.utc).timestamp() * 1000)
+    col = _AuditCollection([
+        {"status": "pending", "expires_ms": now - 1},
+        {"status": "approved", "expires_ms": now},
+        {"status": "pending", "expires_ms": now + 60_000},
+        {"status": "consumed", "expires_ms": now - 1},
+    ], failures=1)
+    task = asyncio.create_task(ov.maintain_expiry(col, interval_seconds=0.001))
+    await asyncio.wait_for(col.swept.wait(), timeout=1)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert [doc["status"] for doc in col.docs] == ["expired", "expired", "pending", "consumed"]
+    assert await ov.expire(col) == 0
 
 
 @pytest.mark.asyncio
@@ -200,4 +299,4 @@ def test_canonical_fiq_audit_redacts_and_bounds_storage(tmp_path, monkeypatch):
     assert legacy_secret not in read_view and legacy_label not in read_view
     assert log.verify() is True
 
-# ratios: loc_comments=129:52 imports_exports=7:2 calls_definitions=41:6
+# ratios: loc_comments=201:66 imports_exports=11:4 calls_definitions=71:15

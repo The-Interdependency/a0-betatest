@@ -12,10 +12,10 @@
 - Held actions persist a typed request summary and keyed action fingerprint, never prompt/tool arguments/body. Startup scrubs legacy `raw_request` rows.
 - Approval is owner-scoped, must be unexpired, and is atomically consumed once for the same owner, agent, event kind, exact arguments, and tool execution target/configuration.
 - Override list/detail responses use an explicit field whitelist and omit raw material, fingerprints, owner ids, and resolution text.
-- Expiration moved to `POST /api/admin/overrides/expire`; the ordinary-user route and UI control were removed.
+- Lifecycle-managed maintenance marks timed-out overrides expired every 60 seconds; `POST /api/admin/overrides/expire` remains an admin-only operator fallback, and the ordinary-user mutation/UI control stay removed.
 - Audit payloads are recursively redacted before hashing and insertion. Tool arguments, result previews, authorization/cookie material, environment containers, webhook data, secret-shaped keys, and known credential-shaped strings are removed.
 - Redacted audit events expire after 30 days by default (`A0P_AUDIT_RETENTION_DAYS`, constrained to 1–365). Full raw held-request retention is zero.
-- Startup backfills expiry for legacy audit rows without changing their hash input, and creates owner/time, owner/status/created, expiry-query, and TTL indexes.
+- A bounded background bulk job backfills expiry for legacy audit rows without delaying readiness or changing their hash input; startup creates owner/time, owner/status/created, expiry-query, and TTL indexes.
 
 Repairs 01 and 02 had already added basic endpoint authentication and owner filtering before this repair began; this change closes the remaining confidentiality and exact-action gaps.
 
@@ -61,8 +61,8 @@ Add focused tests for audit redaction and horizontal authorization.
 ## Verification evidence
 
 - `python -m compileall -q backend`: pass.
-- Repair 03 plus lifecycle focus: 17 passed.
-- Clean-build selected backend set including Repair 03: 57 passed.
+- Repair 03 plus lifecycle focus: 19 passed.
+- Clean-build selected backend set including Repair 03: 59 passed.
 - Frontend production build: pass; only pre-existing lint warnings.
 - Full offline backend collection excluding live-URL suites: 85 passed, with one pre-existing `PROOF_GREEN` failure and six live HTTP setup errors against an unrelated external URL.
 - Skill-lib manifest check: pass after deterministic refresh.

@@ -1,4 +1,4 @@
-# ratios: loc_comments=397:87 imports_exports=20:7 calls_definitions=131:28
+# ratios: loc_comments=400:87 imports_exports=20:7 calls_definitions=133:28
 # === MODULE_BUILD ===
 # id: tests_audit_override_confidentiality
 #   module_name: test_audit_override_confidentiality
@@ -71,7 +71,7 @@
 #   mutates: none
 #   cleanup: none
 # id: check_admin_expiry_boundary
-#   proves: override_expiry_admin_only
+#   proves: override_expiry_admin_only, zfae_override_expiry_automatic
 #   call: self::test_expiry_is_admin_only_and_expired_only
 #   requires: python3
 #   timeout: 20
@@ -135,7 +135,7 @@ def _matches(doc: dict, query: dict) -> bool:
         if isinstance(expected, dict):
             if "$exists" in expected and present is not bool(expected["$exists"]):
                 return False
-            if "$lt" in expected and not (actual < expected["$lt"]):
+            if ("$lt" in expected and not (actual < expected["$lt"])) or ("$lte" in expected and not (actual <= expected["$lte"])):
                 return False
             if "$gt" in expected and not (actual > expected["$gt"]):
                 return False
@@ -241,6 +241,7 @@ async def _create_override(ov, col, *, agent_id, user_id, event_kind, raw_reques
 async def test_anonymous_audit_override_matrix_401(tmp_path):
     _configure_environment(tmp_path)
     server = importlib.import_module("server")
+    assert server._on_startup not in server.app.router.on_startup
     transport = httpx.ASGITransport(app=server.app)
     cases = [
         ("GET", "/api/audit/feed", None),
@@ -303,6 +304,7 @@ async def test_override_owner_storage_and_action_binding(tmp_path):
     )
     next(doc for doc in col.docs if doc["_id"] == already_expired.id)["expires_ms"] = 0
     assert await ov.approve(col, already_expired.id, "user-a", "too late") is None
+    assert await ov.reject(col, already_expired.id, "user-a", "too late") is None
 
 
 @pytest.mark.asyncio
@@ -495,6 +497,7 @@ async def test_expiry_is_admin_only_and_expired_only(tmp_path, monkeypatch):
         {"_id": "fresh-b", "user_id": "user-b", "status": "pending", "expires_ms": now + 60_000},
     ])
     monkeypatch.setattr(server, "pending_overrides_col", col)
+    assert await server.zfae_overrides.list_for_user(col, "user-a") == []
 
     async def ordinary_user(_request):
         return {"id": "user-a", "role": "user"}
@@ -513,7 +516,7 @@ async def test_expiry_is_admin_only_and_expired_only(tmp_path, monkeypatch):
     assert col.docs[0]["status"] == "expired"
     assert col.docs[1]["status"] == "pending"
     assert col.queries[-1]["status"] == {"$in": ["pending", "approved"]}
-    assert "$lt" in col.queries[-1]["expires_ms"]
+    assert "$lte" in col.queries[-1]["expires_ms"]
 
 
 @pytest.mark.asyncio
@@ -541,4 +544,4 @@ async def test_audit_override_index_contract(tmp_path, monkeypatch):
     ]
     assert override_indexes["pending_override_expiry"][0] == [("status", 1), ("expires_ms", 1)]
 
-# ratios: loc_comments=397:87 imports_exports=20:7 calls_definitions=131:28
+# ratios: loc_comments=400:87 imports_exports=20:7 calls_definitions=133:28

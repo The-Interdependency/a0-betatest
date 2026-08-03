@@ -1,12 +1,12 @@
-# ratios: loc_comments=888:133 imports_exports=48:56 calls_definitions=325:66
+# ratios: loc_comments=910:133 imports_exports=50:56 calls_definitions=331:68
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
 #   module_kind: route
-#   summary: FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   summary: FastAPI app with lifecycle-managed storage maintenance, chat, agents, inventory, inspector, usage, and skill reports
 #   owner: a0p maintainer
 #   public_surface: app, api, AGENT
-#   internal_surface: _call_model, _split_model, _get_key, _record_usage, _utc_now_iso
+#   internal_surface: _call_model, _split_model, _get_key, _record_usage, _utc_now_iso, _lifespan, _run_legacy_audit_backfill
 #   auth_boundary: bearer
 #   storage_boundary: write
 #   network_boundary: external
@@ -20,7 +20,7 @@
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: a0p_server_boundaries
-#   summary: FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   summary: FastAPI app with lifecycle-managed storage maintenance and authenticated research-instrument APIs
 #   auth_boundary: bearer
 #   storage_boundary: write
 #   network_boundary: external
@@ -30,7 +30,7 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: a0p_server
-#   summary: FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   summary: FastAPI app with lifecycle-managed storage maintenance and authenticated research-instrument APIs
 #   exposes: app, api, AGENT
 #   boundaries: auth:bearer, storage:write, network:external, user_data:write
 #   owner: a0p maintainer
@@ -57,6 +57,7 @@ Exposes:
 from __future__ import annotations
 import os
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -71,7 +72,8 @@ from typing import Optional, List, Any
 
 from db import (
     keys_col, vault_col, sessions_col, drafts_col,
-    fanout_col, chain_col, agents_col, usage_col, ensure_indexes,
+    fanout_col, chain_col, agents_col, usage_col, pending_overrides_col,
+    ensure_indexes, backfill_legacy_audit_expiry,
 )
 from models import (
     KeyUpsert, KeyPublic,
@@ -107,7 +109,32 @@ def _utc_now_iso() -> str:
 
 
 # ---------- app ----------
-app = FastAPI(title="a0p — research instrument", version="0.1.0")
+async def _run_legacy_audit_backfill() -> None:
+    try:
+        await backfill_legacy_audit_expiry()
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        import logging
+        logging.getLogger("a0p").exception("legacy audit expiry backfill failed")
+
+
+@asynccontextmanager
+async def _lifespan(_app):
+    await _on_startup()
+    tasks = (
+        asyncio.create_task(_run_legacy_audit_backfill(), name="legacy-audit-expiry-backfill"),
+        asyncio.create_task(zfae_overrides.maintain_expiry(pending_overrides_col), name="override-expiry"),
+    )
+    try:
+        yield
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
+app = FastAPI(title="a0p — research instrument", version="0.1.0", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -913,7 +940,7 @@ app.include_router(_settings_router)
 
 
 # ---------- Agents (Tier 3): /api/instances/* + /api/chat/instance/{id} ----
-from db import agent_instances_col, pending_overrides_col, fiq_audit_col
+from db import agent_instances_col, fiq_audit_col
 
 _TEACHER_CLIENT = TeacherClient(REGISTRY, _get_key)
 _ZFAE_RUNTIME = ZFAERuntime(
@@ -1127,7 +1154,6 @@ app.include_router(sentinels_api)
 
 
 # ---------- startup ----------
-@app.on_event("startup")
 async def _on_startup():
     await ensure_indexes()
     # Seed admin from .env (idempotent)
@@ -1195,4 +1221,4 @@ async def _on_startup():
           "created_at": now,
           "updated_at": now,
       })
-# ratios: loc_comments=888:133 imports_exports=48:56 calls_definitions=325:66
+# ratios: loc_comments=910:133 imports_exports=50:56 calls_definitions=331:68

@@ -1,11 +1,11 @@
-# ratios: loc_comments=296:83 imports_exports=11:15 calls_definitions=82:21
+# ratios: loc_comments=312:88 imports_exports=13:16 calls_definitions=87:22
 # === MODULE_BUILD ===
 # id: zfae_overrides
 #   module_name: overrides
 #   module_kind: service
-#   summary: owner-scoped pending overrides with typed non-secret request summaries, keyed exact-action binding, minimal public views, and legacy raw-request scrubbing
+#   summary: owner-scoped pending overrides with typed non-secret summaries, exact-action binding, periodic expiry, and legacy raw-request scrubbing
 #   owner: Erin Spencer
-#   public_surface: OverrideRequestSummary, PendingOverride, summarize_request, request_matches, public_view, create_override, approve, consume_approved, reject, expire, get, list_for_user, list_pending, scrub_legacy_raw_requests, OVERRIDE_DEFAULT_TIMEOUT_MS
+#   public_surface: OverrideRequestSummary, PendingOverride, summarize_request, request_matches, public_view, create_override, approve, consume_approved, reject, expire, maintain_expiry, get, list_for_user, list_pending, scrub_legacy_raw_requests, OVERRIDE_DEFAULT_TIMEOUT_MS
 #   internal_surface: _utc_now_ms, _canonical_request, _action_fingerprint, _safe_label, _safe_argument_name, _coerce_summary, _from_doc
 #   auth_boundary: none
 #   storage_boundary: write
@@ -18,7 +18,7 @@
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: zfae_overrides_boundaries
-#   summary: owner-scoped override records retain only typed summaries and keyed action fingerprints; admin-only expiry maintenance
+#   summary: owner-scoped override records retain typed summaries and keyed fingerprints; lifecycle and admin expiry maintenance are bounded
 #   auth_boundary: none
 #   storage_boundary: write
 #   network_boundary: internal
@@ -29,7 +29,7 @@
 # === CAPABILITIES ===
 # id: zfae_overrides
 #   summary: confidential sentinel halt-and-override lifecycle with owner and exact-action binding
-#   exposes: OverrideRequestSummary, PendingOverride, summarize_request, request_matches, public_view, create_override, approve, consume_approved, reject, expire, get, list_for_user, list_pending, scrub_legacy_raw_requests
+#   exposes: OverrideRequestSummary, PendingOverride, summarize_request, request_matches, public_view, create_override, approve, consume_approved, reject, expire, maintain_expiry, get, list_for_user, list_pending, scrub_legacy_raw_requests
 #   boundaries: auth:none, storage:write, network:internal, user_data:write
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
@@ -40,9 +40,11 @@ approves or rejects; rejected becomes FIQ_BLOCKED. Expired becomes
 FIQ_BLOCKED with reason 'user_override_timeout'.
 """
 from __future__ import annotations
+import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import os
 import re
 import time
@@ -310,7 +312,7 @@ async def reject(col, override_id: str, user_id: str, reason: str = "") -> Optio
     # Scope by owner (user_id) as well as id+status — see approve().
     now = _utc_now_ms()
     r = await col.find_one_and_update(
-        {"_id": override_id, "status": "pending", "user_id": user_id},
+        {"_id": override_id, "status": "pending", "user_id": user_id, "expires_ms": {"$gt": now}},
         {"$set": {
             "status": "rejected",
             "resolved_ms": now,
@@ -325,12 +327,26 @@ async def reject(col, override_id: str, user_id: str, reason: str = "") -> Optio
 async def expire(col) -> int:
     """Expire stale records. Callers must enforce the internal/admin boundary."""
     now = _utc_now_ms()
-    query = {"status": {"$in": ["pending", "approved"]}, "expires_ms": {"$lt": now}}
+    query = {"status": {"$in": ["pending", "approved"]}, "expires_ms": {"$lte": now}}
     r = await col.update_many(
         query,
         {"$set": {"status": "expired", "resolved_ms": now}},
     )
     return r.modified_count
+
+
+async def maintain_expiry(col, interval_seconds: float = 60.0) -> None:
+    """Run an immediate expiry sweep, then repeat until lifecycle cancellation."""
+    if interval_seconds <= 0:
+        raise ValueError("interval_seconds must be positive")
+    while True:
+        try:
+            await expire(col)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logging.getLogger("a0p").exception("override expiry maintenance failed")
+        await asyncio.sleep(interval_seconds)
 
 
 async def get(col, override_id: str, user_id: str) -> Optional[PendingOverride]:
@@ -340,7 +356,10 @@ async def get(col, override_id: str, user_id: str) -> Optional[PendingOverride]:
 
 async def list_for_user(col, user_id: str, status: str = "pending", limit: int = 100) -> list[PendingOverride]:
     out: list[PendingOverride] = []
-    async for doc in col.find({"user_id": user_id, "status": status}).sort("created_ms", -1).limit(limit):
+    query = {"user_id": user_id, "status": status}
+    if status in {"pending", "approved"}:
+        query["expires_ms"] = {"$gt": _utc_now_ms()}
+    async for doc in col.find(query).sort("created_ms", -1).limit(limit):
         rec = _from_doc(doc)
         if rec:
             out.append(rec)
@@ -395,7 +414,7 @@ def _from_doc(doc: Optional[dict]) -> Optional[PendingOverride]:
 __all__ = [
     "OverrideRequestSummary", "PendingOverride", "OVERRIDE_DEFAULT_TIMEOUT_MS",
     "summarize_request", "request_matches", "public_view",
-    "create_override", "approve", "consume_approved", "reject", "expire", "get", "list_for_user", "list_pending",
+    "create_override", "approve", "consume_approved", "reject", "expire", "maintain_expiry", "get", "list_for_user", "list_pending",
     "scrub_legacy_raw_requests",
 ]
 
@@ -428,6 +447,10 @@ __all__ = [
 #   given: a legacy row containing raw_request
 #   then: startup migration replaces it with summary metadata and unsets raw_request
 #   class: migration
+# id: zfae_override_expiry_automatic
+#   given: a pending or approved override reaches its deadline while the service is running
+#   then: lifecycle maintenance marks it expired and active lists exclude it between sweeps
+#   class: retention
 # === END CONTRACTS ===
 
-# ratios: loc_comments=296:83 imports_exports=11:15 calls_definitions=82:21
+# ratios: loc_comments=312:88 imports_exports=13:16 calls_definitions=87:22

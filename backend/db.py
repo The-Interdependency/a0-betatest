@@ -1,11 +1,11 @@
-# ratios: loc_comments=76:52 imports_exports=4:1 calls_definitions=32:1
+# ratios: loc_comments=91:56 imports_exports=5:2 calls_definitions=38:2
 # === MODULE_BUILD ===
 # id: a0p_db_motor
 #   module_name: db
 #   module_kind: service
-#   summary: Motor async client + collection accessors + index ensurance
+#   summary: Motor async client, collection accessors, index ensurance, and bounded legacy audit migration
 #   owner: a0p maintainer
-#   public_surface: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, fiq_audit_col, pending_overrides_col, ensure_indexes
+#   public_surface: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, fiq_audit_col, pending_overrides_col, ensure_indexes, backfill_legacy_audit_expiry
 #   internal_surface: _client, _MONGO_URL, _DB_NAME
 #   auth_boundary: none
 #   storage_boundary: write
@@ -18,7 +18,7 @@
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: a0p_db_motor_boundaries
-#   summary: Motor async client + collection accessors + index ensurance
+#   summary: Motor async client, collection accessors, index ensurance, and bounded legacy audit migration
 #   auth_boundary: none
 #   storage_boundary: write
 #   network_boundary: internal
@@ -28,14 +28,15 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: a0p_db_motor
-#   summary: Motor async client + collection accessors + index ensurance
-#   exposes: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, fiq_audit_col, pending_overrides_col, ensure_indexes
+#   summary: Motor async client, collection accessors, index ensurance, and bounded legacy audit migration
+#   exposes: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, fiq_audit_col, pending_overrides_col, ensure_indexes, backfill_legacy_audit_expiry
 #   boundaries: auth:none, storage:write, network:internal, user_data:write
 #   owner: a0p maintainer
 # === END CAPABILITIES ===
 """MongoDB Motor client + collection accessors."""
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import UpdateOne
 
 _MONGO_URL = os.environ.get("MONGO_URL")
 _DB_NAME = os.environ.get("DB_NAME")
@@ -68,19 +69,36 @@ odysseus_servers_col = db["odysseus_servers"]
 skills_col = db["skills"]
 
 
-async def ensure_indexes():
+async def backfill_legacy_audit_expiry(col=None, batch_size: int = 500) -> int:
+    """Backfill TTL dates in bounded batches without delaying readiness."""
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
     from interdependent_lib.zfae.fiq_emit import audit_expiry
-    from interdependent_lib.zfae.overrides import scrub_legacy_raw_requests
 
-    # Repair 03 migrations run before serving requests: legacy held bodies are
-    # reduced to safe metadata, and legacy audit rows enter the same TTL policy
-    # as newly emitted events.
-    await scrub_legacy_raw_requests(pending_overrides_col)
-    async for doc in fiq_audit_col.find({"expires_at": {"$exists": False}}, {"timestamp_ms": 1}):
-        await fiq_audit_col.update_one(
+    target = fiq_audit_col if col is None else col
+    migrated = 0
+    batch = []
+    async for doc in target.find({"expires_at": {"$exists": False}}, {"timestamp_ms": 1}):
+        batch.append(UpdateOne(
             {"_id": doc["_id"], "expires_at": {"$exists": False}},
             {"$set": {"expires_at": audit_expiry(doc.get("timestamp_ms"))}},
-        )
+        ))
+        if len(batch) >= batch_size:
+            result = await target.bulk_write(batch, ordered=False)
+            migrated += int(getattr(result, "modified_count", 0))
+            batch = []
+    if batch:
+        result = await target.bulk_write(batch, ordered=False)
+        migrated += int(getattr(result, "modified_count", 0))
+    return migrated
+
+
+async def ensure_indexes():
+    from interdependent_lib.zfae.overrides import scrub_legacy_raw_requests
+
+    # Raw held bodies are scrubbed before serving because defensive read
+    # redaction cannot provide the same zero-retention guarantee at rest.
+    await scrub_legacy_raw_requests(pending_overrides_col)
 
     await keys_col.create_index([("user_id", 1), ("provider", 1)])
     await vault_col.create_index([("user_id", 1), ("site", 1), ("account_label", 1)])
@@ -134,5 +152,9 @@ async def ensure_indexes():
 #   given: database startup completes
 #   then: owner-time, owner-status-created, expiry-query, and audit TTL indexes exist
 #   class: retention
+# id: audit_legacy_expiry_backfill_bounded
+#   given: legacy audit rows lack expires_at when the service becomes ready
+#   then: a background migration assigns bounded expiry using finite unordered bulk batches
+#   class: retention
 # === END CONTRACTS ===
-# ratios: loc_comments=76:52 imports_exports=4:1 calls_definitions=32:1
+# ratios: loc_comments=91:56 imports_exports=5:2 calls_definitions=38:2
