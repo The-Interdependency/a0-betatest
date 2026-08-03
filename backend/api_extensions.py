@@ -1,24 +1,24 @@
-# ratios: loc_comments=210:60 imports_exports=16:11 calls_definitions=68:16
+# ratios: loc_comments=234:66 imports_exports=16:12 calls_definitions=78:18
 # === MODULE_BUILD ===
 # id: api_extensions_routes
 #   module_name: extensions
 #   module_kind: route
-#   summary: post-auth API extensions — custom keys vault (user-defined GitHub/GCP/AWS-style keys), Emergent demo quota (per-user daily token budget), living spec endpoint (auto-parses MODULE_BUILD/BOUNDARIES/CAPABILITIES/CONTRACTS/RATIOS blocks from the repo and serves them as JSON), audit feed (hash-chained FIQ events for the Tool/CoT Tape)
+#   summary: post-auth API extensions — custom keys, demo quota, living spec, owner-scoped redacted audit feed, and separately role-gated admin audit feed
 #   owner: Erin Spencer
 #   public_surface: router, record_demo_usage, check_demo_quota
-#   internal_surface: _quota_key, _today_utc, _scan_repo_blocks
+#   internal_surface: _quota_key, _today_utc, _scan_repo_blocks, _read_audit_rows
 #   auth_boundary: bearer
 #   storage_boundary: write
 #   network_boundary: none
 #   user_data_boundary: write
 #   admin_only: false
-#   tests: a0p_skills.contracts.api_extensions_living_spec_holds
+#   tests: a0p_skills.contracts.api_extensions_living_spec_holds, backend.tests.test_audit_override_confidentiality
 #   rollout: default_enabled
 #   rollback: revert; loses custom-keys vault, demo quota, and living spec
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: api_extensions_routes_boundaries
-#   summary: REST endpoints for custom keys, demo quota, living spec
+#   summary: REST endpoints for custom keys, demo quota, living spec, and confidential audit views
 #   auth_boundary: bearer
 #   storage_boundary: write
 #   network_boundary: none
@@ -28,7 +28,7 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: api_extensions_routes
-#   summary: REST endpoints for custom keys, demo quota, living spec
+#   summary: REST endpoints for custom keys, demo quota, living spec, and confidential audit views
 #   exposes: router, record_demo_usage, check_demo_quota
 #   boundaries: auth:bearer, storage:write, network:none, user_data:write
 #   owner: Erin Spencer
@@ -55,7 +55,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from auth import get_current_user
-from db import custom_keys_col, demo_quota_col
+from db import custom_keys_col, demo_quota_col, fiq_audit_col
+from interdependent_lib.zfae.fiq_emit import redact_payload
 
 
 router = APIRouter(prefix="/api", tags=["extensions"])
@@ -282,36 +283,70 @@ async def living_spec():
 
 @router.get("/audit/feed")
 async def audit_feed(agent_id: str = "", limit: int = 50, kind: str = "", user=Depends(get_current_user)):
-    """Return the most recent hash-chained FIQ events.
-
-    Filters: ``agent_id`` (exact match), ``kind`` (event_type prefix). Public
-    inside the app — surfaces the same canonical chain that the Workspace
-    Tool/CoT Tape polls every few seconds. Each row carries prev_hash + this_hash
-    so any client can verify chain integrity locally.
-    """
-    from db import fiq_audit_col
+    """Return only the authenticated owner's redacted FIQ events."""
     q: dict = {"user_id": user["id"]}
     if agent_id:
         q["agent_id"] = agent_id
     if kind:
-        q["event_type"] = {"$regex": f"^{kind}"}
+        q["event_type"] = {"$regex": f"^{re.escape(kind)}"}
+    out = await _read_audit_rows(q, limit=limit, include_owner=False)
+    return {"count": len(out), "events": list(reversed(out))}
+
+
+@router.get("/admin/audit/feed")
+async def admin_audit_feed(
+    user_id: str = "",
+    agent_id: str = "",
+    limit: int = 50,
+    kind: str = "",
+    user=Depends(get_current_user),
+):
+    """Return a role-gated, redacted global audit view for administrators."""
+    if user.get("role") != "admin":
+        raise HTTPException(403, "admin only")
+    q: dict = {}
+    if user_id:
+        q["user_id"] = user_id
+    if agent_id:
+        q["agent_id"] = agent_id
+    if kind:
+        q["event_type"] = {"$regex": f"^{re.escape(kind)}"}
+    out = await _read_audit_rows(q, limit=limit, include_owner=True)
+    return {"count": len(out), "events": list(reversed(out))}
+
+
+async def _read_audit_rows(q: dict, *, limit: int, include_owner: bool) -> list[dict]:
+    """Serialize current and legacy audit rows through one redaction boundary."""
     limit = max(1, min(int(limit), 200))
     cursor = fiq_audit_col.find(q).sort("timestamp_ms", -1).limit(limit)
     out = []
     async for d in cursor:
-        out.append({
+        row = {
             "id": str(d.get("_id")),
             "event_type": d.get("event_type"),
             "agent_id": d.get("agent_id"),
-            "user_id": d.get("user_id"),
-            "payload": d.get("payload"),
+            "payload": redact_payload(d.get("payload") or {}),
             "timestamp_ms": d.get("timestamp_ms"),
             "prev_hash": d.get("prev_hash"),
             "this_hash": d.get("this_hash"),
-        })
-    # Reverse to chronological so the UI appends downward.
-    return {"count": len(out), "events": list(reversed(out))}
+        }
+        if include_owner:
+            row["user_id"] = d.get("user_id")
+        out.append(row)
+    return out
+
+
+# === CONTRACTS ===
+# id: audit_feed_owner_scoped
+#   given: an authenticated user reads the normal audit feed
+#   then: the query is owner-scoped and the response omits owner identifiers
+#   class: security
+# id: admin_audit_feed_role_gated
+#   given: a caller requests the global audit feed
+#   then: only an administrator receives recursively redacted rows
+#   class: authorization
+# === END CONTRACTS ===
 
 
 __all__ = ["router", "record_demo_usage", "check_demo_quota"]
-# ratios: loc_comments=210:60 imports_exports=16:11 calls_definitions=68:16
+# ratios: loc_comments=234:66 imports_exports=16:12 calls_definitions=78:18

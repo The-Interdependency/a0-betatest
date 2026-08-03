@@ -1,3 +1,4 @@
+# ratios: loc_comments=120:48 imports_exports=13:8 calls_definitions=53:8
 # === MODULE_BUILD ===
 # id: tests_zfae_three_core_sentinels
 #   module_name: test_zfae_three_core_sentinels
@@ -137,8 +138,10 @@ async def test_fiq_emit_chain():
 
 
 @pytest.mark.asyncio
-async def test_pending_override_lifecycle():
+async def test_pending_override_lifecycle(monkeypatch):
     from interdependent_lib.zfae import overrides as ov
+
+    monkeypatch.setenv("A0P_OVERRIDE_FINGERPRINT_SECRET", "override-lifecycle-test-secret")
 
     class _Col:
         def __init__(self): self.docs = []
@@ -187,4 +190,4 @@ async def test_pending_override_lifecycle():
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-
+# ratios: loc_comments=120:48 imports_exports=13:8 calls_definitions=53:8

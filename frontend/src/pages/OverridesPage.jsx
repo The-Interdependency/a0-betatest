@@ -2,11 +2,11 @@
 // id: fe_page_overrides
 //   module_name: OverridesPage
 //   module_kind: ui_page
-//   summary: queue of pending sentinel overrides; approve (with justification) or reject; expired overrides housekeeping; shows flagged sentinels + raw request snippet
+//   summary: authenticated queue of pending sentinel overrides; approve or reject; shows flagged sentinels plus non-secret typed request metadata
 //   owner: Erin Spencer
 //   public_surface: OverridesPage
 //   internal_surface: OverrideRow, useOverrides
-//   auth_boundary: none
+//   auth_boundary: bearer
 //   storage_boundary: none
 //   network_boundary: external
 //   user_data_boundary: write
@@ -18,7 +18,7 @@
 // === BOUNDARIES ===
 // id: fe_page_overrides_boundaries
 //   summary: page-level approve/reject of pending overrides
-//   auth_boundary: none
+//   auth_boundary: bearer
 //   storage_boundary: none
 //   network_boundary: external
 //   user_data_boundary: write
@@ -29,7 +29,7 @@
 // id: fe_page_overrides
 //   summary: page-level approve/reject of pending overrides
 //   exposes: OverridesPage
-//   boundaries: auth:none, storage:none, network:external, user_data:write
+//   boundaries: auth:bearer, storage:none, network:external, user_data:write
 //   owner: Erin Spencer
 // === END CAPABILITIES ===
 
@@ -69,9 +69,11 @@ function OverrideRow({ rec, onApprove, onReject, busy }) {
         ))}
       </div>
 
-      {rec.raw_request?.prompt && (
+      {rec.request_summary && (
         <div className="text-[0.7rem] font-mono text-neutral-400 border border-white/5 bg-bg-surface p-2 truncate">
-          ▸ {rec.raw_request.prompt}
+          ▸ {rec.request_summary.tool
+            ? `${rec.request_summary.tool}(${(rec.request_summary.argument_names || []).join(", ")})`
+            : `${rec.request_summary.mode || rec.request_summary.event_kind} · ${rec.request_summary.content_bytes || 0} bytes`}
         </div>
       )}
 
@@ -123,21 +125,14 @@ export default function OverridesPage() {
 
   async function approve(id, reason) {
     setBusy(true);
-    try { await api.approveOverride(id, { user_id: "local", justification: reason }); await load(); }
+    try { await api.approveOverride(id, { justification: reason }); await load(); }
     catch (e) { setErr(e?.response?.data?.detail || e.message); }
     finally { setBusy(false); }
   }
 
   async function reject(id, reason) {
     setBusy(true);
-    try { await api.rejectOverride(id, { user_id: "local", reason }); await load(); }
-    catch (e) { setErr(e?.response?.data?.detail || e.message); }
-    finally { setBusy(false); }
-  }
-
-  async function expire() {
-    setBusy(true);
-    try { await api.expireOverrides(); await load(); }
+    try { await api.rejectOverride(id, { reason }); await load(); }
     catch (e) { setErr(e?.response?.data?.detail || e.message); }
     finally { setBusy(false); }
   }
@@ -159,10 +154,6 @@ export default function OverridesPage() {
             <input data-testid="overrides-showall-toggle" type="checkbox" checked={showAll} onChange={e => setShowAll(e.target.checked)} />
             show all (history)
           </label>
-          <button data-testid="overrides-expire-btn" onClick={expire} disabled={busy}
-                  className="px-2 py-1.5 border border-white/10 text-neutral-400 font-mono text-[0.65rem] uppercase tracking-wider hover:bg-bg-surface flex items-center gap-1 disabled:opacity-40">
-            <Clock size={12} /> expire stale
-          </button>
           <button data-testid="overrides-refresh-btn" onClick={load} disabled={busy}
                   className="px-2 py-1.5 border border-white/10 text-neutral-400 font-mono text-[0.65rem] uppercase tracking-wider hover:bg-bg-surface flex items-center gap-1 disabled:opacity-40">
             <ArrowsClockwise size={12} /> refresh

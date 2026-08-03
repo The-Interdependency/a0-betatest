@@ -1,9 +1,9 @@
-# ratios: loc_comments=91:66 imports_exports=4:10 calls_definitions=23:11
+# ratios: loc_comments=94:66 imports_exports=4:10 calls_definitions=23:11
 # === MODULE_BUILD ===
 # id: tools_registry
 #   module_name: registry
 #   module_kind: engine
-#   summary: in-process Tool registry + invocation surface — Tool, ToolError, register, lookup, list_tools, invoke; every invocation routes through the sentinel evaluator (gated_invoke) so cliff-mode S4/S12 etc. can halt before any side effect; tools may be native (python callable), webhook (user-registered URL with HMAC), or mcp (relayed to a registered MCP server)
+#   summary: in-process Tool registry + invocation surface — Tool, ToolError, register, lookup, list_tools, invoke; every invocation routes through the sentinel evaluator (gated_invoke), including internal staged-resume context, so cliff-mode S4/S12 etc. can halt before any side effect; tools may be native (python callable), webhook (user-registered URL with HMAC), or mcp (relayed to a registered MCP server)
 #   owner: Erin Spencer
 #   public_surface: Tool, ToolError, register, lookup, unregister, is_global, user_tool_names, list_tools, invoke, TOOL_KIND_NATIVE, TOOL_KIND_WEBHOOK, TOOL_KIND_MCP, TOOL_KIND_ODYSSEUS
 #   internal_surface: _REG, _validate_input
@@ -155,11 +155,13 @@ async def invoke(
     params: dict,
     *,
     user: dict,
+    agent_id: Optional[str] = None,
     sentinel_modes: Optional[dict] = None,
     sentinel_weights: Optional[dict] = None,
     pending_overrides_col=None,
     fiq_audit_col=None,
     override_id: Optional[str] = None,
+    resume_parent_id: Optional[str] = None,
 ) -> Any:
     """Invoke a tool through the sentinel gate.
 
@@ -174,11 +176,12 @@ async def invoke(
     # Lazy import to avoid a cycle (gated_invoke imports back into registry).
     from .gated_invoke import gated_invoke
     return await gated_invoke(
-        tool, params, user=user,
+        tool, params, user=user, agent_id=agent_id,
         sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
         pending_overrides_col=pending_overrides_col,
         fiq_audit_col=fiq_audit_col,
         override_id=override_id,
+        resume_parent_id=resume_parent_id,
     )
 
 
@@ -187,4 +190,4 @@ __all__ = [
     "user_tool_names", "list_tools", "invoke",
     "TOOL_KIND_NATIVE", "TOOL_KIND_WEBHOOK", "TOOL_KIND_MCP", "TOOL_KIND_ODYSSEUS",
 ]
-# ratios: loc_comments=91:66 imports_exports=4:10 calls_definitions=23:11
+# ratios: loc_comments=94:66 imports_exports=4:10 calls_definitions=23:11

@@ -1,3 +1,4 @@
+# ratios: loc_comments=204:72 imports_exports=16:13 calls_definitions=47:29
 # === MODULE_BUILD ===
 # id: test_tool_use_loop
 #   module_name: test_tool_use_loop
@@ -5,7 +6,7 @@
 #   summary: pytest coverage for the cross-provider tool-use loop (run_tool_loop), the
 #     deterministic native tool selector (select_native_tool / summarize_tool_result),
 #     provider schema translation (tool_to_schema), the sentinel-halt path inside the
-#     loop (ToolLoopHalt), and the runtime wiring that threads tools_allowed through
+#     loop (ToolLoopHalt) with its verdict metadata, and the runtime wiring that threads tools_allowed through
 #     the teacher and native paths with an injected fake poster
 #   owner: Erin Spencer
 #   public_surface: (pytest test functions)
@@ -29,6 +30,30 @@
 #   admin_only: false
 #   owner: Erin Spencer
 # === END BOUNDARIES ===
+# DOC role: contract
+# === CHECKS ===
+# id: check_zfae_runtime_paths_loads
+#   proves: zfae_runtime_paths_loads
+#   call: self::test_runtime_paths_mixin_loaded
+#   requires: python3
+#   timeout: 20
+#   mutates: none
+#   cleanup: none
+# id: check_tools_agent_loop_halt_verdict
+#   proves: tools_agent_loop_halt_verdict_preserved
+#   call: self::test_loop_halts_on_sentinel
+#   requires: python3
+#   timeout: 20
+#   mutates: none
+#   cleanup: none
+# id: check_zfae_runtime_single_tool_attempt
+#   proves: zfae_runtime_single_tool_attempt
+#   call: self::test_runtime_teacher_tool_attempt_budget
+#   requires: python3
+#   timeout: 20
+#   mutates: none
+#   cleanup: none
+# === END CHECKS ===
 # === CONTRACTS ===
 # id: test_tool_use_loop_self
 #   given: the tool-use loop + native selector + runtime wiring
@@ -122,7 +147,7 @@ async def test_loop_no_tool_call_returns_immediately():
 @pytest.mark.asyncio
 async def test_loop_halts_on_sentinel():
     async def executor(tc):
-        raise ToolLoopHalt(override_id="ov-123")
+        raise ToolLoopHalt(override_id="ov-123", sentinel_verdict={"blocking_cliff": True})
 
     out = await run_tool_loop(
         provider="openai", model="m", api_key="k",
@@ -132,6 +157,7 @@ async def test_loop_halts_on_sentinel():
     assert out["halted"] is True
     assert out["override_id"] == "ov-123"
     assert out["error"] == "sentinel_halt"
+    assert out["sentinel_verdict"] == {"blocking_cliff": True}
 
 
 @pytest.mark.asyncio
@@ -196,6 +222,14 @@ def test_summarize_total():
 
 # ---- runtime wiring (teacher + native paths) -------------------------------
 
+def test_runtime_paths_mixin_loaded():
+    from interdependent_lib.zfae.runtime import ZFAERuntime
+
+    mixin = ZFAERuntime.__mro__[1]
+    assert mixin.__name__ == "RuntimePathsMixin"
+    assert mixin.__module__.endswith("._zfae_runt_path_v0_0_0alpha")
+
+
 def _bank_ready():
     from interdependent_lib.zfae.weights import A0ZFAEWeightBank
     bank = A0ZFAEWeightBank.fresh("agent-test")
@@ -247,7 +281,58 @@ async def test_runtime_teacher_tool_loop_threads_tools(monkeypatch):
     assert reply.trace["tool_trace"][0]["name"] == "echo"
 
 
+@pytest.mark.asyncio
+async def test_runtime_teacher_tool_attempt_budget(monkeypatch):
+    """A runtime turn attempts only its first provider-requested tool."""
+    import tools.agent_loop as agent_loop
+    from interdependent_lib.zfae.runtime import ZFAERuntime
+    from interdependent_lib.zfae.teacher import TeacherClient
+    from tools import registry
+    from tools.registry import TOOL_KIND_NATIVE, Tool
+
+    calls = []
+    tool = Tool(
+        name="budget_echo", kind=TOOL_KIND_NATIVE, description="echo once",
+        input_schema={"type": "object", "properties": {"v": {"type": "string"}}},
+        fn=lambda user, params: calls.append(params["v"]) or {"echoed": params["v"]},
+    )
+    monkeypatch.setitem(registry._REG, tool.name, tool)
+    state = {"n": 0}
+
+    async def poster(_url, _headers, _params, _payload):
+        state["n"] += 1
+        if state["n"] <= 2:
+            value = "first" if state["n"] == 1 else "second"
+            return {"choices": [{"message": {"content": None, "tool_calls": [{
+                "id": f"c{state['n']}",
+                "function": {"name": tool.name, "arguments": f'{{"v": "{value}"}}'},
+            }]}}], "usage": {"total_tokens": 1}}
+        return {"choices": [{"message": {"content": "done"}}],
+                "usage": {"total_tokens": 1}}
+
+    original = agent_loop.run_tool_loop
+
+    async def patched(**kwargs):
+        kwargs["poster"] = poster
+        return await original(**kwargs)
+
+    monkeypatch.setattr(agent_loop, "run_tool_loop", patched)
+    runtime = ZFAERuntime(
+        teacher_client=TeacherClient({"openai": object()}, lambda *_args: "key"),
+        get_key_fn=lambda *_args: _async("key"),
+    )
+    teacher, trace, halt, verdict = await runtime._teacher_tool_loop(
+        teacher_model_id="openai:model", messages=[{"role": "user", "content": "go"}],
+        tools_allowed=[tool.name], agent_id="agent-a", user_id="user-a",
+        sentinel_modes=None, sentinel_weights=None, override_id=None, resume_parent_id=None,
+    )
+    assert teacher.teacher_reply == "done" and halt is None and verdict is None
+    assert calls == ["first"]
+    assert [entry["status"] for entry in trace] == ["ok", "error"]
+
+
 def _async(v):
     async def _a(*_a, **_k):
         return v
     return _a()
+# ratios: loc_comments=204:72 imports_exports=16:13 calls_definitions=47:29

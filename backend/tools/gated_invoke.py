@@ -1,12 +1,12 @@
-# ratios: loc_comments=116:64 imports_exports=12:2 calls_definitions=26:2
+# ratios: loc_comments=156:75 imports_exports=13:2 calls_definitions=28:3
 # === MODULE_BUILD ===
 # id: tools_gated_invoke
 #   module_name: gated_invoke
 #   module_kind: engine
-#   summary: per-tool-call sentinel gate — evaluates the 13 sentinels against the tool name + serialized params, halts on any flag (creates a PendingOverride and emits zfae_override_created), only proceeds when no flag (or when caller supplied an approved override_id); emits zfae_tool_call + zfae_tool_result FIQ events on every invocation
+#   summary: per-tool-call sentinel gate that binds approved overrides to the owner, exact arguments, execution target/configuration, and a trusted staged chat parent while audit emission redacts sensitive arguments
 #   owner: Erin Spencer
 #   public_surface: gated_invoke
-#   internal_surface: _dispatch
+#   internal_surface: _dispatch, _tool_action_request
 #   auth_boundary: bearer
 #   storage_boundary: write
 #   network_boundary: external
@@ -40,11 +40,23 @@
 #   class: correctness
 #   call: a0p_skills.contracts.tools_gated_invoke_halts_on_cliff_holds
 # === END CONTRACTS ===
+
+# === CONTRACTS ===
+# id: tools_gated_override_owner_action_bound
+#   given: a caller presents an approved tool-call override
+#   then: dispatch resumes only for the same owner, agent, tool target/configuration, and exact arguments
+#   class: security
+# id: tools_gated_override_parent_link_bound
+#   given: a tool halt follows a request-local consumed chat approval
+#   then: the child retains only the validated parent id and cannot outlive that parent
+#   class: security
+# === END CONTRACTS ===
 """Sentinel-gated tool invocation pipeline."""
 from __future__ import annotations
 import asyncio
 import inspect
 import json
+import time
 from typing import Any, Optional
 
 from interdependent_lib.zfae.sentinel_eval import evaluate as evaluate_sentinels, EventContext
@@ -75,16 +87,35 @@ async def _dispatch(tool: Tool, params: dict, user: dict) -> Any:
     raise ToolError(f"unknown tool kind {tool.kind!r}")
 
 
+def _tool_action_request(tool: Tool, params: dict) -> dict:
+    """Build the ephemeral exact-action input; only its keyed digest persists."""
+    return {
+        "tool": tool.name,
+        "params": params,
+        "_tool_binding": {
+            "kind": tool.kind,
+            "source": tool.source,
+            "owner_user_id": tool.owner_user_id,
+            "webhook_url": tool.webhook_url,
+            "webhook_secret": tool.webhook_secret,
+            "mcp_server_id": tool.mcp_server_id,
+            "remote_name": tool.remote_name,
+        },
+    }
+
+
 async def gated_invoke(
     tool: Tool,
     params: dict,
     *,
     user: dict,
+    agent_id: Optional[str] = None,
     sentinel_modes: Optional[dict] = None,
     sentinel_weights: Optional[dict] = None,
     pending_overrides_col=None,
     fiq_audit_col=None,
     override_id: Optional[str] = None,
+    resume_parent_id: Optional[str] = None,
 ) -> Any:
     """Run the 13-sentinel gate, then dispatch.
 
@@ -92,8 +123,8 @@ async def gated_invoke(
     override_id=...)`` if the gate halts and no approved override_id was
     supplied. Raises ``ToolError`` for any tool-side failure.
     """
-    agent_id = user.get("id") or "local"
-    user_id = agent_id
+    user_id = user.get("id") or "local"
+    agent_id = agent_id or user_id
 
     # Build the EventContext from the tool name + serialized params (so a
     # cliff marker in any param string still trips S4 / S12).
@@ -131,17 +162,25 @@ async def gated_invoke(
         # one call being replayed to resume a different flagged tool.
         existing = None
         if override_id and pending_overrides_col is not None:
-            existing = await zfae_overrides.get(pending_overrides_col, override_id)
-        req = (existing.raw_request or {}) if existing is not None else {}
+            existing = await zfae_overrides.get(pending_overrides_col, override_id, user_id)
+        raw_request = _tool_action_request(tool, params)
         matches_this_call = (
             existing is not None
             and existing.agent_id == agent_id
             and existing.event_kind == "tool_call"
-            and req.get("tool") == tool.name
-            and json.dumps(req.get("params"), sort_keys=True, default=str)
-            == json.dumps(params, sort_keys=True, default=str)
+            and zfae_overrides.request_matches(existing, "tool_call", raw_request)
         )
-        if not (matches_this_call and existing.status == "approved"):
+        consumed = None
+        if matches_this_call and existing.status == "approved":
+            consumed = await zfae_overrides.consume_approved(
+                pending_overrides_col,
+                existing.id,
+                user_id,
+                agent_id,
+                "tool_call",
+                raw_request,
+            )
+        if consumed is None:
             reuse_id = None
             rec = None
             if matches_this_call and existing.status == "pending":
@@ -156,15 +195,30 @@ async def gated_invoke(
                 # tool override so the client always has one to approve — never
                 # halt with override_id=None here.
                 reasons = {v.name: v.reason for v in verdict.verdicts if v.flagged}
+                resume_parent = None
+                if resume_parent_id and override_id == resume_parent_id:
+                    candidate = await zfae_overrides.get(
+                        pending_overrides_col, resume_parent_id, user_id,
+                    )
+                    if (
+                        candidate is not None
+                        and candidate.agent_id == agent_id
+                        and candidate.event_kind == "chat_reply"
+                        and candidate.status == "consumed"
+                        and candidate.expires_ms > int(time.time() * 1000)
+                    ):
+                        resume_parent = candidate
                 rec = await zfae_overrides.create_override(
                     pending_overrides_col,
                     agent_id=agent_id, user_id=user_id, event_kind="tool_call",
-                    raw_request={"tool": tool.name, "params": params},
+                    raw_request=raw_request,
                     flagged_sentinels=list(verdict.flagged_sentinels),
                     reasons=reasons,
                     verdict_vector=list(verdict.vector),
                     disabled_sentinels=list(verdict.disabled_sentinels),
                     blocking_cliff=bool(verdict.blocking_cliff),
+                    parent_override_id=resume_parent.id if resume_parent else None,
+                    max_expires_ms=resume_parent.expires_ms if resume_parent else None,
                 )
             raise ToolError(
                 f"sentinels halted tool {tool.name!r}",
@@ -193,4 +247,4 @@ async def gated_invoke(
 
 
 __all__ = ["gated_invoke"]
-# ratios: loc_comments=116:64 imports_exports=12:2 calls_definitions=26:2
+# ratios: loc_comments=156:75 imports_exports=13:2 calls_definitions=28:3

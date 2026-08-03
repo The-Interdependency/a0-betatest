@@ -1,19 +1,27 @@
 # Repair 03 — Audit-feed and override confidentiality
 
 **Priority:** P0  
-**Status:** open  
+**Status:** implemented — draft verification pending
 **Primary risk:** unauthenticated callers can enumerate audit events and retrieve held raw requests by override id.
 
-## Verified current behavior
+## Implemented behavior
 
-- `GET /api/audit/feed` is unauthenticated and returns `user_id`, `agent_id`, payloads, and hashes across the collection unless filters are supplied.
-- Override creation events carry override identifiers in audit payloads.
-- `GET /api/overrides/{override_id}` is unauthenticated and calls an id-only lookup.
-- `PendingOverride.raw_request` stores the original request payload.
-- `POST /api/overrides/expire` is unauthenticated and mutates all expired pending records.
-- Approval and rejection were improved to include owner scoping, but read and expiration boundaries remain open.
+- The ordinary audit feed requires authentication, queries only the caller's `user_id`, omits owner ids, and defensively redacts legacy payloads.
+- Global audit access is separate at `GET /api/admin/audit/feed`, requires `role=admin`, and remains recursively redacted.
+- Every override read includes `_id + user_id`; there is no id-only `get()` signature.
+- Held actions persist a typed request summary and keyed action fingerprint, never prompt/tool arguments/body. Startup scrubs legacy `raw_request` rows.
+- Approval is owner-scoped, must be unexpired, and is atomically consumed once for the same owner, agent, event kind, exact arguments, and tool execution target/configuration.
+- A chat approval is keyed to the full canonical execution context: owner, agent, prompt/mode, transcript, model/system/persona, tool surfaces, sentinel configuration, snapshot, bank checkpoint, and runtime policy. Only its HMAC is retained.
+- A tool override created after a consumed chat approval retains only an internal parent id, cannot outlive that parent, and permits one atomic continuation claim for that unchanged context before its exact tool gate.
+- Each runtime turn attempts at most one tool. This bounds staged retry to a first tool with no earlier tool side effect to replay.
+- Tool-halt replies retain the child tool verdict, so a benign outer chat cannot hide a downstream cliff confirmation requirement.
+- Override list/detail responses use an explicit field whitelist and omit raw material, fingerprints, owner ids, and resolution text.
+- Lifecycle-managed maintenance marks timed-out overrides expired every 60 seconds; `POST /api/admin/overrides/expire` remains an admin-only operator fallback, and the ordinary-user mutation/UI control stay removed.
+- Audit payloads are recursively redacted before hashing and insertion. Tool arguments, result previews, authorization/cookie material, environment containers, webhook data, secret-shaped keys, and known credential-shaped strings are removed.
+- Redacted audit events expire after 30 days by default (`A0P_AUDIT_RETENTION_DAYS`, constrained to 1–365). Full raw held-request retention is zero.
+- A bounded background bulk job backfills expiry for legacy audit rows without delaying readiness or changing their hash input; startup creates owner/time, owner/status/created, expiry-query, and TTL indexes.
 
-An attacker can poll the public audit feed, obtain an override id, and retrieve a held prompt or tool request.
+Repairs 01 and 02 had already added basic endpoint authentication and owner filtering before this repair began; this change closes the remaining confidentiality and exact-action gaps.
 
 ## Objective
 
@@ -54,13 +62,27 @@ python -m pytest -q backend/tests
 
 Add focused tests for audit redaction and horizontal authorization.
 
+## Verification evidence
+
+- `python -m compileall -q backend`: pass.
+- Audit, override, and tool-use focus: 33 passed.
+- Clean-build selected backend set including Repair 03: 62 passed.
+- Frontend production build: pass; only pre-existing lint warnings.
+- Full offline backend collection excluding live-URL suites: 85 passed, with one pre-existing `PROOF_GREEN` failure and six live HTTP setup errors against an unrelated external URL.
+- Skill-lib manifest check: pass after deterministic refresh.
+- Capability and frontend module-build scanners: pass. Other doctrine scanners report only pre-existing repository debt documented in the draft PR.
+
 ## Likely touchpoints
 
 - `backend/api_extensions.py`
 - `backend/server.py`
 - `backend/interdependent_lib/zfae/overrides.py`
 - `backend/interdependent_lib/zfae/runtime.py`
+- `backend/interdependent_lib/zfae/zfae_runt_path_v0.0.0alpha.py`
 - `backend/interdependent_lib/zfae/fiq_emit.py`
+- `backend/tools/agent_loop.py`
+- `backend/tools/gated_invoke.py`
+- `backend/tools/registry.py`
 - `backend/db.py`
 
 ## Out of scope
@@ -69,4 +91,14 @@ Hash-chain concurrency and ordering are repaired in Repair 07.
 
 ## hmmm
 
-A provenance record can be verifiable without being public. Hash transparency and payload confidentiality must be designed as separate properties.
+A provenance record can be verifiable without being public. Owner-filtered feeds can omit global-chain predecessors, and TTL can remove old predecessors; Repair 07 still owns a coherent concurrency and verification design for those gaps.
+
+Unexpired legacy JSONL rows are redacted on read and age out under the bounded policy. Rewriting their stored payloads in place would invalidate historical hashes, so any persisted-row rechain migration remains with Repair 07.
+
+Chat approvals bind the complete canonical execution context without retaining its raw values; independently gated tool calls still require their own exact, configuration-bound approval before any side effect. When both gates halt one turn, the approved tool child carries a private, one-shot link to the consumed exact chat authorization so the retry reaches—but cannot bypass—the exact tool gate.
+
+The staged resume restarts model execution rather than checkpointing it. The one-tool-attempt budget ensures there was no earlier tool side effect in that turn; a provider that changes its first tool choice burns the one-shot continuation. General provider continuation beyond one tool remains `hmmm` and requires authenticated checkpoint state rather than replay from the beginning.
+
+The repo-level `a0-betatest_msdmd.ts` aggregate predates these declarations. Regenerating that monolith would leave a touched executable TypeScript file far above the same 400-line doctrine ceiling; a small index over sharded data needs a separately scoped redesign. Module-local declarations and the targeted no-exec contract/check audit remain the evidence for this repair.
+
+The literal-dot PCEA helper loads in the checked-out source layout and passes the application import smoke. Its inclusion in a separately built Python wheel remains `hmmm`; this deployment path installs requirements and runs from the repository source rather than installing the project wheel.

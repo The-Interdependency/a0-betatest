@@ -63,6 +63,8 @@ jobs:
         id: tests
         continue-on-error: true
         shell: bash
+        env:
+          PYTHONPATH: backend
         run: |
           set +e
           output="$(python -m pytest -q --tb=short \
@@ -72,6 +74,8 @@ jobs:
             backend/tests/test_morphology_ladder.py \
             backend/tests/test_zfae_gonal_inscription.py \
             backend/tests/test_strict_auth_demo_isolation.py \
+            backend/tests/test_audit_override_confidentiality.py \
+            backend/tests/test_audit_storage_confidentiality.py \
             backend/tests/test_agent_state_isolation.py 2>&1)"
           status=$?
           printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"

@@ -1,16 +1,16 @@
-# ratios: loc_comments=642:100 imports_exports=21:3 calls_definitions=117:18
+# ratios: loc_comments=398:104 imports_exports=17:3 calls_definitions=71:18
 # === MODULE_BUILD ===
 # id: zfae_runtime
 #   module_name: runtime
 #   module_kind: engine
-#   summary: ZFAERuntime — dispatches teacher_assisted vs zfae_native; never silently substitutes teacher output as native inference; carries reply_source + teacher_called + zfae_weights_updated flags
+#   summary: stable ZFAERuntime facade dispatches teacher-assisted vs native inference and resumes held actions only for the owning user's exact approved request chain
 #   owner: Erin Spencer
 #   public_surface: ZFAERuntime, RuntimeMode, RuntimeReply, MISSING_NATIVE_MESSAGE
-#   internal_surface: _is_trained_enough, _teacher_tool_loop, _native_tool_use, _fiq_emit_tool_trace
+#   internal_surface: _is_trained_enough, _sentinel_gate, _fiq_emit_tool_trace, fixed-path PCEA runtime mixin loader
 #   auth_boundary: none
 #   storage_boundary: write
 #   network_boundary: external
-#   user_data_boundary: read
+#   user_data_boundary: write
 #   admin_only: false
 #   tests: a0p_skills.contracts.zfae_runtime_reply_source_flag_holds, a0p_skills.contracts.zfae_native_refuses_when_untrained_holds
 #   rollout: default_enabled
@@ -23,7 +23,7 @@
 #   auth_boundary: none
 #   storage_boundary: write
 #   network_boundary: external
-#   user_data_boundary: read
+#   user_data_boundary: write
 #   admin_only: false
 #   owner: Erin Spencer
 # === END BOUNDARIES ===
@@ -31,7 +31,7 @@
 # id: zfae_runtime
 #   summary: ZFAERuntime — dispatches teacher_assisted vs zfae_native; never silently substitutes teacher output as native inference; carries reply_source + teacher_called + zfae_weights_updated flags
 #   exposes: ZFAERuntime, RuntimeMode, RuntimeReply, MISSING_NATIVE_MESSAGE
-#   boundaries: auth:none, storage:write, network:external, user_data:read
+#   boundaries: auth:none, storage:write, network:external, user_data:write
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
 # === CONTRACTS ===
@@ -49,26 +49,71 @@
 #   class: correctness
 #   call: a0p_skills.contracts.zfae_native_refuses_when_untrained_holds
 # === END CONTRACTS ===
+
+# === CONTRACTS ===
+# id: zfae_runtime_override_owner_action_bound
+#   given: a caller presents an approved chat override
+#   then: execution resumes only for the same owner, agent, and canonical execution context
+#   class: security
+# id: zfae_runtime_chat_context_bound
+#   given: model, system, transcript, tool surface, sentinel, snapshot, bank, or policy context changes
+#   then: an earlier chat or staged-child approval cannot resume the changed execution
+#   class: security
+# === END CONTRACTS ===
+
+# === CONTRACTS ===
+# id: zfae_runtime_staged_override_resume
+#   given: a consumed exact chat approval leads to a separately approved exact tool override
+#   then: only one retried chat reaches the exact tool gate and the tool verdict remains visible
+#   class: security
+# id: zfae_runtime_tool_halt_verdict
+#   given: a benign chat reaches a tool call that trips a cliff sentinel
+#   then: the halted reply exposes the tool child's cliff verdict rather than the benign chat verdict
+#   class: security
+# === END CONTRACTS ===
 """ZFAERuntime — dispatches teacher_assisted vs zfae_native modes."""
 from __future__ import annotations
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from enum import Enum
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
 from typing import Any, Optional
 
 import logging as _logging
+import sys
 
 _AUDIT_LOG = _logging.getLogger("a0p.zfae.audit")
 
 
 from .inference import A0ZFAEInferenceEngine, MISSING_NATIVE_MESSAGE
 from .weights import A0ZFAEWeightBank
-from .trainer import ZFAELearner, TrainingResult
-from .teacher import TeacherClient, TeacherInvocation, build_curated_context
+from .trainer import ZFAELearner
+from .teacher import TeacherClient, build_curated_context
 from .sentinel_eval import evaluate as evaluate_sentinels, EventContext
 from .sentinels import Verdict13, SentinelVerdict
 from . import overrides as zfae_overrides
 from . import fiq_emit
-from .native_tools import select_native_tool, summarize_tool_result
+from .native_tools import select_native_tool
+
+
+def _load_runtime_paths_mixin():
+    """Load the literally PCEA-named helper through a fixed local path."""
+    module_name = f"{__package__}._zfae_runt_path_v0_0_0alpha"
+    source_path = Path(__file__).with_name("zfae_runt_path_v0.0.0alpha.py")
+    spec = spec_from_file_location(module_name, source_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load runtime paths from {source_path}")
+    module = module_from_spec(spec)
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(module_name, None)
+        raise
+    return module.RuntimePathsMixin
+
+
+_RuntimePathsMixin = _load_runtime_paths_mixin()
 
 
 class RuntimeMode(str, Enum):
@@ -104,7 +149,7 @@ def _is_trained_enough(bank: A0ZFAEWeightBank, *, min_steps: int = 16, max_loss:
     return bank.all_seeds_touched
 
 
-class ZFAERuntime:
+class ZFAERuntime(_RuntimePathsMixin):
     """Dispatcher — teacher_assisted (call teacher, train, return teacher's reply)
     or zfae_native (native engine only; refuse if not trained enough)."""
 
@@ -130,6 +175,22 @@ class ZFAERuntime:
         # BYOK key resolver `get_key_fn(user_id, provider) -> str|None`; enables
         # the mid-thought tool-use loop in the teacher path when provided.
         self.get_key_fn = get_key_fn
+
+    _teacher_mode_value = RuntimeMode.TEACHER_ASSISTED.value
+    _native_mode_value = RuntimeMode.ZFAE_NATIVE.value
+
+    @staticmethod
+    def _make_runtime_reply(**values):
+        return RuntimeReply(**values)
+
+    @staticmethod
+    def _select_native_tool(raw_prompt):
+        return select_native_tool(raw_prompt)
+
+    def _native_ready(self, bank):
+        return _is_trained_enough(
+            bank, min_steps=self.min_steps, max_loss=self.max_loss,
+        )
 
     async def reply(
         self,
@@ -158,13 +219,21 @@ class ZFAERuntime:
         a halt reply (reply_source='zfae_halted') with a pending_override_id.
         """
         zfae_snapshot = zfae_snapshot or {}
+        action_request = self._chat_action_request(
+            agent_id=agent_id, user_id=user_id, mode=mode, bank=bank,
+            raw_prompt=raw_prompt, transcript=transcript, teacher_model_id=teacher_model_id,
+            system_prompt=system_prompt, persona=persona, ring_summary=ring_summary,
+            user_feedback=user_feedback, zfae_snapshot=zfae_snapshot,
+            sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
+            tools_allowed=tools_allowed, lifted_path_trace=lifted_path_trace,
+        )
 
         # ---- Sentinel halt gate -------------------------------------------------
-        verdict, override_rec = await self._sentinel_gate(
+        verdict, override_rec, resume_parent_id = await self._sentinel_gate(
             agent_id=agent_id, user_id=user_id, mode=mode, raw_prompt=raw_prompt,
             transcript=transcript, bank=bank,
             sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
-            override_id=override_id,
+            override_id=override_id, action_request=action_request,
         )
         if override_rec is not None:
             return RuntimeReply(
@@ -194,6 +263,7 @@ class ZFAERuntime:
                 zfae_snapshot=zfae_snapshot,
                 tools_allowed=tools_allowed, sentinel_modes=sentinel_modes,
                 sentinel_weights=sentinel_weights, override_id=override_id,
+                resume_parent_id=resume_parent_id,
             )
         elif mode == RuntimeMode.ZFAE_NATIVE:
             reply_obj = await self._zfae_native(
@@ -201,12 +271,14 @@ class ZFAERuntime:
                 zfae_snapshot=zfae_snapshot, agent_id=agent_id, user_id=user_id,
                 tools_allowed=tools_allowed, sentinel_modes=sentinel_modes,
                 sentinel_weights=sentinel_weights, override_id=override_id,
+                resume_parent_id=resume_parent_id,
                 lifted_path_trace=lifted_path_trace,
             )
         else:
             raise ValueError(f"unknown mode {mode!r}")
 
-        reply_obj.sentinel_verdict = _verdict_to_dict(verdict) if verdict else None
+        if reply_obj.sentinel_verdict is None:
+            reply_obj.sentinel_verdict = _verdict_to_dict(verdict) if verdict else None
 
         # ---- FIQ emit: zfae_decode (non-silent native inscription audit) --------
         await self._fiq_emit_decode(agent_id, user_id, reply_obj)
@@ -216,17 +288,18 @@ class ZFAERuntime:
 
     async def _sentinel_gate(
         self, *, agent_id, user_id, mode, raw_prompt, transcript, bank,
-        sentinel_modes, sentinel_weights, override_id,
-    ) -> tuple[Optional[Verdict13], Optional[Any]]:
+        sentinel_modes, sentinel_weights, override_id, action_request,
+    ) -> tuple[Optional[Verdict13], Optional[Any], Optional[str]]:
         """Evaluate sentinels; create a PendingOverride if any flagged and no approved override_id.
 
-        Returns (verdict, override_record_or_none). override_record_or_none is non-None
-        iff this turn must halt (i.e. flagged and no approved override).
+        Returns (verdict, override_record_or_none, resume_parent_id). The record
+        is non-None iff this turn must halt; the parent id is internal-only.
         """
+        raw_request = action_request
         ctx = EventContext(
             kind="chat_reply",
             agent_id=agent_id, user_id=user_id,
-            raw_request={"prompt": raw_prompt, "mode": mode.value},
+            raw_request=raw_request,
             agent_sheet_modes=sentinel_modes,
             agent_sheet_weights=sentinel_weights,
             transcript_len=len(transcript or []),
@@ -252,13 +325,31 @@ class ZFAERuntime:
                 _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
 
         if not verdict.requires_override:
-            return verdict, None
+            return verdict, None, None
 
-        # If caller provided an approved override_id, allow execution.
+        # Claim a tool child once when it links to the exact consumed chat
+        # approval, but leave the child approved for exact tool consumption.
         if override_id and self.pending_overrides_col is not None:
-            rec = await zfae_overrides.get(self.pending_overrides_col, override_id)
-            if rec is not None and rec.status == "approved" and rec.agent_id == agent_id:
-                return verdict, None
+            staged = await zfae_overrides.claim_staged_resume(
+                self.pending_overrides_col,
+                override_id,
+                user_id,
+                agent_id,
+                "chat_reply",
+                raw_request,
+            )
+            if staged is not None:
+                return verdict, None, staged.parent_override_id
+            rec = await zfae_overrides.consume_approved(
+                self.pending_overrides_col,
+                override_id,
+                user_id,
+                agent_id,
+                "chat_reply",
+                raw_request,
+            )
+            if rec is not None:
+                return verdict, None, rec.id
 
         # No approved override — must halt. Create one.
         if self.pending_overrides_col is None:
@@ -268,13 +359,13 @@ class ZFAERuntime:
                 agent_id=agent_id,
                 flagged=list(verdict.flagged_sentinels),
                 blocking_cliff=verdict.blocking_cliff,
-            )
+            ), None
 
         reasons = {v.name: v.reason for v in verdict.verdicts if v.flagged}
         rec = await zfae_overrides.create_override(
             self.pending_overrides_col,
             agent_id=agent_id, user_id=user_id, event_kind="chat_reply",
-            raw_request={"prompt": raw_prompt, "mode": mode.value},
+            raw_request=raw_request,
             flagged_sentinels=list(verdict.flagged_sentinels),
             reasons=reasons,
             verdict_vector=list(verdict.vector),
@@ -291,7 +382,7 @@ class ZFAERuntime:
                 )
             except Exception as _e:
                 _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
-        return verdict, rec
+        return verdict, rec, None
 
     async def _fiq_emit_decode(self, agent_id, user_id, reply_obj):
         """Non-silent audit — emit a zfae_decode event when Route A inscribed text."""
@@ -349,105 +440,6 @@ class ZFAERuntime:
                 )
             except Exception as _e:
                 _AUDIT_LOG.warning("fiq tool emit failed: %s", _e)
-
-    async def _teacher_tool_loop(
-        self, *, teacher_model_id, messages, tools_allowed, user_id,
-        sentinel_modes, sentinel_weights, override_id,
-    ) -> tuple[TeacherInvocation, list, Optional[str]]:
-        """Cross-provider function-calling loop via raw HTTP (BYOK).
-
-        Resolves the agent's `tools_allowed` names into provider tool schemas,
-        runs ``run_tool_loop`` with a sentinel-gated executor, and returns
-        ``(TeacherInvocation, tool_trace, halt_override_id)``. Falls back to a
-        single-shot teacher call when no key / no resolvable tools.
-        """
-        from tools.agent_loop import run_tool_loop, ToolLoopHalt
-        from tools import invoke as tools_invoke, lookup as tools_lookup
-        from tools.registry import ToolError
-
-        async def _single_shot():
-            return await self.teacher.invoke(
-                user_id=user_id, teacher_model_id=teacher_model_id, messages=messages)
-
-        prov, name = teacher_model_id.split(":", 1)
-        if self.teacher is None or prov not in getattr(self.teacher, "_registry", {}):
-            return await _single_shot(), [], None
-        api_key = await self.get_key_fn(user_id, prov)
-        if not api_key:
-            return await _single_shot(), [], None
-
-        tool_specs: list[dict] = []
-        for nm in tools_allowed:
-            tl = tools_lookup(nm)
-            if tl is not None:
-                tool_specs.append({
-                    "name": tl.name, "description": tl.description,
-                    "input_schema": tl.input_schema or {"type": "object", "properties": {}},
-                })
-        if not tool_specs:
-            return await _single_shot(), [], None
-
-        async def _executor(tc):
-            try:
-                return await tools_invoke(
-                    tc["name"], tc.get("args") or {}, user={"id": user_id},
-                    sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
-                    pending_overrides_col=self.pending_overrides_col,
-                    fiq_audit_col=self.fiq_audit_col, override_id=override_id,
-                )
-            except ToolError as e:
-                if e.halt:
-                    raise ToolLoopHalt(override_id=e.override_id, sentinel_verdict=e.sentinel_verdict)
-                raise
-
-        loop = await run_tool_loop(
-            provider=prov, model=name, api_key=api_key,
-            generic_messages=messages, tools=tool_specs, executor=_executor,
-            max_iters=4, max_tokens=1024,
-        )
-        if loop["halted"]:
-            return (TeacherInvocation(teacher_model_id=teacher_model_id, teacher_reply="",
-                                      error="sentinel_halt"),
-                    loop["tool_trace"], loop["override_id"])
-        teacher = TeacherInvocation(
-            teacher_model_id=teacher_model_id,
-            teacher_reply=loop["final_text"] or "",
-            usage={"total": loop["usage"].get("total", 0)},
-            error=loop["error"],
-        )
-        return teacher, loop["tool_trace"], None
-
-    async def _native_tool_use(
-        self, *, raw_prompt, agent_id, user_id, tools_allowed,
-        sentinel_modes, sentinel_weights, override_id,
-    ) -> tuple[list, str, Optional[str]]:
-        """Deterministically select + run at most one built-in tool for the native
-        engine (no LLM). Sentinel-gated. Returns
-        ``(tool_trace, summary_line, halt_override_id)``."""
-        tools_allowed = tools_allowed or []
-        sel = select_native_tool(raw_prompt)
-        if not sel or sel["name"] not in tools_allowed:
-            return [], "", None
-        from tools import invoke as tools_invoke
-        from tools.registry import ToolError
-        try:
-            out = await tools_invoke(
-                sel["name"], sel["params"], user={"id": user_id},
-                sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
-                pending_overrides_col=self.pending_overrides_col,
-                fiq_audit_col=self.fiq_audit_col, override_id=override_id,
-            )
-        except ToolError as e:
-            if e.halt:
-                return ([{"name": sel["name"], "args": sel["params"], "status": "halted"}],
-                        "", e.override_id)
-            return ([{"name": sel["name"], "args": sel["params"], "status": "error",
-                      "result_preview": str(e)[:200]}], "", None)
-        summary = summarize_tool_result(sel["name"], out)
-        trace = [{"name": sel["name"], "args": sel["params"], "status": "ok",
-                  "result_preview": summary}]
-        await self._fiq_emit_tool_trace(agent_id, user_id, trace)
-        return trace, summary, None
 
     async def train_multi(
         self, *, agent_id, user_id, bank, prompts, teacher_model_ids,
@@ -521,246 +513,6 @@ class ZFAERuntime:
             "metrics": self._metrics(bank),
         }
 
-    async def _teacher_assisted(
-        self, *, agent_id, user_id, bank, raw_prompt, transcript,
-        teacher_model_id, system_prompt, persona, ring_summary,
-        user_feedback, zfae_snapshot,
-        tools_allowed=None, sentinel_modes=None, sentinel_weights=None,
-        override_id=None,
-    ) -> RuntimeReply:
-        if self.teacher is None or not teacher_model_id:
-            # No teacher configured — fall through to native refusal (NOT silent fallback).
-            return await self._zfae_native(
-                bank=bank, raw_prompt=raw_prompt, transcript=transcript,
-                zfae_snapshot=zfae_snapshot, agent_id=agent_id, user_id=user_id,
-                tools_allowed=tools_allowed, sentinel_modes=sentinel_modes,
-                sentinel_weights=sentinel_weights, override_id=override_id,
-                extra_trace={"teacher_unavailable": True},
-            )
-
-        snapshot_before = dict(zfae_snapshot)
-        ring_state_before = dict(ring_summary or {})
-
-        messages = build_curated_context(
-            system_prompt=system_prompt,
-            persona=persona,
-            transcript=transcript,
-            prompt=raw_prompt,
-            ring_summary=ring_summary,
-        )
-
-        # ---- Mid-thought tool-use loop OR single-shot teacher call -------------
-        tool_trace: list[dict] = []
-        if tools_allowed and self.get_key_fn is not None and ":" in teacher_model_id:
-            teacher, tool_trace, halt_override_id = await self._teacher_tool_loop(
-                teacher_model_id=teacher_model_id, messages=messages,
-                tools_allowed=tools_allowed, user_id=user_id,
-                sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
-                override_id=override_id,
-            )
-            if halt_override_id is not None:
-                return RuntimeReply(
-                    assistantText="a0 halted mid-tool by sentinels — explicit user override required.",
-                    reply_source="zfae_halted",
-                    teacher_called=True,
-                    zfae_weights_updated=False,
-                    mode=RuntimeMode.TEACHER_ASSISTED.value,
-                    nextSnapshot=zfae_snapshot,
-                    trace={"halt_reason": "tool_sentinel_halt", "tool_trace": tool_trace},
-                    pending_override_id=halt_override_id,
-                    zfae_metrics=self._metrics(bank),
-                )
-            if tool_trace:
-                await self._fiq_emit_tool_trace(agent_id, user_id, tool_trace)
-        else:
-            teacher: TeacherInvocation = await self.teacher.invoke(
-                user_id=user_id, teacher_model_id=teacher_model_id, messages=messages,
-            )
-
-        weights_updated = False
-        training_loss: Optional[float] = None
-        training_step_before = bank.zfae_training_step
-
-        # ---- Demo quota gate (Emergent shared key only) ------------------------
-        try:
-            from api_extensions import check_demo_quota, record_demo_usage
-            # Project ~500 tokens per teacher round-trip (heuristic).
-            quota = await check_demo_quota(user_id, projected_tokens=500)
-            if not quota["fits"]:
-                return RuntimeReply(
-                    assistantText=("Daily demo budget exhausted "
-                                   f"({quota['used']}/{quota['budget']} tokens). "
-                                   "Bring your own key on /keys or wait until 00:00 UTC."),
-                    reply_source="zfae_refused",
-                    teacher_called=False,
-                    zfae_weights_updated=False,
-                    mode=RuntimeMode.TEACHER_ASSISTED.value,
-                    nextSnapshot=zfae_snapshot,
-                    trace={"reason": "demo_quota_exhausted", **quota},
-                    zfae_metrics=self._metrics(bank),
-                )
-        except Exception as _e:
-            _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
-        if teacher.teacher_reply and not teacher.error:
-            result: TrainingResult = self.learner.distill_step(
-                bank, raw_prompt, teacher.teacher_reply,
-            )
-            weights_updated = result.weights_updated
-            training_loss = result.loss
-            bank.record_teacher(teacher.teacher_model_id)
-            # Burn demo-quota tokens (best-effort)
-            try:
-                from api_extensions import record_demo_usage
-                approx = (len(raw_prompt) + len(teacher.teacher_reply or "")) // 4
-                await record_demo_usage(user_id, max(50, approx))
-            except Exception as _e:
-                _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
-            # FIQ emit: training_step
-            if self.fiq_audit_col is not None:
-                try:
-                    await fiq_emit.emit(
-                        self.fiq_audit_col,
-                        event_type="zfae_training_step",
-                        agent_id=agent_id, user_id=user_id,
-                        payload={
-                            "core": result.core,
-                            "seed_idx": result.seed_idx,
-                            "loss": float(result.loss),
-                            "intent_match": bool(result.intent_match),
-                            "signature_mse": float(result.signature_mse),
-                            "total_seeds_touched": int(result.total_seeds_touched),
-                            "new_digest": result.new_digest,
-                            "training_step": int(result.new_training_step),
-                        },
-                    )
-                except Exception as _e:
-                    _AUDIT_LOG.warning("fiq audit emit failed: %s", _e)
-
-        # native engine produces nextSnapshot for state continuity
-        native_result = self.native.infer(
-            rawPrompt=raw_prompt,
-            transcript=transcript,
-            zfaeSnapshot=zfae_snapshot,
-            rings={"summary": ring_summary} if ring_summary else None,
-            gonal_seed=bank.gonal_seed_bytes,
-        )
-        snapshot_after = native_result["nextSnapshot"]
-
-        training_record_path = None
-        if self.teacher and teacher.teacher_reply:
-            training_record_path = self.teacher.write_training_record(
-                agent_id=agent_id,
-                raw_prompt=raw_prompt,
-                transcript_context=messages,
-                zfae_snapshot_before=snapshot_before,
-                ring_state_before=ring_state_before,
-                teacher=teacher,
-                zfae_snapshot_after=snapshot_after,
-                user_feedback=user_feedback,
-            )
-
-        return RuntimeReply(
-            assistantText=teacher.teacher_reply or (teacher.error or ""),
-            reply_source="teacher_assisted",
-            teacher_called=True,
-            zfae_weights_updated=weights_updated,
-            mode=RuntimeMode.TEACHER_ASSISTED.value,
-            nextSnapshot=snapshot_after,
-            trace={
-                "teacher_invocation": asdict(teacher),
-                "training_loss": training_loss,
-                "training_step_before": training_step_before,
-                "training_step_after": bank.zfae_training_step,
-                "tool_trace": tool_trace,
-            },
-            training_record_path=training_record_path,
-            zfae_metrics=self._metrics(bank),
-        )
-
-    async def _zfae_native(
-        self,
-        *,
-        bank: A0ZFAEWeightBank,
-        raw_prompt: str,
-        transcript,
-        zfae_snapshot,
-        agent_id: str = "local",
-        user_id: str = "local",
-        tools_allowed=None,
-        sentinel_modes=None,
-        sentinel_weights=None,
-        override_id=None,
-        extra_trace: Optional[dict] = None,
-        lifted_path_trace: bool = False,
-    ) -> RuntimeReply:
-        extra_trace = extra_trace or {}
-        ready = _is_trained_enough(bank, min_steps=self.min_steps, max_loss=self.max_loss)
-        if not ready:
-            return RuntimeReply(
-                assistantText="a0(zfae) cannot perform native inference yet: "
-                              "missing trained decoder / sufficient checkpoint / response policy.",
-                reply_source="zfae_refused",
-                teacher_called=False,
-                zfae_weights_updated=False,
-                mode=RuntimeMode.ZFAE_NATIVE.value,
-                nextSnapshot=zfae_snapshot,
-                trace={
-                    "reason": "not_trained_enough",
-                    "training_step": bank.zfae_training_step,
-                    "min_steps_required": self.min_steps,
-                    "last_loss": bank.zfae_last_loss,
-                    "max_loss_required": self.max_loss,
-                    "total_seeds_touched": bank.total_seeds_touched,
-                    "all_seeds_touched": bank.all_seeds_touched,
-                    "tool_trace": [],
-                    **extra_trace,
-                },
-                zfae_metrics=self._metrics(bank),
-            )
-        # ---- Native deterministic tool-use (sentinel-gated, at most one tool) ---
-        native_tool_trace, tool_summary, halt = await self._native_tool_use(
-            raw_prompt=raw_prompt, agent_id=agent_id, user_id=user_id,
-            tools_allowed=tools_allowed, sentinel_modes=sentinel_modes,
-            sentinel_weights=sentinel_weights, override_id=override_id,
-        )
-        if halt is not None:
-            return RuntimeReply(
-                assistantText="a0(zfae) halted mid-tool by sentinels — explicit user override required.",
-                reply_source="zfae_halted",
-                teacher_called=False,
-                zfae_weights_updated=False,
-                mode=RuntimeMode.ZFAE_NATIVE.value,
-                nextSnapshot=zfae_snapshot,
-                trace={"halt_reason": "tool_sentinel_halt",
-                       "tool_trace": native_tool_trace, **extra_trace},
-                pending_override_id=halt,
-                zfae_metrics=self._metrics(bank),
-            )
-        # Trained enough — native engine produces the reply.
-        native_result = self.native.infer(
-            rawPrompt=raw_prompt,
-            transcript=transcript,
-            zfaeSnapshot=zfae_snapshot,
-            gonal_seed=bank.gonal_seed_bytes,
-            lifted_path_trace=lifted_path_trace,
-        )
-        text = (native_result["assistantText"]
-                if native_result["assistantText"] != MISSING_NATIVE_MESSAGE
-                else "a0(zfae) cannot perform native inference yet: "
-                     "missing trained decoder / sufficient checkpoint / response policy.")
-        if tool_summary:
-            text = f"{text}\n\n{tool_summary}"
-        return RuntimeReply(
-            assistantText=text,
-            reply_source="zfae_native",
-            teacher_called=False,
-            zfae_weights_updated=False,
-            mode=RuntimeMode.ZFAE_NATIVE.value,
-            nextSnapshot=native_result["nextSnapshot"],
-            trace={**native_result["trace"], **extra_trace, "tool_trace": native_tool_trace},
-            zfae_metrics=self._metrics(bank),
-        )
-
     def _metrics(self, bank: A0ZFAEWeightBank) -> dict:
         return {
             "zfae_weight_count": bank.zfae_weight_count,
@@ -796,4 +548,4 @@ def _verdict_to_dict(verdict: Optional[Verdict13]) -> Optional[dict]:
             for v in verdict.verdicts
         ],
     }
-# ratios: loc_comments=642:100 imports_exports=21:3 calls_definitions=117:18
+# ratios: loc_comments=398:104 imports_exports=17:3 calls_definitions=71:18

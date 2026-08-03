@@ -1,9 +1,9 @@
-# ratios: loc_comments=195:62 imports_exports=4:4 calls_definitions=66:11
+# ratios: loc_comments=196:66 imports_exports=4:4 calls_definitions=66:11
 # === MODULE_BUILD ===
 # id: tools_agent_loop
 #   module_name: agent_loop
 #   module_kind: engine
-#   summary: provider-agnostic agentic tool-use loop over raw HTTP (BYOK) — normalizes OpenAI/xAI Chat Completions, Anthropic Messages, and Gemini generateContent function-calling into one multi-step loop; advertises tool JSON schema, detects model tool calls, runs an injected executor (sentinel-gated), threads tool results back, and loops until a final answer or max_iters; the network poster is injectable so the loop is fully unit-testable without live keys
+#   summary: provider-agnostic agentic tool-use loop over raw HTTP (BYOK) — normalizes OpenAI/xAI Chat Completions, Anthropic Messages, and Gemini generateContent function-calling into one multi-step loop; advertises tool JSON schema, detects model tool calls, runs an injected executor (sentinel-gated), preserves halt verdict metadata, threads tool results back, and loops until a final answer or max_iters; the network poster is injectable so the loop is fully unit-testable without live keys
 #   owner: Erin Spencer
 #   public_surface: run_tool_loop, tool_to_schema, ToolLoopHalt, MAX_ITERS_DEFAULT
 #   internal_surface: _split_system, _to_provider_messages, _build_payload, _parse, _append_tool_turn, _endpoint, _httpx_poster
@@ -40,6 +40,10 @@
 #         final text plus a one-entry tool_trace
 #   class: correctness
 #   call: a0p_skills.contracts.tools_agent_loop_two_step_holds
+# id: tools_agent_loop_halt_verdict_preserved
+#   given: an injected executor raises ToolLoopHalt with a sentinel verdict
+#   then: the halted loop result carries that exact verdict with the override id
+#   class: security
 # === END CONTRACTS ===
 """Provider-agnostic agentic tool-use loop (BYOK, raw HTTP).
 
@@ -274,7 +278,8 @@ async def run_tool_loop(
                 tool_trace.append({"name": tc["name"], "args": tc["args"], "status": "halted"})
                 return {"final_text": "", "tool_trace": tool_trace, "usage": {"total": total_tokens},
                         "iterations": it + 1, "error": "sentinel_halt",
-                        "halted": True, "override_id": h.override_id}
+                        "halted": True, "override_id": h.override_id,
+                        "sentinel_verdict": h.sentinel_verdict}
             except Exception as e:  # tool-side failure — feed the error back to the model
                 out = {"error": str(e)}
                 status = "error"
@@ -289,4 +294,4 @@ async def run_tool_loop(
 
 
 __all__ = ["run_tool_loop", "tool_to_schema", "ToolLoopHalt", "MAX_ITERS_DEFAULT"]
-# ratios: loc_comments=195:62 imports_exports=4:4 calls_definitions=66:11
+# ratios: loc_comments=196:66 imports_exports=4:4 calls_definitions=66:11

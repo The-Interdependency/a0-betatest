@@ -1,12 +1,12 @@
-# ratios: loc_comments=890:123 imports_exports=48:56 calls_definitions=324:66
+# ratios: loc_comments=910:133 imports_exports=50:56 calls_definitions=331:68
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
 #   module_kind: route
-#   summary: FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   summary: FastAPI app with lifecycle-managed storage maintenance, chat, agents, inventory, inspector, usage, and skill reports
 #   owner: a0p maintainer
 #   public_surface: app, api, AGENT
-#   internal_surface: _call_model, _split_model, _get_key, _record_usage, _utc_now_iso
+#   internal_surface: _call_model, _split_model, _get_key, _record_usage, _utc_now_iso, _lifespan, _run_legacy_audit_backfill
 #   auth_boundary: bearer
 #   storage_boundary: write
 #   network_boundary: external
@@ -20,7 +20,7 @@
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: a0p_server_boundaries
-#   summary: FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   summary: FastAPI app with lifecycle-managed storage maintenance and authenticated research-instrument APIs
 #   auth_boundary: bearer
 #   storage_boundary: write
 #   network_boundary: external
@@ -30,7 +30,7 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: a0p_server
-#   summary: FastAPI app — keys, vault, inventory, sessions, drafts, chat (single/fanout/daisy/synth), inspector, agents, usage, skill report
+#   summary: FastAPI app with lifecycle-managed storage maintenance and authenticated research-instrument APIs
 #   exposes: app, api, AGENT
 #   boundaries: auth:bearer, storage:write, network:external, user_data:write
 #   owner: a0p maintainer
@@ -57,6 +57,7 @@ Exposes:
 from __future__ import annotations
 import os
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -71,7 +72,8 @@ from typing import Optional, List, Any
 
 from db import (
     keys_col, vault_col, sessions_col, drafts_col,
-    fanout_col, chain_col, agents_col, usage_col, ensure_indexes,
+    fanout_col, chain_col, agents_col, usage_col, pending_overrides_col,
+    ensure_indexes, backfill_legacy_audit_expiry,
 )
 from models import (
     KeyUpsert, KeyPublic,
@@ -107,7 +109,32 @@ def _utc_now_iso() -> str:
 
 
 # ---------- app ----------
-app = FastAPI(title="a0p — research instrument", version="0.1.0")
+async def _run_legacy_audit_backfill() -> None:
+    try:
+        await backfill_legacy_audit_expiry()
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        import logging
+        logging.getLogger("a0p").exception("legacy audit expiry backfill failed")
+
+
+@asynccontextmanager
+async def _lifespan(_app):
+    await _on_startup()
+    tasks = (
+        asyncio.create_task(_run_legacy_audit_backfill(), name="legacy-audit-expiry-backfill"),
+        asyncio.create_task(zfae_overrides.maintain_expiry(pending_overrides_col), name="override-expiry"),
+    )
+    try:
+        yield
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
+app = FastAPI(title="a0p — research instrument", version="0.1.0", lifespan=_lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -815,6 +842,16 @@ async def list_usage(request: Request, limit: int = 100):
 #   class: observability
 #   call: a0p_skills.contracts.skill_report_visibility_holds
 # === END CONTRACTS ===
+# === CONTRACTS ===
+# id: override_routes_minimal_owner_scoped
+#   given: an authenticated caller lists or retrieves held overrides
+#   then: reads are owner-scoped and only the whitelisted public view is returned
+#   class: security
+# id: override_expiry_admin_only
+#   given: a caller requests override expiry maintenance
+#   then: only an administrator can expire records and only stale pending or approved rows match
+#   class: authorization
+# === END CONTRACTS ===
 @api.get("/skill/contracts/report")
 async def skill_contracts_report():
     """test-build runner — imports each CONTRACTS `call:` path and runs it."""
@@ -903,7 +940,7 @@ app.include_router(_settings_router)
 
 
 # ---------- Agents (Tier 3): /api/instances/* + /api/chat/instance/{id} ----
-from db import agent_instances_col, pending_overrides_col, fiq_audit_col
+from db import agent_instances_col, fiq_audit_col
 
 _TEACHER_CLIENT = TeacherClient(REGISTRY, _get_key)
 _ZFAE_RUNTIME = ZFAERuntime(
@@ -1042,29 +1079,26 @@ async def patch_sentinel_weights(agent_id: str, body: SentinelWeightsPatch, requ
 @sentinels_api.get("/overrides")
 async def list_overrides(request: Request, status: str = "pending", limit: int = 100):
     user_id = await _auth_uid(request)
-    if status == "pending":
-        records = await zfae_overrides.list_pending(pending_overrides_col, user_id=user_id, limit=limit)
-        return {"overrides": [r.__dict__ for r in records], "count": len(records)}
-    out = []
-    async for doc in pending_overrides_col.find(
-        {"user_id": user_id, "status": status}
-    ).sort("created_ms", -1).limit(limit):
-        doc.setdefault("id", doc.pop("_id", None))
-        out.append(doc)
+    if status not in {"pending", "approved", "consumed", "rejected", "expired"}:
+        raise HTTPException(400, "invalid override status")
+    limit = max(1, min(int(limit), 200))
+    records = await zfae_overrides.list_for_user(
+        pending_overrides_col, user_id=user_id, status=status, limit=limit,
+    )
+    out = [zfae_overrides.public_view(record) for record in records]
     return {"overrides": out, "count": len(out)}
 
 
 @sentinels_api.get("/overrides/{override_id}")
 async def get_override(override_id: str, request: Request):
     uid = await _auth_uid(request)
-    rec = await zfae_overrides.get(pending_overrides_col, override_id)
-    if rec is None or rec.user_id != uid:
+    rec = await zfae_overrides.get(pending_overrides_col, override_id, uid)
+    if rec is None:
         raise HTTPException(404, f"override {override_id} not found")
-    return rec.__dict__
+    return zfae_overrides.public_view(rec)
 
 
 class OverrideApprove(BaseModel):
-    user_id: str = "local"
     justification: str = ""
 
 
@@ -1078,7 +1112,6 @@ async def approve_override(override_id: str, body: OverrideApprove, request: Req
 
 
 class OverrideReject(BaseModel):
-    user_id: str = "local"
     reason: str = ""
 
 
@@ -1091,10 +1124,12 @@ async def reject_override(override_id: str, body: OverrideReject, request: Reque
     return {"ok": True, "status": rec.status, "id": rec.id, "resolved_ms": rec.resolved_ms}
 
 
-@sentinels_api.post("/overrides/expire")
+@sentinels_api.post("/admin/overrides/expire")
 async def expire_overrides(request: Request):
-    uid = await _auth_uid(request)
-    n = await zfae_overrides.expire(pending_overrides_col, user_id=uid)
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "admin only")
+    n = await zfae_overrides.expire(pending_overrides_col)
     return {"expired": n}
 
 
@@ -1119,7 +1154,6 @@ app.include_router(sentinels_api)
 
 
 # ---------- startup ----------
-@app.on_event("startup")
 async def _on_startup():
     await ensure_indexes()
     # Seed admin from .env (idempotent)
@@ -1187,4 +1221,4 @@ async def _on_startup():
           "created_at": now,
           "updated_at": now,
       })
-# ratios: loc_comments=890:123 imports_exports=48:56 calls_definitions=324:66
+# ratios: loc_comments=910:133 imports_exports=50:56 calls_definitions=331:68
