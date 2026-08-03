@@ -11,6 +11,10 @@
 - Every override read includes `_id + user_id`; there is no id-only `get()` signature.
 - Held actions persist a typed request summary and keyed action fingerprint, never prompt/tool arguments/body. Startup scrubs legacy `raw_request` rows.
 - Approval is owner-scoped, must be unexpired, and is atomically consumed once for the same owner, agent, event kind, exact arguments, and tool execution target/configuration.
+- A chat approval is keyed to the full canonical execution context: owner, agent, prompt/mode, transcript, model/system/persona, tool surfaces, sentinel configuration, snapshot, bank checkpoint, and runtime policy. Only its HMAC is retained.
+- A tool override created after a consumed chat approval retains only an internal parent id, cannot outlive that parent, and permits one atomic continuation claim for that unchanged context before its exact tool gate.
+- Each runtime turn attempts at most one tool. This bounds staged retry to a first tool with no earlier tool side effect to replay.
+- Tool-halt replies retain the child tool verdict, so a benign outer chat cannot hide a downstream cliff confirmation requirement.
 - Override list/detail responses use an explicit field whitelist and omit raw material, fingerprints, owner ids, and resolution text.
 - Lifecycle-managed maintenance marks timed-out overrides expired every 60 seconds; `POST /api/admin/overrides/expire` remains an admin-only operator fallback, and the ordinary-user mutation/UI control stay removed.
 - Audit payloads are recursively redacted before hashing and insertion. Tool arguments, result previews, authorization/cookie material, environment containers, webhook data, secret-shaped keys, and known credential-shaped strings are removed.
@@ -61,8 +65,8 @@ Add focused tests for audit redaction and horizontal authorization.
 ## Verification evidence
 
 - `python -m compileall -q backend`: pass.
-- Repair 03 plus lifecycle focus: 19 passed.
-- Clean-build selected backend set including Repair 03: 59 passed.
+- Audit, override, and tool-use focus: 33 passed.
+- Clean-build selected backend set including Repair 03: 62 passed.
 - Frontend production build: pass; only pre-existing lint warnings.
 - Full offline backend collection excluding live-URL suites: 85 passed, with one pre-existing `PROOF_GREEN` failure and six live HTTP setup errors against an unrelated external URL.
 - Skill-lib manifest check: pass after deterministic refresh.
@@ -74,7 +78,11 @@ Add focused tests for audit redaction and horizontal authorization.
 - `backend/server.py`
 - `backend/interdependent_lib/zfae/overrides.py`
 - `backend/interdependent_lib/zfae/runtime.py`
+- `backend/interdependent_lib/zfae/zfae_runt_path_v0.0.0alpha.py`
 - `backend/interdependent_lib/zfae/fiq_emit.py`
+- `backend/tools/agent_loop.py`
+- `backend/tools/gated_invoke.py`
+- `backend/tools/registry.py`
 - `backend/db.py`
 
 ## Out of scope
@@ -87,4 +95,10 @@ A provenance record can be verifiable without being public. Owner-filtered feeds
 
 Unexpired legacy JSONL rows are redacted on read and age out under the bounded policy. Rewriting their stored payloads in place would invalidate historical hashes, so any persisted-row rechain migration remains with Repair 07.
 
-Chat approvals bind the prompt and mode after the current transcript and model state are re-evaluated. Persistently fingerprinting that ambient context remains a later seam; independently gated tool calls still require their own exact, configuration-bound approval before any side effect.
+Chat approvals bind the complete canonical execution context without retaining its raw values; independently gated tool calls still require their own exact, configuration-bound approval before any side effect. When both gates halt one turn, the approved tool child carries a private, one-shot link to the consumed exact chat authorization so the retry reaches—but cannot bypass—the exact tool gate.
+
+The staged resume restarts model execution rather than checkpointing it. The one-tool-attempt budget ensures there was no earlier tool side effect in that turn; a provider that changes its first tool choice burns the one-shot continuation. General provider continuation beyond one tool remains `hmmm` and requires authenticated checkpoint state rather than replay from the beginning.
+
+The repo-level `a0-betatest_msdmd.ts` aggregate predates these declarations. Regenerating that monolith would leave a touched executable TypeScript file far above the same 400-line doctrine ceiling; a small index over sharded data needs a separately scoped redesign. Module-local declarations and the targeted no-exec contract/check audit remain the evidence for this repair.
+
+The literal-dot PCEA helper loads in the checked-out source layout and passes the application import smoke. Its inclusion in a separately built Python wheel remains `hmmm`; this deployment path installs requirements and runs from the repository source rather than installing the project wheel.

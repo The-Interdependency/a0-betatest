@@ -1,11 +1,11 @@
-# ratios: loc_comments=312:88 imports_exports=13:16 calls_definitions=87:22
+# ratios: loc_comments=365:93 imports_exports=13:17 calls_definitions=98:23
 # === MODULE_BUILD ===
 # id: zfae_overrides
 #   module_name: overrides
 #   module_kind: service
-#   summary: owner-scoped pending overrides with typed non-secret summaries, exact-action binding, periodic expiry, and legacy raw-request scrubbing
+#   summary: owner-scoped pending overrides with typed non-secret summaries, exact-action and staged-resume binding, periodic expiry, and legacy raw-request scrubbing
 #   owner: Erin Spencer
-#   public_surface: OverrideRequestSummary, PendingOverride, summarize_request, request_matches, public_view, create_override, approve, consume_approved, reject, expire, maintain_expiry, get, list_for_user, list_pending, scrub_legacy_raw_requests, OVERRIDE_DEFAULT_TIMEOUT_MS
+#   public_surface: OverrideRequestSummary, PendingOverride, summarize_request, request_matches, claim_staged_resume, public_view, create_override, approve, consume_approved, reject, expire, maintain_expiry, get, list_for_user, list_pending, scrub_legacy_raw_requests, OVERRIDE_DEFAULT_TIMEOUT_MS
 #   internal_surface: _utc_now_ms, _canonical_request, _action_fingerprint, _safe_label, _safe_argument_name, _coerce_summary, _from_doc
 #   auth_boundary: none
 #   storage_boundary: write
@@ -18,7 +18,7 @@
 # === END MODULE_BUILD ===
 # === BOUNDARIES ===
 # id: zfae_overrides_boundaries
-#   summary: owner-scoped override records retain typed summaries and keyed fingerprints; lifecycle and admin expiry maintenance are bounded
+#   summary: owner-scoped override records retain typed summaries, keyed fingerprints, and one-shot staged-resume links; lifecycle and admin expiry maintenance are bounded
 #   auth_boundary: none
 #   storage_boundary: write
 #   network_boundary: internal
@@ -29,7 +29,7 @@
 # === CAPABILITIES ===
 # id: zfae_overrides
 #   summary: confidential sentinel halt-and-override lifecycle with owner and exact-action binding
-#   exposes: OverrideRequestSummary, PendingOverride, summarize_request, request_matches, public_view, create_override, approve, consume_approved, reject, expire, maintain_expiry, get, list_for_user, list_pending, scrub_legacy_raw_requests
+#   exposes: OverrideRequestSummary, PendingOverride, summarize_request, request_matches, claim_staged_resume, public_view, create_override, approve, consume_approved, reject, expire, maintain_expiry, get, list_for_user, list_pending, scrub_legacy_raw_requests
 #   boundaries: auth:none, storage:write, network:internal, user_data:write
 #   owner: Erin Spencer
 # === END CAPABILITIES ===
@@ -94,6 +94,8 @@ class PendingOverride:
     resolved_by_user_id: Optional[str] = None
     justification: Optional[str] = None
     rejection_reason: Optional[str] = None
+    parent_override_id: Optional[str] = None      # internal chat authorization lineage
+    resume_claimed_ms: Optional[int] = None       # internal one-shot continuation claim
 
 
 _SENSITIVE_ARGUMENT_NAMES = frozenset({
@@ -150,7 +152,10 @@ def _safe_argument_name(value: Any) -> str:
 def summarize_request(event_kind: str, raw_request: dict) -> OverrideRequestSummary:
     """Reduce an ephemeral sentinel request to non-secret typed metadata."""
     raw_request = raw_request if isinstance(raw_request, dict) else {}
-    summary_request = {key: value for key, value in raw_request.items() if key != "_tool_binding"}
+    if event_kind == "chat_reply":
+        summary_request = {key: raw_request.get(key) for key in ("prompt", "mode")}
+    else:
+        summary_request = {key: value for key, value in raw_request.items() if key != "_tool_binding"}
     canonical = _canonical_request(event_kind, summary_request)
     mode = raw_request.get("mode")
     mode = mode if isinstance(mode, str) and mode in {"teacher_assisted", "zfae_native"} else None
@@ -231,11 +236,16 @@ async def create_override(
     verdict_vector: list[Optional[float]],
     disabled_sentinels: list[str],
     blocking_cliff: bool,
+    parent_override_id: Optional[str] = None,
+    max_expires_ms: Optional[int] = None,
     timeout_ms: int = OVERRIDE_DEFAULT_TIMEOUT_MS,
 ) -> PendingOverride:
     if timeout_ms <= 0:
         raise ValueError("timeout_ms must be positive")
     now = _utc_now_ms()
+    if max_expires_ms is not None and max_expires_ms <= now:
+        raise ValueError("max_expires_ms must be in the future")
+    expires_ms = min(now + timeout_ms, max_expires_ms) if max_expires_ms else now + timeout_ms
     rec = PendingOverride(
         id=str(uuid.uuid4()),
         agent_id=agent_id,
@@ -250,10 +260,14 @@ async def create_override(
         blocking_cliff=blocking_cliff,
         status="pending",
         created_ms=now,
-        expires_ms=now + timeout_ms,
+        expires_ms=expires_ms,
+        parent_override_id=parent_override_id,
     )
     doc = asdict(rec)
     doc["_id"] = doc.pop("id")
+    for internal_optional in ("parent_override_id", "resume_claimed_ms"):
+        if doc.get(internal_optional) is None:
+            doc.pop(internal_optional)
     await col.insert_one(doc)
     return rec
 
@@ -303,6 +317,48 @@ async def consume_approved(
             "expires_ms": {"$gt": now},
         },
         {"$set": {"status": "consumed", "consumed_ms": now}},
+        return_document=True,
+    )
+    return _from_doc(r)
+
+
+async def claim_staged_resume(
+    col,
+    override_id: str,
+    user_id: str,
+    agent_id: str,
+    event_kind: str,
+    raw_request: dict,
+) -> Optional[PendingOverride]:
+    """Atomically claim one approved tool child for its exact parent chat retry."""
+    child = await get(col, override_id, user_id)
+    if child is None or child.event_kind != "tool_call" or not child.parent_override_id:
+        return None
+    parent = await get(col, child.parent_override_id, user_id)
+    now = _utc_now_ms()
+    if not (
+        event_kind == "chat_reply"
+        and parent is not None
+        and parent.status == "consumed"
+        and parent.expires_ms > now
+        and child.expires_ms <= parent.expires_ms
+        and parent.user_id == child.user_id == user_id
+        and parent.agent_id == child.agent_id == agent_id
+        and request_matches(parent, event_kind, raw_request)
+    ):
+        return None
+    r = await col.find_one_and_update(
+        {
+            "_id": child.id,
+            "user_id": user_id,
+            "agent_id": agent_id,
+            "event_kind": "tool_call",
+            "parent_override_id": parent.id,
+            "status": "approved",
+            "expires_ms": {"$gt": now},
+            "resume_claimed_ms": {"$exists": False},
+        },
+        {"$set": {"resume_claimed_ms": now}},
         return_document=True,
     )
     return _from_doc(r)
@@ -413,7 +469,7 @@ def _from_doc(doc: Optional[dict]) -> Optional[PendingOverride]:
 
 __all__ = [
     "OverrideRequestSummary", "PendingOverride", "OVERRIDE_DEFAULT_TIMEOUT_MS",
-    "summarize_request", "request_matches", "public_view",
+    "summarize_request", "request_matches", "claim_staged_resume", "public_view",
     "create_override", "approve", "consume_approved", "reject", "expire", "maintain_expiry", "get", "list_for_user", "list_pending",
     "scrub_legacy_raw_requests",
 ]
@@ -441,8 +497,12 @@ __all__ = [
 #   class: confidentiality
 # id: zfae_override_public_view_minimal
 #   given: an owner-facing override response
-#   then: raw material, fingerprints, owner ids, and resolution text are omitted
+#   then: raw material, fingerprints, owner ids, resolution text, and staged-resume lineage are omitted
 #   class: confidentiality
+# id: zfae_override_staged_resume_bound
+#   given: an approved tool child links to an exact consumed chat authorization
+#   then: one atomic continuation claim is allowed for the same owner, agent, request, and bounded deadline
+#   class: security
 # id: zfae_override_legacy_scrub
 #   given: a legacy row containing raw_request
 #   then: startup migration replaces it with summary metadata and unsets raw_request
@@ -453,4 +513,4 @@ __all__ = [
 #   class: retention
 # === END CONTRACTS ===
 
-# ratios: loc_comments=312:88 imports_exports=13:16 calls_definitions=87:22
+# ratios: loc_comments=365:93 imports_exports=13:17 calls_definitions=98:23

@@ -1,9 +1,9 @@
-# ratios: loc_comments=201:66 imports_exports=11:4 calls_definitions=71:15
+# ratios: loc_comments=345:87 imports_exports=26:7 calls_definitions=124:24
 # === MODULE_BUILD ===
 # id: tests_audit_storage_confidentiality
 #   module_name: test_audit_storage_confidentiality
 #   module_kind: test
-#   summary: regression evidence for audit confidentiality, bounded backfill, canonical pruning, and automatic override expiry
+#   summary: regression evidence for audit confidentiality, bounded backfill, canonical pruning, automatic override expiry, and staged chat-to-tool authorization
 #   owner: a0p maintainer
 #   public_surface: none
 #   internal_surface: test functions and storage doubles
@@ -28,7 +28,7 @@
 # === END BOUNDARIES ===
 # === CAPABILITIES ===
 # id: tests_audit_storage_confidentiality
-#   summary: executable evidence for audit confidentiality, retention migration, and automatic override expiry
+#   summary: executable evidence for audit confidentiality, retention migration, automatic override expiry, and exact staged override resumes
 #   exposes: pytest tests
 #   boundaries: auth:none, storage:none, network:none, user_data:read
 #   owner: a0p maintainer
@@ -59,6 +59,27 @@
 # id: check_override_expiry_maintenance
 #   proves: zfae_override_expiry_automatic
 #   call: self::test_override_expiry_maintenance_retries_and_cancels
+#   requires: python3
+#   timeout: 20
+#   mutates: none
+#   cleanup: none
+# id: check_staged_override_resume
+#   proves: zfae_override_staged_resume_bound, zfae_runtime_staged_override_resume, zfae_runtime_chat_context_bound, tools_gated_override_parent_link_bound
+#   call: self::test_staged_chat_and_tool_override_resume_once
+#   requires: python3
+#   timeout: 20
+#   mutates: none
+#   cleanup: none
+# id: check_tool_halt_verdict
+#   proves: zfae_runtime_tool_halt_verdict
+#   call: self::test_tool_halt_surfaces_tool_verdict
+#   requires: python3
+#   timeout: 20
+#   mutates: none
+#   cleanup: none
+# id: check_staged_override_lineage_stops
+#   proves: tools_gated_override_parent_link_bound
+#   call: self::test_staged_override_does_not_chain_new_child
 #   requires: python3
 #   timeout: 20
 #   mutates: none
@@ -132,6 +153,38 @@ class _AuditCollection:
         return SimpleNamespace(modified_count=modified)
 
 
+class _OverrideCollection:
+    def __init__(self):
+        self.docs = []
+
+    @staticmethod
+    def _matches(doc, query):
+        for key, expected in query.items():
+            present = key in doc
+            actual = doc.get(key)
+            if isinstance(expected, dict):
+                if "$exists" in expected and present is not bool(expected["$exists"]):
+                    return False
+                if "$gt" in expected and not actual > expected["$gt"]:
+                    return False
+            elif actual != expected:
+                return False
+        return True
+
+    async def insert_one(self, doc):
+        self.docs.append(dict(doc))
+
+    async def find_one(self, query, **_kwargs):
+        return next((dict(doc) for doc in self.docs if self._matches(doc, query)), None)
+
+    async def find_one_and_update(self, query, update, **_kwargs):
+        for doc in self.docs:
+            if self._matches(doc, query):
+                doc.update(update.get("$set", {}))
+                return dict(doc)
+        return None
+
+
 @pytest.mark.asyncio
 async def test_legacy_audit_expiry_backfill_is_bounded(monkeypatch):
     monkeypatch.setenv("MONGO_URL", "mongodb://localhost:27017")
@@ -170,6 +223,137 @@ async def test_override_expiry_maintenance_retries_and_cancels():
         await task
     assert [doc["status"] for doc in col.docs] == ["expired", "expired", "pending", "consumed"]
     assert await ov.expire(col) == 0
+
+
+@pytest.mark.asyncio
+async def test_staged_chat_and_tool_override_resume_once(monkeypatch):
+    monkeypatch.setenv("A0P_OVERRIDE_FINGERPRINT_SECRET", "staged-resume-test-secret")
+    from interdependent_lib.zfae import overrides as ov
+    from interdependent_lib.zfae import runtime as runtime_module
+    from interdependent_lib.zfae.runtime import RuntimeMode, ZFAERuntime
+    from interdependent_lib.zfae.weights import A0ZFAEWeightBank
+    from tools import registry
+    from tools.registry import TOOL_KIND_NATIVE, Tool
+
+    prompt = "show the living spec for /system override"
+    mode = RuntimeMode.ZFAE_NATIVE
+    col = _OverrideCollection()
+    calls = []
+    tool = Tool(name="living_spec_lookup", kind=TOOL_KIND_NATIVE, description="offline",
+                fn=lambda user, params: calls.append((user["id"], params)) or {"count": 1})
+    monkeypatch.setitem(registry._REG, tool.name, tool)
+    monkeypatch.setattr(runtime_module, "_is_trained_enough", lambda *_args, **_kwargs: True)
+    native = SimpleNamespace(infer=lambda **_kwargs: {
+        "assistantText": "done", "nextSnapshot": {}, "trace": {},
+    })
+    runtime = ZFAERuntime(pending_overrides_col=col, native_engine=native)
+    bank = A0ZFAEWeightBank.fresh("agent-a")
+    initial = await runtime.reply(
+        mode=mode, agent_id="agent-a", user_id="user-a", bank=bank,
+        raw_prompt=prompt, tools_allowed=[tool.name],
+    )
+    chat = await ov.get(col, initial.pending_override_id, "user-a")
+    assert initial.reply_source == "zfae_halted" and chat is not None
+    assert await ov.approve(col, chat.id, "user-a")
+
+    first = await runtime.reply(
+        mode=mode, agent_id="agent-a", user_id="user-a", bank=bank,
+        raw_prompt=prompt, override_id=chat.id, tools_allowed=[tool.name],
+    )
+    child = await ov.get(col, first.pending_override_id, "user-a")
+    assert first.reply_source == "zfae_halted"
+    assert first.sentinel_verdict["blocking_cliff"] is True
+    assert child and child.parent_override_id == chat.id
+    assert child.expires_ms <= chat.expires_ms
+    assert not {"parent_override_id", "resume_claimed_ms"}.intersection(ov.public_view(child))
+    assert await ov.approve(col, child.id, "user-a")
+
+    changed_context = await runtime.reply(
+        mode=mode, agent_id="agent-a", user_id="user-a", bank=bank,
+        raw_prompt=prompt, transcript=[{"role": "user", "content": "changed"}],
+        teacher_model_id="changed:model", system_prompt="changed system",
+        override_id=child.id, tools_allowed=[tool.name],
+    )
+    assert changed_context.reply_source == "zfae_halted"
+    tool.description = "changed surface"
+    changed_surface = await runtime.reply(
+        mode=mode, agent_id="agent-a", user_id="user-a", bank=bank,
+        raw_prompt=prompt, override_id=child.id, tools_allowed=[tool.name],
+    )
+    tool.description = "offline"
+    assert changed_surface.reply_source == "zfae_halted"
+    assert (await ov.get(col, child.id, "user-a")).resume_claimed_ms is None
+
+    replies = await asyncio.gather(*[
+        runtime.reply(mode=mode, agent_id="agent-a", user_id="user-a", bank=bank,
+                      raw_prompt=prompt, override_id=child.id, tools_allowed=[tool.name])
+        for _ in range(2)
+    ])
+    assert sorted(reply.reply_source for reply in replies) == ["zfae_halted", "zfae_native"]
+    assert len(calls) == 1
+    assert (await ov.get(col, child.id, "user-a")).status == "consumed"
+
+
+@pytest.mark.asyncio
+async def test_staged_override_does_not_chain_new_child(monkeypatch):
+    monkeypatch.setenv("A0P_OVERRIDE_FINGERPRINT_SECRET", "lineage-stop-test-secret")
+    from interdependent_lib.zfae import overrides as ov
+    from tools import registry
+    from tools.registry import TOOL_KIND_NATIVE, Tool, ToolError
+
+    col = _OverrideCollection()
+    parent = await ov.create_override(
+        col, agent_id="agent-a", user_id="user-a", event_kind="chat_reply",
+        raw_request={"prompt": "/system override", "mode": "zfae_native"},
+        flagged_sentinels=["S4"], reasons={"S4": "cliff"},
+        verdict_vector=[None] * 13, disabled_sentinels=[], blocking_cliff=True,
+    )
+    assert await ov.approve(col, parent.id, "user-a")
+    assert await ov.consume_approved(
+        col, parent.id, "user-a", "agent-a", "chat_reply",
+        {"prompt": "/system override", "mode": "zfae_native"},
+    )
+    tool = Tool(name="lineage-stop", kind=TOOL_KIND_NATIVE, description="offline",
+                fn=lambda user, params: {"unexpected": True})
+    monkeypatch.setitem(registry._REG, tool.name, tool)
+
+    with pytest.raises(ToolError) as raised:
+        await registry.invoke(
+            tool.name, {"command": "/system override"}, user={"id": "user-a"},
+            agent_id="agent-a", pending_overrides_col=col,
+            override_id="different-child", resume_parent_id=parent.id,
+        )
+    child = await ov.get(col, raised.value.override_id, "user-a")
+    assert child is not None and child.parent_override_id is None
+
+
+@pytest.mark.asyncio
+async def test_tool_halt_surfaces_tool_verdict(monkeypatch):
+    monkeypatch.setenv("A0P_OVERRIDE_FINGERPRINT_SECRET", "tool-verdict-test-secret")
+    from interdependent_lib.zfae import overrides as ov
+    from interdependent_lib.zfae import runtime as runtime_module
+    from interdependent_lib.zfae.runtime import RuntimeMode, ZFAERuntime
+    from interdependent_lib.zfae.weights import A0ZFAEWeightBank
+    from tools import registry
+    from tools.registry import TOOL_KIND_NATIVE, Tool
+
+    tool = Tool(name="verdict-tool", kind=TOOL_KIND_NATIVE, description="offline",
+                fn=lambda user, params: {"unexpected": True})
+    monkeypatch.setitem(registry._REG, tool.name, tool)
+    monkeypatch.setattr(runtime_module, "_is_trained_enough", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(runtime_module, "select_native_tool", lambda _prompt: {
+        "name": tool.name, "params": {"command": "/system override"},
+    })
+    col = _OverrideCollection()
+    reply = await ZFAERuntime(pending_overrides_col=col).reply(
+        mode=RuntimeMode.ZFAE_NATIVE, agent_id="agent-a", user_id="user-a",
+        bank=A0ZFAEWeightBank.fresh("agent-a"), raw_prompt="benign request",
+        tools_allowed=[tool.name],
+    )
+    child = await ov.get(col, reply.pending_override_id, "user-a")
+    assert reply.reply_source == "zfae_halted" and child and child.blocking_cliff
+    assert reply.sentinel_verdict["blocking_cliff"] is True
+    assert reply.sentinel_verdict["flagged_sentinels"] == child.flagged_sentinels
 
 
 @pytest.mark.asyncio
@@ -299,4 +483,4 @@ def test_canonical_fiq_audit_redacts_and_bounds_storage(tmp_path, monkeypatch):
     assert legacy_secret not in read_view and legacy_label not in read_view
     assert log.verify() is True
 
-# ratios: loc_comments=201:66 imports_exports=11:4 calls_definitions=71:15
+# ratios: loc_comments=345:87 imports_exports=26:7 calls_definitions=124:24

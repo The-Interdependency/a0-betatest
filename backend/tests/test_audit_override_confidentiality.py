@@ -325,7 +325,7 @@ async def test_approved_override_requires_owner_and_exact_action(tmp_path):
     await ov.approve(col, chat_rec.id, "user-a", "exact action")
     runtime = ZFAERuntime(pending_overrides_col=col)
     bank = A0ZFAEWeightBank.fresh("agent-a")
-    _, held = await runtime._sentinel_gate(
+    _, held, _ = await runtime._sentinel_gate(
         agent_id="agent-a",
         user_id="user-a",
         mode=RuntimeMode.TEACHER_ASSISTED,
@@ -334,10 +334,10 @@ async def test_approved_override_requires_owner_and_exact_action(tmp_path):
         bank=bank,
         sentinel_modes=None,
         sentinel_weights=None,
-        override_id=chat_rec.id,
+        override_id=chat_rec.id, action_request=chat_raw,
     )
     assert held is None
-    _, replay_held = await runtime._sentinel_gate(
+    _, replay_held, _ = await runtime._sentinel_gate(
         agent_id="agent-a",
         user_id="user-a",
         mode=RuntimeMode.TEACHER_ASSISTED,
@@ -346,10 +346,10 @@ async def test_approved_override_requires_owner_and_exact_action(tmp_path):
         bank=bank,
         sentinel_modes=None,
         sentinel_weights=None,
-        override_id=chat_rec.id,
+        override_id=chat_rec.id, action_request=chat_raw,
     )
     assert replay_held is not None and replay_held.status == "pending"
-    _, other_owner_held = await runtime._sentinel_gate(
+    _, other_owner_held, _ = await runtime._sentinel_gate(
         agent_id="agent-a",
         user_id="user-b",
         mode=RuntimeMode.TEACHER_ASSISTED,
@@ -358,7 +358,7 @@ async def test_approved_override_requires_owner_and_exact_action(tmp_path):
         bank=bank,
         sentinel_modes=None,
         sentinel_weights=None,
-        override_id=chat_rec.id,
+        override_id=chat_rec.id, action_request=chat_raw,
     )
     assert other_owner_held is not None and other_owner_held.user_id == "user-b"
 
