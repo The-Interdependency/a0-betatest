@@ -1,4 +1,4 @@
-# ratios: loc_comments=91:66 imports_exports=4:10 calls_definitions=23:11
+# ratios: loc_comments=92:66 imports_exports=4:10 calls_definitions=23:11
 # === MODULE_BUILD ===
 # id: tools_registry
 #   module_name: registry
@@ -155,6 +155,7 @@ async def invoke(
     params: dict,
     *,
     user: dict,
+    agent_id: Optional[str] = None,
     sentinel_modes: Optional[dict] = None,
     sentinel_weights: Optional[dict] = None,
     pending_overrides_col=None,
@@ -174,7 +175,7 @@ async def invoke(
     # Lazy import to avoid a cycle (gated_invoke imports back into registry).
     from .gated_invoke import gated_invoke
     return await gated_invoke(
-        tool, params, user=user,
+        tool, params, user=user, agent_id=agent_id,
         sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
         pending_overrides_col=pending_overrides_col,
         fiq_audit_col=fiq_audit_col,
@@ -187,4 +188,4 @@ __all__ = [
     "user_tool_names", "list_tools", "invoke",
     "TOOL_KIND_NATIVE", "TOOL_KIND_WEBHOOK", "TOOL_KIND_MCP", "TOOL_KIND_ODYSSEUS",
 ]
-# ratios: loc_comments=91:66 imports_exports=4:10 calls_definitions=23:11
+# ratios: loc_comments=92:66 imports_exports=4:10 calls_definitions=23:11

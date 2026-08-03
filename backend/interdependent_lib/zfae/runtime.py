@@ -1,9 +1,9 @@
-# ratios: loc_comments=642:100 imports_exports=21:3 calls_definitions=117:18
+# ratios: loc_comments=652:106 imports_exports=21:3 calls_definitions=117:18
 # === MODULE_BUILD ===
 # id: zfae_runtime
 #   module_name: runtime
 #   module_kind: engine
-#   summary: ZFAERuntime — dispatches teacher_assisted vs zfae_native; never silently substitutes teacher output as native inference; carries reply_source + teacher_called + zfae_weights_updated flags
+#   summary: ZFAERuntime dispatches teacher-assisted vs native inference and resumes held actions only for the owning user's exact approved request
 #   owner: Erin Spencer
 #   public_surface: ZFAERuntime, RuntimeMode, RuntimeReply, MISSING_NATIVE_MESSAGE
 #   internal_surface: _is_trained_enough, _teacher_tool_loop, _native_tool_use, _fiq_emit_tool_trace
@@ -48,6 +48,13 @@
 #   then: the named callable returns without raising
 #   class: correctness
 #   call: a0p_skills.contracts.zfae_native_refuses_when_untrained_holds
+# === END CONTRACTS ===
+
+# === CONTRACTS ===
+# id: zfae_runtime_override_owner_action_bound
+#   given: a caller presents an approved chat override
+#   then: execution resumes only for the same owner, agent, and exact request
+#   class: security
 # === END CONTRACTS ===
 """ZFAERuntime — dispatches teacher_assisted vs zfae_native modes."""
 from __future__ import annotations
@@ -256,8 +263,16 @@ class ZFAERuntime:
 
         # If caller provided an approved override_id, allow execution.
         if override_id and self.pending_overrides_col is not None:
-            rec = await zfae_overrides.get(self.pending_overrides_col, override_id)
-            if rec is not None and rec.status == "approved" and rec.agent_id == agent_id:
+            raw_request = {"prompt": raw_prompt, "mode": mode.value}
+            rec = await zfae_overrides.consume_approved(
+                self.pending_overrides_col,
+                override_id,
+                user_id,
+                agent_id,
+                "chat_reply",
+                raw_request,
+            )
+            if rec is not None:
                 return verdict, None
 
         # No approved override — must halt. Create one.
@@ -351,7 +366,7 @@ class ZFAERuntime:
                 _AUDIT_LOG.warning("fiq tool emit failed: %s", _e)
 
     async def _teacher_tool_loop(
-        self, *, teacher_model_id, messages, tools_allowed, user_id,
+        self, *, teacher_model_id, messages, tools_allowed, agent_id, user_id,
         sentinel_modes, sentinel_weights, override_id,
     ) -> tuple[TeacherInvocation, list, Optional[str]]:
         """Cross-provider function-calling loop via raw HTTP (BYOK).
@@ -391,6 +406,7 @@ class ZFAERuntime:
             try:
                 return await tools_invoke(
                     tc["name"], tc.get("args") or {}, user={"id": user_id},
+                    agent_id=agent_id,
                     sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
                     pending_overrides_col=self.pending_overrides_col,
                     fiq_audit_col=self.fiq_audit_col, override_id=override_id,
@@ -433,6 +449,7 @@ class ZFAERuntime:
         try:
             out = await tools_invoke(
                 sel["name"], sel["params"], user={"id": user_id},
+                agent_id=agent_id,
                 sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
                 pending_overrides_col=self.pending_overrides_col,
                 fiq_audit_col=self.fiq_audit_col, override_id=override_id,
@@ -554,7 +571,7 @@ class ZFAERuntime:
         if tools_allowed and self.get_key_fn is not None and ":" in teacher_model_id:
             teacher, tool_trace, halt_override_id = await self._teacher_tool_loop(
                 teacher_model_id=teacher_model_id, messages=messages,
-                tools_allowed=tools_allowed, user_id=user_id,
+                tools_allowed=tools_allowed, agent_id=agent_id, user_id=user_id,
                 sentinel_modes=sentinel_modes, sentinel_weights=sentinel_weights,
                 override_id=override_id,
             )
@@ -796,4 +813,4 @@ def _verdict_to_dict(verdict: Optional[Verdict13]) -> Optional[dict]:
             for v in verdict.verdicts
         ],
     }
-# ratios: loc_comments=642:100 imports_exports=21:3 calls_definitions=117:18
+# ratios: loc_comments=652:106 imports_exports=21:3 calls_definitions=117:18

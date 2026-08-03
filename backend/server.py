@@ -1,4 +1,4 @@
-# ratios: loc_comments=890:123 imports_exports=48:56 calls_definitions=324:66
+# ratios: loc_comments=888:133 imports_exports=48:56 calls_definitions=325:66
 # === MODULE_BUILD ===
 # id: a0p_server
 #   module_name: server
@@ -815,6 +815,16 @@ async def list_usage(request: Request, limit: int = 100):
 #   class: observability
 #   call: a0p_skills.contracts.skill_report_visibility_holds
 # === END CONTRACTS ===
+# === CONTRACTS ===
+# id: override_routes_minimal_owner_scoped
+#   given: an authenticated caller lists or retrieves held overrides
+#   then: reads are owner-scoped and only the whitelisted public view is returned
+#   class: security
+# id: override_expiry_admin_only
+#   given: a caller requests override expiry maintenance
+#   then: only an administrator can expire records and only stale pending or approved rows match
+#   class: authorization
+# === END CONTRACTS ===
 @api.get("/skill/contracts/report")
 async def skill_contracts_report():
     """test-build runner — imports each CONTRACTS `call:` path and runs it."""
@@ -1042,29 +1052,26 @@ async def patch_sentinel_weights(agent_id: str, body: SentinelWeightsPatch, requ
 @sentinels_api.get("/overrides")
 async def list_overrides(request: Request, status: str = "pending", limit: int = 100):
     user_id = await _auth_uid(request)
-    if status == "pending":
-        records = await zfae_overrides.list_pending(pending_overrides_col, user_id=user_id, limit=limit)
-        return {"overrides": [r.__dict__ for r in records], "count": len(records)}
-    out = []
-    async for doc in pending_overrides_col.find(
-        {"user_id": user_id, "status": status}
-    ).sort("created_ms", -1).limit(limit):
-        doc.setdefault("id", doc.pop("_id", None))
-        out.append(doc)
+    if status not in {"pending", "approved", "consumed", "rejected", "expired"}:
+        raise HTTPException(400, "invalid override status")
+    limit = max(1, min(int(limit), 200))
+    records = await zfae_overrides.list_for_user(
+        pending_overrides_col, user_id=user_id, status=status, limit=limit,
+    )
+    out = [zfae_overrides.public_view(record) for record in records]
     return {"overrides": out, "count": len(out)}
 
 
 @sentinels_api.get("/overrides/{override_id}")
 async def get_override(override_id: str, request: Request):
     uid = await _auth_uid(request)
-    rec = await zfae_overrides.get(pending_overrides_col, override_id)
-    if rec is None or rec.user_id != uid:
+    rec = await zfae_overrides.get(pending_overrides_col, override_id, uid)
+    if rec is None:
         raise HTTPException(404, f"override {override_id} not found")
-    return rec.__dict__
+    return zfae_overrides.public_view(rec)
 
 
 class OverrideApprove(BaseModel):
-    user_id: str = "local"
     justification: str = ""
 
 
@@ -1078,7 +1085,6 @@ async def approve_override(override_id: str, body: OverrideApprove, request: Req
 
 
 class OverrideReject(BaseModel):
-    user_id: str = "local"
     reason: str = ""
 
 
@@ -1091,10 +1097,12 @@ async def reject_override(override_id: str, body: OverrideReject, request: Reque
     return {"ok": True, "status": rec.status, "id": rec.id, "resolved_ms": rec.resolved_ms}
 
 
-@sentinels_api.post("/overrides/expire")
+@sentinels_api.post("/admin/overrides/expire")
 async def expire_overrides(request: Request):
-    uid = await _auth_uid(request)
-    n = await zfae_overrides.expire(pending_overrides_col, user_id=uid)
+    user = await get_current_user(request)
+    if user.get("role") != "admin":
+        raise HTTPException(403, "admin only")
+    n = await zfae_overrides.expire(pending_overrides_col)
     return {"expired": n}
 
 
@@ -1187,4 +1195,4 @@ async def _on_startup():
           "created_at": now,
           "updated_at": now,
       })
-# ratios: loc_comments=890:123 imports_exports=48:56 calls_definitions=324:66
+# ratios: loc_comments=888:133 imports_exports=48:56 calls_definitions=325:66

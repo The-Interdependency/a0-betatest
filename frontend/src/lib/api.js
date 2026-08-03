@@ -144,7 +144,6 @@ export const api = {
   getOverride:      (id) => client.get(`/overrides/${id}`).then(r => r.data),
   approveOverride:  (id, body) => client.post(`/overrides/${id}/approve`, body).then(r => r.data),
   rejectOverride:   (id, body) => client.post(`/overrides/${id}/reject`, body).then(r => r.data),
-  expireOverrides:  () => client.post("/overrides/expire").then(r => r.data),
 
   // ─── Chat Training tab (UCNS embedding + EDCM + cylindrical disk stack) ──
   trainingReadout:  (body) => client.post("/training/readout", body, { timeout: 60000 }).then(r => r.data),

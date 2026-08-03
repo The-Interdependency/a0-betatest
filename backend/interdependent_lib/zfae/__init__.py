@@ -5,14 +5,14 @@
 #   module_kind: engine
 #   summary: a0(ZFAE) — the inference provider, not an agent label. Exposes A0ZFAEInferenceEngine (native deterministic), plus the legacy ZFAEAgent persona for backward-compat with prior PCNAEngine wiring
 #   owner: a0p maintainer
-#   public_surface: A0ZFAEInferenceEngine, ENGINE, infer, InferenceResult, MISSING_NATIVE_MESSAGE, ZFAEAgent
+#   public_surface: A0ZFAEInferenceEngine, ENGINE, infer, InferenceResult, MISSING_NATIVE_MESSAGE, ZFAEAgent, OverrideRequestSummary, PendingOverride, consume_approved_override
 #   internal_surface: none
 #   auth_boundary: none
 #   storage_boundary: none
 #   network_boundary: none
 #   user_data_boundary: read
 #   admin_only: false
-#   tests: a0p_skills.contracts.zfae_engine_native_only_holds
+#   tests: a0p_skills.contracts.zfae_engine_native_only_holds, backend.tests.test_audit_override_confidentiality
 #   rollout: default_enabled
 #   rollback: remove imports from server.py /api/chat/zfae route
 # === END MODULE_BUILD ===
@@ -29,7 +29,7 @@
 # === CAPABILITIES ===
 # id: zfae_pkg
 #   summary: a0(ZFAE) — the inference provider, not an agent label. Exposes A0ZFAEInferenceEngine (native deterministic), plus the legacy ZFAEAgent persona for backward-compat with prior PCNAEngine wiring
-#   exposes: A0ZFAEInferenceEngine, ENGINE, infer, InferenceResult, MISSING_NATIVE_MESSAGE, ZFAEAgent
+#   exposes: A0ZFAEInferenceEngine, ENGINE, infer, InferenceResult, MISSING_NATIVE_MESSAGE, ZFAEAgent, OverrideRequestSummary, PendingOverride, consume_approved_override
 #   boundaries: auth:none, storage:none, network:none, user_data:read
 #   owner: a0p maintainer
 # === END CAPABILITIES ===
@@ -75,8 +75,8 @@ from .sentinel_weights import (
     resolve_weights, validate_weights, inference_channel,
 )
 from .overrides import (
-    PendingOverride, OVERRIDE_DEFAULT_TIMEOUT_MS,
-    create_override, approve as approve_override,
+    OverrideRequestSummary, PendingOverride, OVERRIDE_DEFAULT_TIMEOUT_MS,
+    create_override, approve as approve_override, consume_approved as consume_approved_override,
     reject as reject_override, expire as expire_overrides,
     get as get_override, list_pending as list_pending_overrides,
 )
@@ -116,8 +116,8 @@ __all__ = [
     "SENTINEL_MODES_DEFAULT", "resolve_modes", "validate_modes", "bulk_set",
     "SENTINEL_WEIGHTS_DEFAULT", "INFERENCE_CHANNEL_DEFAULT",
     "resolve_weights", "validate_weights", "inference_channel",
-    "PendingOverride", "OVERRIDE_DEFAULT_TIMEOUT_MS",
-    "create_override", "approve_override", "reject_override",
+    "OverrideRequestSummary", "PendingOverride", "OVERRIDE_DEFAULT_TIMEOUT_MS",
+    "create_override", "approve_override", "consume_approved_override", "reject_override",
     "expire_overrides", "get_override", "list_pending_overrides",
 ]
 # ratios: loc_comments=58:53 imports_exports=9:2 calls_definitions=7:5

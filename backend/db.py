@@ -1,18 +1,18 @@
-# ratios: loc_comments=50:43 imports_exports=2:1 calls_definitions=25:1
+# ratios: loc_comments=76:52 imports_exports=4:1 calls_definitions=32:1
 # === MODULE_BUILD ===
 # id: a0p_db_motor
 #   module_name: db
 #   module_kind: service
 #   summary: Motor async client + collection accessors + index ensurance
 #   owner: a0p maintainer
-#   public_surface: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, ensure_indexes
+#   public_surface: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, fiq_audit_col, pending_overrides_col, ensure_indexes
 #   internal_surface: _client, _MONGO_URL, _DB_NAME
 #   auth_boundary: none
 #   storage_boundary: write
 #   network_boundary: internal
 #   user_data_boundary: write
 #   admin_only: false
-#   tests: hmmm
+#   tests: backend.tests.test_audit_override_confidentiality
 #   rollout: default_enabled
 #   rollback: drop mongo collections; revert server.py import
 # === END MODULE_BUILD ===
@@ -29,7 +29,7 @@
 # === CAPABILITIES ===
 # id: a0p_db_motor
 #   summary: Motor async client + collection accessors + index ensurance
-#   exposes: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, ensure_indexes
+#   exposes: db, keys_col, vault_col, sessions_col, drafts_col, fanout_col, chain_col, agents_col, usage_col, fiq_audit_col, pending_overrides_col, ensure_indexes
 #   boundaries: auth:none, storage:write, network:internal, user_data:write
 #   owner: a0p maintainer
 # === END CAPABILITIES ===
@@ -69,6 +69,19 @@ skills_col = db["skills"]
 
 
 async def ensure_indexes():
+    from interdependent_lib.zfae.fiq_emit import audit_expiry
+    from interdependent_lib.zfae.overrides import scrub_legacy_raw_requests
+
+    # Repair 03 migrations run before serving requests: legacy held bodies are
+    # reduced to safe metadata, and legacy audit rows enter the same TTL policy
+    # as newly emitted events.
+    await scrub_legacy_raw_requests(pending_overrides_col)
+    async for doc in fiq_audit_col.find({"expires_at": {"$exists": False}}, {"timestamp_ms": 1}):
+        await fiq_audit_col.update_one(
+            {"_id": doc["_id"], "expires_at": {"$exists": False}},
+            {"$set": {"expires_at": audit_expiry(doc.get("timestamp_ms"))}},
+        )
+
     await keys_col.create_index([("user_id", 1), ("provider", 1)])
     await vault_col.create_index([("user_id", 1), ("site", 1), ("account_label", 1)])
     await sessions_col.create_index([("user_id", 1), ("updated_at", -1)])
@@ -82,7 +95,21 @@ async def ensure_indexes():
 )
     await agent_instances_col.create_index([("user_id", 1), ("updated_at", -1)])
     await usage_col.create_index([("user_id", 1), ("created_at", -1)])
-    await fiq_audit_col.create_index([("timestamp_ms", -1)])
+    await fiq_audit_col.create_index(
+        [("user_id", 1), ("timestamp_ms", -1)],
+        name="fiq_audit_owner_timestamp",
+    )
+    await fiq_audit_col.create_index(
+        "expires_at", expireAfterSeconds=0, name="fiq_audit_retention_ttl",
+    )
+    await pending_overrides_col.create_index(
+        [("user_id", 1), ("status", 1), ("created_ms", -1)],
+        name="pending_override_owner_status_created",
+    )
+    await pending_overrides_col.create_index(
+        [("status", 1), ("expires_ms", 1)],
+        name="pending_override_expiry",
+    )
     await users_col.create_index("email", unique=True)
     await users_col.create_index("username", unique=True)
     await login_attempts_col.create_index("identifier")
@@ -102,4 +129,10 @@ async def ensure_indexes():
 #   class: integration
 #   call: a0p_skills.contracts.module_imports_cleanly_holds
 # === END CONTRACTS ===
-# ratios: loc_comments=50:43 imports_exports=2:1 calls_definitions=25:1
+# === CONTRACTS ===
+# id: audit_override_indexes_present
+#   given: database startup completes
+#   then: owner-time, owner-status-created, expiry-query, and audit TTL indexes exist
+#   class: retention
+# === END CONTRACTS ===
+# ratios: loc_comments=76:52 imports_exports=4:1 calls_definitions=32:1
