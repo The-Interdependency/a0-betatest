@@ -16,7 +16,7 @@
 | Build backend | `setuptools.build_meta` |
 | Author(s) | Erin Patrick Spencer <wayseer@interdependentway.org> |
 | Repository | https://github.com/erinepshovel-code/a0p |
-| Runtime dependencies | `fastapi==0.115.0`, `uvicorn[standard]==0.32.0`, `motor==3.6.0`, `pymongo==4.9.1`, `pydantic==2.9.2`, `python-dotenv==1.0.1`, `httpx==0.27.2`, `cryptography==43.0.1`, `ucns @ git+https://github.com/The-Interdependency/ucns.git@717c6d45cd406bebf0a250f9cee4014a1092770e`, `python-multipart==0.0.12`, `safetensors>=0.4.5`, `numpy>=1.26`, `openai>=1.50`, `anthropic>=0.40`, `google-generativeai>=0.8`, `bcrypt>=4.0,<5.0`, `PyJWT>=2.8`, `email-validator>=2.0` |
+| Runtime dependencies | `fastapi==0.115.0`, `uvicorn[standard]==0.32.0`, `motor==3.6.0`, `pymongo==4.9.1`, `pydantic==2.9.2`, `python-dotenv==1.0.1`, `httpx==0.27.2`, `cryptography==43.0.1`, `ucns @ git+https://github.com/The-Interdependency/ucns.git@3cac8d0bb3170f73fb6529a619ca225f2821eff4`, `python-multipart==0.0.12`, `safetensors>=0.4.5`, `numpy>=1.26`, `openai>=1.50`, `anthropic>=0.40`, `google-generativeai>=0.8`, `bcrypt>=4.0,<5.0`, `PyJWT>=2.8`, `email-validator>=2.0` |
 | Optional extras | `dev` |
 | Keywords | a0p, ZFAE, PCNA, PTCA, PCEA, fiq, research, BYOK |
 | CI workflows | `clean-build-check.yml`, `deploy.yml` |

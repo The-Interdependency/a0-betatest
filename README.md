@@ -3,7 +3,7 @@
 > _changes constant. refinements welcome._  
 > [wayseer@interdependentway.org](mailto:wayseer@interdependentway.org)
 
-_Living spec — auto-regenerated on backend startup at 2026-07-16 07:00:26 UTC._  
+_Living spec — auto-regenerated on backend startup at 2026-08-14 04:22:13 UTC._  
 _172 modules · 15 kinds · 23 subsystems._
 
 > This file is generated from the codebase's own documentation. Don't edit it by hand — edit a module's `# === MODULE_BUILD ===` block (its `summary` is the narrative you read below) and it regenerates on the next backend start.
@@ -100,7 +100,7 @@ The heart of the instrument: a pure, deterministic symbolic/state engine with no
   `backend/interdependent_lib/zfae/closed_tokens.py`
 - **`fiq_emit`** — ZFAE-level provenance emitter — appends hash-chained zfae_* events (training_step, chat_reply, sentinel_verdict, override_created, override_resolved) to fiq_audit_log  
   `backend/interdependent_lib/zfae/fiq_emit.py`
-- **`gonal_inscription`** — ZFAE Route A inscription using the UCNS-owned fixed-origin PrivateGonal and A0's continuous tensor-to-glyph application  
+- **`gonal_inscription`** — ZFAE Route A application projection over the UCNS-owned fixed-origin PrivateGonal without defining a UCNS rotation or complete-return law  
   `backend/interdependent_lib/zfae/gonal_inscription.py`
 - **`inference`** — a0(ZFAE) inference engine — native deterministic symbolic/state engine; no LLM dependency; returns {assistantText, nextSnapshot, trace}  
   `backend/interdependent_lib/zfae/inference.py`
