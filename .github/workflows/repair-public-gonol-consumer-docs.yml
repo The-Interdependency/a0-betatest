@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out target consumer branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           repository: The-Interdependency/a0-betatest
           ref: agent/consume-ucns-public-gonol-canon
@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check out pinned canonical skill-lib
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           repository: The-Interdependency/skill-lib
           ref: 05ee7aa9b7d906664d976bf1f06ea44522110489
