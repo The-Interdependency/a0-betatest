@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out target consumer branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           repository: The-Interdependency/a0-betatest
           ref: agent/consume-ucns-public-gonol-canon
@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check out pinned canonical skill-lib
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           repository: The-Interdependency/skill-lib
           ref: 05ee7aa9b7d906664d976bf1f06ea44522110489
@@ -37,10 +37,18 @@ jobs:
           def replace(path, old, new):
               p = Path(path)
               text = p.read_text(encoding="utf-8")
-              count = text.count(old)
-              if count != 1:
-                  raise SystemExit(f"{path}: expected one occurrence, found {count}: {old[:80]!r}")
-              p.write_text(text.replace(old, new), encoding="utf-8")
+              old_count = text.count(old)
+              new_count = text.count(new)
+              if old_count == 1 and new_count == 0:
+                  p.write_text(text.replace(old, new), encoding="utf-8")
+                  return
+              if old_count == 0 and new_count == 1:
+                  print(f"{path}: ownership correction already present")
+                  return
+              raise SystemExit(
+                  f"{path}: expected exactly the old or corrected state; "
+                  f"found old={old_count}, corrected={new_count}: {old[:80]!r}"
+              )
 
           foundation_anchor = (
               '> something dismissive or "implementation-flavored"; preserve the framing.\n\n'
@@ -137,5 +145,9 @@ jobs:
           git add CLAUDE.md README.md a0-betatest_msdmd.ts \
             memory/ARCHITECTURE_FOUNDATION.md backend/readme_writer.py
           git diff --cached --stat
+          if git diff --cached --quiet; then
+            echo "ownership corrections already present; nothing to commit"
+            exit 0
+          fi
           git commit -m "docs(gonal): record UCNS canon ownership migration"
           git push origin HEAD:agent/consume-ucns-public-gonol-canon
