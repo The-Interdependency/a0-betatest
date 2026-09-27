@@ -192,7 +192,22 @@ A0P_ALLOW_DOC_WRITE=1 python readme_writer.py
 
 ## License
 
+a0-betatest is licensed under the GNU Affero General Public License v3.0 or later
+(SPDX: `AGPL-3.0-or-later`). The full text is in [`LICENSE`](LICENSE), in effect
+since 2026-07-10. Earlier versions keep the terms they were published under:
+`package.json` MIT from 2026-02-26, an Apache-2.0 LICENSE from 2026-05-01, an
+interim BSL notice from 2026-05-26, and no root LICENSE from 2026-05-31 to
+2026-07-10. Until 2026-09-26 this README and `backend/pyproject.toml` still said
 Apache-2.0.
+
+- `_legacy_a0/` is a historical copy of a0. `_legacy_a0/LICENSE` is an
+  unfinished interim BSL placeholder, not a license in effect.
+- Third-party agent skills under `.agents/skills/` keep their own terms, e.g.
+  `frontend-design/LICENSE.txt` and `skill-creator/LICENSE.txt`.
+
+Usage: to reuse a0-betatest code, keep the AGPL notice. If you run a modified
+version as a network service, offer its users the corresponding source (AGPL §13).
+This section is a licensing map, not legal advice.
 
 ## hmmm
 
