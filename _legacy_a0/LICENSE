@@ -2,7 +2,9 @@ HISTORICAL PLACEHOLDER (labeled 2026-09-26): this is the interim notice from
 the a0 copy in this directory. Its terms were never filled in. Going forward it
 is superseded by the repository root LICENSE. Files and subdirectories that
 carry their own license notices keep them (for example `skill-lib/LICENSE`,
-the `edcm-org/` manifests and `package.json`). The notice is kept below,
+the `edcm-org/` manifests and `package.json`). This does not apply to
+`pyproject.toml` in this directory: its `BUSL-1.1` field belongs to this same
+interim notice and is superseded with it. The notice is kept below,
 unchanged, as a historical record.
 
 ================================================================================
