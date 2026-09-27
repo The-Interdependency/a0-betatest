@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "a0p — donation-funded research instrument: BYOK multi-model AI workspace + PTCA/PCNA/ZFAE prime-tensor inference stack with fiq motion canon."
 readme = "../README.md"
 requires-python = ">=3.11"
-license = { text = "Apache-2.0" }
+license = { text = "AGPL-3.0-or-later" }
 authors = [
     { name = "Erin Patrick Spencer", email = "wayseer@interdependentway.org" },
 ]
@@ -18,7 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
 ]
 dependencies = [
     "fastapi==0.115.0",

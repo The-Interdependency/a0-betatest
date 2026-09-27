@@ -12,7 +12,7 @@
 | Description | a0p — donation-funded research instrument: BYOK multi-model AI workspace + PTCA/PCNA/ZFAE prime-tensor inference stack with fiq motion canon. |
 | Status | 3 - Alpha |
 | Python | >=3.11 (classifiers: 3.11, 3.12) |
-| License | Apache-2.0 |
+| License | AGPL-3.0-or-later |
 | Build backend | `setuptools.build_meta` |
 | Author(s) | Erin Patrick Spencer <wayseer@interdependentway.org> |
 | Repository | https://github.com/The-Interdependency/a0-betatest |
@@ -20,7 +20,7 @@
 | Optional extras | `dev` |
 | Keywords | a0p, ZFAE, PCNA, PTCA, PCEA, fiq, research, BYOK |
 | CI workflows | `apply-agent-state-isolation.yml`, `apply-agent-state-proxy.yml`, `apply-owned-agent-records.yml`, `apply-owner-state-core.yml`, `clean-build-check.yml`, `deploy.yml`, `repair-public-gonol-consumer-docs.yml` |
-| Top-level directories | `_legacy_a0/` · `_spec_reference/` · `a0python/` · `backend/` · `frontend/` · `memory/` · `repair/` · `storage/` · `test_reports/` |
+| Top-level directories | `_legacy_a0/` · `_spec_reference/` · `a0python/` · `backend/` · `docs/` · `frontend/` · `memory/` · `repair/` · `storage/` · `test_reports/` |
 
 <sub>Derived from `backend/pyproject.toml` + the repo tree. Unknown fields surface as `hmmm` rather than a guess.</sub>
 <!-- END GENERATED:manifest -->
@@ -81,7 +81,7 @@ python .agents/skills/manifest/generate.py --root /app --pyproject backend/pypro
 
 ## License
 
-Apache 2.0 (skill-lib alignment). The 157-gonal carrier disk, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.
+AGPL-3.0-or-later (see `LICENSE`, added 2026-07-10). The 157-gonal carrier disk, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.
 
 ## Author
 
