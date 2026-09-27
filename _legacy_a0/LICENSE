@@ -1,7 +1,9 @@
-HISTORICAL PLACEHOLDER (labeled 2026-09-26): this interim notice was never
-completed and is not in effect. a0-betatest, including this directory, is
-licensed under AGPL-3.0-or-later; see the repository root LICENSE. Kept
-unchanged below as a historical record.
+HISTORICAL PLACEHOLDER (labeled 2026-09-26): this is the interim notice from
+the a0 copy in this directory. Its terms were never filled in. Going forward it
+is superseded by the repository root LICENSE. Files and subdirectories that
+carry their own license notices keep them (for example `skill-lib/LICENSE`,
+the `edcm-org/` manifests and `package.json`). The notice is kept below,
+unchanged, as a historical record.
 
 ================================================================================
 INTERIM LICENSE NOTICE  —  ACTION REQUIRED BEFORE MERGE / PUBLIC RELEASE

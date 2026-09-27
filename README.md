@@ -193,15 +193,19 @@ A0P_ALLOW_DOC_WRITE=1 python readme_writer.py
 ## License
 
 a0-betatest is licensed under the GNU Affero General Public License v3.0 or later
-(SPDX: `AGPL-3.0-or-later`). The full text is in [`LICENSE`](LICENSE), in effect
-since 2026-07-10. Earlier versions keep the terms they were published under:
+(SPDX: `AGPL-3.0-or-later`). The full text is in [`LICENSE`](LICENSE), added
+on 2026-07-10. Earlier versions were published with these license statements:
 `package.json` MIT from 2026-02-26, an Apache-2.0 LICENSE from 2026-05-01, an
 interim BSL notice from 2026-05-26, and no root LICENSE from 2026-05-31 to
 2026-07-10. Until 2026-09-26 this README and `backend/pyproject.toml` still said
 Apache-2.0.
 
-- `_legacy_a0/` is a historical copy of a0. `_legacy_a0/LICENSE` is an
-  unfinished interim BSL placeholder, not a license in effect.
+- `_legacy_a0/` is a historical copy of a0. `_legacy_a0/LICENSE` is a
+  historical interim BSL placeholder whose terms were never filled in. Going
+  forward it is superseded by the root LICENSE. Files in `_legacy_a0/` that carry
+  their own notices keep them: `_legacy_a0/skill-lib/LICENSE` (Apache-2.0), the
+  `edcm-org/` pyproject files and `_legacy_a0/package.json` (MIT). The folder
+  also contains contributions from mvanhorn and Tiago-Vier-Preto.
 - Third-party agent skills under `.agents/skills/` keep their own terms, e.g.
   `frontend-design/LICENSE.txt` and `skill-creator/LICENSE.txt`.
 

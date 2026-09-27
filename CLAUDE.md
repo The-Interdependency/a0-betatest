@@ -81,7 +81,7 @@ python .agents/skills/manifest/generate.py --root /app --pyproject backend/pypro
 
 ## License
 
-AGPL-3.0-or-later (see `LICENSE`, in effect since 2026-07-10). The 157-gonal carrier disk, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.
+AGPL-3.0-or-later (see `LICENSE`, added 2026-07-10). The 157-gonal carrier disk, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.
 
 ## Author
 
