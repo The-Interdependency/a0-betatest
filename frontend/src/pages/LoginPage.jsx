@@ -94,7 +94,7 @@ function SocialRow({ disabled, onGoogle, onGithub }) {
 
 /** Usage: native users edit, verify and connect before authenticating. Edits
  * disconnect immediately; only the latest mounted health probe may save an origin.
- * Hosted-web users authenticate against their own origin without this selector. */
+ * Hosted-web users authenticate without this device-local selector. */
 export default function LoginPage({ mode: initialMode = "login" }) {
   const [mode, setMode] = useState(initialMode);
   const [identifier, setIdentifier] = useState("");

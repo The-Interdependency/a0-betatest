@@ -18,7 +18,8 @@
 /** Usage: the installed app verifies then saves an origin. Every input edit must
  * call invalidateBackendOrigin immediately, before awaiting work. An explicit
  * empty saved value stays disconnected across reloads instead of using a build
- * default. Hosted web always uses its own origin, ignoring native preferences.
+ * default. Hosted web uses only trusted build configuration (same-origin by
+ * default), never a saved native preference.
  */
 import { Capacitor } from "@capacitor/core";
 
@@ -46,7 +47,7 @@ export function normalizeBackendOrigin(value) {
 }
 
 export function getBackendOrigin() {
-  if (!Capacitor.isNativePlatform()) return "";
+  if (!Capacitor.isNativePlatform()) return normalizeBackendOrigin(process.env.REACT_APP_BACKEND_URL || "");
   const stored = window.localStorage.getItem(STORAGE_KEY);
   return normalizeBackendOrigin(stored === null ? process.env.REACT_APP_BACKEND_URL || "" : stored);
 }

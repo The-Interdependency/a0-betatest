@@ -107,16 +107,16 @@ afterEach(async () => {
   else process.env.REACT_APP_BACKEND_URL = savedDefault;
 });
 
-test.each(["login", "register"])("hosted web %s ignores hidden legacy and build-time overrides", async method => {
+test.each([["login", ""], ["register", ""], ["login", "https://build-default.example"], ["register", "https://build-default.example"]])("hosted web %s ignores saved native overrides with configured origin '%s'", async (method, origin) => {
   localStorage.setItem("a0.backendOrigin", "https://stale.example");
   sessionStorage.setItem("a0.native-session", JSON.stringify({ origin: "https://stale.example", token: "old-native-token" }));
-  process.env.REACT_APP_BACKEND_URL = "https://build-default.example";
+  process.env.REACT_APP_BACKEND_URL = origin;
   Capacitor.isNativePlatform.mockReturnValue(false);
   await mount();
   expect(byId("backend-origin-panel")).toBeNull();
   await act(async () => { await auth[method](credentials); });
   const sent = requests.find(config => config.url === `/auth/${method}`);
-  expect(sent.baseURL).toBe("/api");
+  expect(sent.baseURL).toBe(`${origin}/api`);
   expect(sent.withCredentials).toBe(true);
   expect(sent.headers.Authorization).toBeUndefined();
   expect(byId("workspace")).not.toBeNull();
