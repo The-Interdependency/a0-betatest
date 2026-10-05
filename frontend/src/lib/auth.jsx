@@ -46,6 +46,8 @@ export function formatApiErrorDetail(detail) {
   return String(detail);
 }
 
+/** Usage: wrap routes once in AuthProvider and call useAuth(). Backend edits
+ * invalidate all pending session writes, not just the /auth/me refresh. */
 const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -81,31 +83,35 @@ export function AuthProvider({ children }) {
   }, []);
 
   const register = useCallback(async ({ username, email, passphrase }) => {
+    const version = sessionVersion.current;
     setError(null);
     try {
       const { data } = await client.post("/auth/register", { username, email, passphrase });
-      sessionVersion.current++;
+      if (version !== sessionVersion.current) throw new Error("backend changed during sign-in; retry on the selected backend");
       acceptSession(data);
+      sessionVersion.current++;
       setUser(data.user);
       return data.user;
     } catch (e) {
-      const msg = formatApiErrorDetail(e.response?.data?.detail) || e.message;
-      setError(msg);
+      const msg = formatApiErrorDetail(e.response?.data?.detail ?? e.message);
+      if (version === sessionVersion.current) setError(msg);
       throw new Error(msg);
     }
   }, []);
 
   const login = useCallback(async ({ identifier, passphrase }) => {
+    const version = sessionVersion.current;
     setError(null);
     try {
       const { data } = await client.post("/auth/login", { identifier, passphrase });
-      sessionVersion.current++;
+      if (version !== sessionVersion.current) throw new Error("backend changed during sign-in; retry on the selected backend");
       acceptSession(data);
+      sessionVersion.current++;
       setUser(data.user);
       return data.user;
     } catch (e) {
-      const msg = formatApiErrorDetail(e.response?.data?.detail) || e.message;
-      setError(msg);
+      const msg = formatApiErrorDetail(e.response?.data?.detail ?? e.message);
+      if (version === sessionVersion.current) setError(msg);
       throw new Error(msg);
     }
   }, []);

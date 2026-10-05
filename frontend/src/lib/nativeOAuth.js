@@ -24,43 +24,59 @@
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import client, { isNative } from "./client";
-import { getBackendOrigin } from "./backendOrigin";
+import { getBackendOrigin, getBackendVersion } from "./backendOrigin";
 
 const KEY = "a0.pending-oauth";
 const encode = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 window.addEventListener("a0:backend-changed", () => localStorage.removeItem(KEY));
 export async function startNativeOAuth(provider) {
+  if (!isNative()) throw new Error("native OAuth requires the installed app");
   const origin = getBackendOrigin();
+  const version = getBackendVersion();
+  if (!origin) throw new Error("connect an A0 backend before signing in");
+  const assertCurrent = () => {
+    if (version !== getBackendVersion() || origin !== getBackendOrigin()) {
+      throw new Error("backend changed during sign-in; start sign-in again");
+    }
+  };
   const verifier = encode(crypto.getRandomValues(new Uint8Array(32)));
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  assertCurrent();
   const { data } = await client.post("/auth/oauth/mobile/start", { provider, code_challenge: encode(new Uint8Array(digest)) });
+  assertCurrent();
   localStorage.setItem(KEY, JSON.stringify({ state: data.state, verifier, origin, expires: Date.now() + 600000 }));
   await Browser.open({ url: data.url });
 }
 
 export async function listenNativeOAuth(onSession, onError) {
   if (!isNative()) return () => {};
-  let live = true, inFlight = false;
+  let live = true;
+  const inFlight = new Set();
   const receive = async ({ url }) => {
     let callback;
     try { callback = new URL(url); } catch { return; }
     if (callback.protocol !== "org.interdependentway.a0:" || callback.hostname !== "oauth" || callback.pathname !== "/callback") return;
-    if (!live || inFlight) return;
+    if (!live) return;
+    const rawPending = localStorage.getItem(KEY);
+    const version = getBackendVersion();
     let pending;
-    try { pending = JSON.parse(localStorage.getItem(KEY)); } catch { return; }
+    try { pending = JSON.parse(rawPending); } catch { return; }
     if (!pending || pending.state !== callback.searchParams.get("state") || pending.origin !== getBackendOrigin() || pending.expires <= Date.now()) {
       if (live) onError(new Error("OAuth return did not match this app's pending sign-in. Start sign-in again."));
       return;
     }
-    inFlight = true;
+    if (inFlight.has(pending.state)) return;
+    inFlight.add(pending.state);
+    const current = () => live && version === getBackendVersion()
+      && pending.origin === getBackendOrigin() && rawPending === localStorage.getItem(KEY);
     try {
       const { data } = await client.post("/auth/oauth/mobile/exchange", { state: pending.state, code_verifier: pending.verifier });
-      if (pending.origin !== getBackendOrigin()) return;
+      if (!current()) return;
       localStorage.removeItem(KEY);
       if (live) onSession(data);
       await Browser.close().catch(() => {});
-    } catch (error) { if (live) onError(error); }
-    finally { inFlight = false; }
+    } catch (error) { if (current()) onError(error); }
+    finally { inFlight.delete(pending.state); }
   };
   const listener = await App.addListener("appUrlOpen", receive);
   const launch = await App.getLaunchUrl();

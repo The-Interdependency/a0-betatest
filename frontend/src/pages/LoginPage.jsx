@@ -7,11 +7,11 @@
 //   public_surface: LoginPage
 //   internal_surface: PassphraseField, SocialRow
 //   auth_boundary: bearer
-//   storage_boundary: none
+//   storage_boundary: write
 //   network_boundary: external
 //   user_data_boundary: write
 //   admin_only: false
-//   tests: manual_browser_smoke
+//   tests: frontend/src/pages/LoginPage.test.jsx, npm run test:browser
 //   rollout: default_enabled
 //   rollback: revert; user cannot sign in via UI
 // === END MODULE_BUILD ===
@@ -19,7 +19,7 @@
 // id: fe_page_login_boundaries
 //   summary: sign-in / sign-up form
 //   auth_boundary: bearer
-//   storage_boundary: none
+//   storage_boundary: write
 //   network_boundary: external
 //   user_data_boundary: write
 //   admin_only: false
@@ -29,17 +29,17 @@
 // id: fe_page_login
 //   summary: sign-in / sign-up form
 //   exposes: LoginPage
-//   boundaries: auth:bearer, storage:none, network:external, user_data:write
+//   boundaries: auth:bearer, storage:write, network:external, user_data:write
 //   owner: Erin Spencer
 // === END CAPABILITIES ===
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation, Link, useSearchParams } from "react-router-dom";
 import client, { isNative } from "../lib/client";
 import { startNativeOAuth } from "../lib/nativeOAuth";
 import { Eye, EyeSlash, GoogleLogo, GithubLogo, ArrowRight } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
-import { getBackendOrigin, setBackendOrigin, probeBackendOrigin } from "../lib/backendOrigin";
+import { getBackendOrigin, setBackendOrigin, invalidateBackendOrigin, probeBackendOrigin } from "../lib/backendOrigin";
 
 function PassphraseField({ value, onChange, testid, label = "passphrase (≥16 chars)", hint }) {
   const [show, setShow] = useState(false);
@@ -92,6 +92,9 @@ function SocialRow({ disabled, onGoogle, onGithub }) {
   );
 }
 
+/** Usage: native users edit, verify and connect before authenticating. Edits
+ * disconnect immediately; only the latest mounted health probe may save an origin.
+ * Hosted-web users authenticate against their own origin without this selector. */
 export default function LoginPage({ mode: initialMode = "login" }) {
   const [mode, setMode] = useState(initialMode);
   const [identifier, setIdentifier] = useState("");
@@ -102,6 +105,8 @@ export default function LoginPage({ mode: initialMode = "login" }) {
   const [err, setErr] = useState(null);
   const [backend, setBackend] = useState(getBackendOrigin());
   const [backendStatus, setBackendStatus] = useState("unchecked");
+  const backendAttempt = useRef(0);
+  useEffect(() => () => { backendAttempt.current++; }, []);
   const native = isNative();
   const backendReady = !native || backendStatus === "ok";
   const { user, error: authError, login, register, googleSession, githubExchange } = useAuth();
@@ -151,15 +156,25 @@ export default function LoginPage({ mode: initialMode = "login" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function editBackend(value) {
+    backendAttempt.current++;
+    invalidateBackendOrigin();
+    setBackend(value); setBackendStatus("unchecked"); setErr(null); setBusy(false);
+  }
+
   async function verifyBackend() {
+    const attempt = ++backendAttempt.current;
+    const candidate = backend;
     setBackendStatus("checking"); setErr(null);
     try {
-      await probeBackendOrigin(backend);
-      const normalized = setBackendOrigin(backend);
+      await probeBackendOrigin(candidate);
+      if (attempt !== backendAttempt.current) return;
+      const normalized = setBackendOrigin(candidate);
       setBackend(normalized);
       setBackendStatus("ok");
       // Shared clients bind to this origin on their next request.
     } catch (e) {
+      if (attempt !== backendAttempt.current) return;
       setBackendStatus("error");
       setErr(`backend unavailable: ${e.message}`);
     }
@@ -168,6 +183,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
   async function submit(e) {
     e.preventDefault();
     if (!backendReady) { setErr("connect and verify the displayed A0 backend before signing in"); return; }
+    const attempt = backendAttempt.current;
     setBusy(true); setErr(null);
     try {
       if (mode === "login") {
@@ -177,15 +193,17 @@ export default function LoginPage({ mode: initialMode = "login" }) {
       }
       // useEffect navigates on user change.
     } catch (ex) {
-      setErr(ex.message);
-    } finally { setBusy(false); }
+      if (attempt === backendAttempt.current) setErr(ex.message);
+    } finally { if (attempt === backendAttempt.current) setBusy(false); }
   }
 
   async function nativeLogin(provider) {
     if (!backendReady) { setErr("connect and verify the displayed A0 backend before signing in"); return; }
+    const attempt = backendAttempt.current;
     setBusy(true); setErr(null);
-    try { await startNativeOAuth(provider); } catch (e) { setErr(e.response?.data?.detail || e.message); }
-    finally { setBusy(false); }
+    try { await startNativeOAuth(provider); }
+    catch (e) { if (attempt === backendAttempt.current) setErr(e.response?.data?.detail || e.message); }
+    finally { if (attempt === backendAttempt.current) setBusy(false); }
   }
 
   function goGoogle() {
@@ -234,14 +252,14 @@ export default function LoginPage({ mode: initialMode = "login" }) {
         {native && <div className="border border-white/10 bg-bg-panel p-3 space-y-2" data-testid="backend-origin-panel">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-400">A0 backend</span>
-            <span className={"text-[0.6rem] font-mono uppercase " + (backendStatus === "ok" ? "text-emerald-300" : backendStatus === "error" ? "text-rose-300" : "text-neutral-500")}>
+            <span data-testid="backend-origin-status" className={"text-[0.6rem] font-mono uppercase " + (backendStatus === "ok" ? "text-emerald-300" : backendStatus === "error" ? "text-rose-300" : "text-neutral-500")}>
               {backendStatus}
             </span>
           </div>
           <div className="flex gap-2">
-            <input value={backend} onChange={e => { setBackend(e.target.value); setBackendStatus("unchecked"); setErr(null); }}
+            <input data-testid="backend-origin-input" aria-label="A0 backend origin" value={backend} onChange={e => editBackend(e.target.value)}
               className="input-term flex-1" placeholder="https://a0.example.org" inputMode="url"/>
-            <button type="button" className="btn-ghost" onClick={verifyBackend} disabled={!backend || backendStatus === "checking"}>
+            <button data-testid="backend-connect-btn" type="button" className="btn-ghost" onClick={verifyBackend} disabled={busy || !backend || backendStatus === "checking"}>
               {backendStatus === "checking" ? "checking…" : "connect"}
             </button>
           </div>

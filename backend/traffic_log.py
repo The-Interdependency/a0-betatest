@@ -1,4 +1,4 @@
-# ratios: loc_comments=55:52 imports_exports=8:3 calls_definitions=15:5
+# ratios: loc_comments=65:64 imports_exports=8:3 calls_definitions=21:6
 # === MODULE_BUILD ===
 # id: traffic_log
 #   module_name: traffic_log
@@ -53,6 +53,8 @@
 # === END CONTRACTS ===
 """Append-only traffic logger for all HTTP traffic.
 
+Usage: register traffic_middleware with app.middleware("http").
+
 One JSONL line of request METADATA per call — never bodies, headers, cookies, or
 secrets. The sink is opened in append mode and never rewritten, so the log is a
 tamper-evident, monotonically-growing record of traffic.
@@ -102,7 +104,7 @@ def _resolve_uid(request) -> str | None:
 def _safe_query(request) -> str:
     """Return loggable query metadata; OAuth callback credentials are never retained."""
 
-    path = request.url.path
+    path = request.url.path.rstrip("/")
     if path.startswith("/api/auth/oauth/") and path.endswith("/callback"):
         return ""
     return request.url.query or ""
@@ -145,4 +147,4 @@ async def traffic_middleware(request, call_next):
 
 
 __all__ = ["traffic_middleware", "log_path", "LOG_PATH_ENV"]
-# ratios: loc_comments=55:52 imports_exports=8:3 calls_definitions=15:5
+# ratios: loc_comments=65:64 imports_exports=8:3 calls_definitions=21:6
