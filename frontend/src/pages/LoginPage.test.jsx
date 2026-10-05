@@ -116,7 +116,9 @@ test.each([["login", ""], ["register", ""], ["login", "https://build-default.exa
   expect(byId("backend-origin-panel")).toBeNull();
   await act(async () => { await auth[method](credentials); });
   const sent = requests.find(config => config.url === `/auth/${method}`);
-  expect(sent.baseURL).toBe(`${origin}/api`);
+  expect(sent.baseURL).toBe(`${origin || window.location.origin}/api`);
+  expect(getBackendOrigin()).toBe(origin || window.location.origin);
+  expect(new URL(`${getBackendOrigin()}/api/mcp`).origin).toBe(origin || window.location.origin);
   expect(sent.withCredentials).toBe(true);
   expect(sent.headers.Authorization).toBeUndefined();
   expect(byId("workspace")).not.toBeNull();
@@ -126,7 +128,7 @@ test("malformed native preferences cannot break a hosted web login", async () =>
   localStorage.setItem("a0.backendOrigin", "not an origin");
   Capacitor.isNativePlatform.mockReturnValue(false);
   await mount();
-  expect(getBackendOrigin()).toBe("");
+  expect(getBackendOrigin()).toBe(window.location.origin);
   expect(byId("page-login")).not.toBeNull();
 });
 
@@ -224,4 +226,26 @@ test("an invalidated OAuth exchange neither blocks nor overwrites a new sign-in"
   expect(byId("auth-user").textContent).toBe("new-user");
   expect(JSON.parse(sessionStorage.getItem("a0.native-session")).token).toBe("new-token");
   expect(localStorage.getItem("a0.pending-oauth")).toBeNull();
+});
+
+// An exchange can succeed while installing its session fails locally.
+test.each(["missing token", "storage denied"])("OAuth surfaces session installation failure: %s", async failure => {
+  await mount(); await connect(); pendingOAuth();
+  client.defaults.adapter = async config => response(config, failure === "missing token"
+    ? { user: { id: "owner" } }
+    : { user: { id: "owner" }, access_token: "test-token" });
+  const originalSetItem = Storage.prototype.setItem;
+  const storage = jest.spyOn(Storage.prototype, "setItem").mockImplementation(function (key, value) {
+    if (failure === "storage denied" && this === sessionStorage && key === "a0.native-session") {
+      throw new Error("session storage denied");
+    }
+    return originalSetItem.call(this, key, value);
+  });
+  try {
+    await act(async () => { await receive({ url: "org.interdependentway.a0://oauth/callback?state=old-state" }); });
+    expect(byId("auth-user").textContent).toBe("anonymous");
+    expect(sessionStorage.getItem("a0.native-session")).toBeNull();
+    expect(localStorage.getItem("a0.pending-oauth")).toBeNull();
+    expect(byId("login-error").textContent).toContain(failure === "missing token" ? "access token" : "session storage denied");
+  } finally { storage.mockRestore(); }
 });

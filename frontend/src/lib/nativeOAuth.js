@@ -67,13 +67,18 @@ export async function listenNativeOAuth(onSession, onError) {
     }
     if (inFlight.has(pending.state)) return;
     inFlight.add(pending.state);
-    const current = () => live && version === getBackendVersion()
-      && pending.origin === getBackendOrigin() && rawPending === localStorage.getItem(KEY);
+    const selected = () => live && version === getBackendVersion() && pending.origin === getBackendOrigin();
+    const current = () => selected() && rawPending === localStorage.getItem(KEY);
     try {
       const { data } = await client.post("/auth/oauth/mobile/exchange", { state: pending.state, code_verifier: pending.verifier });
       if (!current()) return;
       localStorage.removeItem(KEY);
-      if (live) onSession(data);
+      try { onSession(data); }
+      catch (error) {
+        // The proof was intentionally consumed; installation failures are not stale exchanges.
+        if (selected()) onError(error);
+        return;
+      }
       await Browser.close().catch(() => {});
     } catch (error) { if (current()) onError(error); }
     finally { inFlight.delete(pending.state); }
