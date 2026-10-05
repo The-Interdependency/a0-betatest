@@ -35,8 +35,9 @@
 
 
 import axios from "axios";
+import { getBackendOrigin } from "./backendOrigin";
 
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const API = `${getBackendOrigin()}/api`;
 
 const client = axios.create({
   baseURL: API,
