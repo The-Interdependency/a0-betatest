@@ -41,6 +41,7 @@ import MarkdownView from "../components/MarkdownView";
 import SentinelVerdictRibbon from "../components/SentinelVerdictRibbon";
 import OverrideModal from "../components/OverrideModal";
 import AuditTape from "../components/AuditTape";
+import ReadoutRack from "../components/ReadoutRack";
 import { MODE_OPTIONS, canonicalAgentName } from "../lib/sentinels";
 
 function Turn({ t }) {
@@ -212,7 +213,8 @@ export default function WorkspacePage() {
   const metrics = agent?.zfae_metrics || {};
 
   return (
-    <div className="space-y-4 h-full" data-testid="page-workspace">
+    <div className="a0-workspace-grid" data-testid="page-workspace">
+      <div className="a0-conversation-pane space-y-4">
       <header className="border border-white/10 bg-bg-panel p-3 flex flex-wrap items-center gap-3" data-testid="ws-agent-bar">
         <div className="flex-1 min-w-[18rem]">
           <label className="block text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-500">agent</label>
@@ -312,6 +314,8 @@ export default function WorkspacePage() {
         onReject={rejectOverride}
         onDismiss={() => setPendingOverride(null)}
       />
+      </div>
+      <ReadoutRack agent={agent} turns={turns} busy={busy} pendingOverride={pendingOverride} />
     </div>
   );
 }
