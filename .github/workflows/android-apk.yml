@@ -1,0 +1,82 @@
+name: Android APK
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Verify Android SDK
+        run: |
+          test -d "$ANDROID_HOME"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+
+      - name: Install frontend
+        run: npm ci --prefix frontend
+
+      - name: Frontend regression tests
+        working-directory: frontend
+        env:
+          CI: "true"
+        run: npm test -- --watchAll=false --runInBand
+
+      - name: Build bundled web UI
+        working-directory: frontend
+        env:
+          CI: "false"
+          REACT_APP_BACKEND_URL: ""
+        run: npm run build --silent
+
+      - name: Generate Android project
+        working-directory: frontend
+        run: |
+          rm -rf android
+          npx cap add android
+          node scripts/configure-android.cjs
+          npx cap sync android
+
+      - name: Build unsigned release APK
+        working-directory: frontend/android
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+          cp frontend/android/app/build/outputs/apk/release/app-release-unsigned.apk dist/a0-mobile-release-unsigned.apk
+          (cd dist && sha256sum a0-mobile-release-unsigned.apk > SHA256SUMS.txt)
+          (cd dist && sha256sum -c SHA256SUMS.txt)
+          python frontend/scripts/verify-apk.py dist/a0-mobile-release-unsigned.apk
+          AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort -V | tail -1)"
+          "$AAPT" dump xmltree dist/a0-mobile-release-unsigned.apk AndroidManifest.xml > dist/AndroidManifest.txt
+          grep -q 'org.interdependentway.a0' dist/AndroidManifest.txt
+          grep -q 'android.intent.action.VIEW' dist/AndroidManifest.txt
+          grep -q 'oauth' dist/AndroidManifest.txt
+          grep -q '/callback' dist/AndroidManifest.txt
+          git rev-parse HEAD > dist/SOURCE_COMMIT.txt
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: a0-mobile-unsigned
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7

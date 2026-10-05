@@ -35,11 +35,11 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation, Link, useSearchParams } from "react-router-dom";
-import axios from "axios";
+import client, { isNative } from "../lib/client";
+import { startNativeOAuth } from "../lib/nativeOAuth";
 import { Eye, EyeSlash, GoogleLogo, GithubLogo, ArrowRight } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
-
-const BACKEND = process.env.REACT_APP_BACKEND_URL;
+import { getBackendOrigin, setBackendOrigin, probeBackendOrigin } from "../lib/backendOrigin";
 
 function PassphraseField({ value, onChange, testid, label = "passphrase (≥16 chars)", hint }) {
   const [show, setShow] = useState(false);
@@ -100,7 +100,9 @@ export default function LoginPage({ mode: initialMode = "login" }) {
   const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
-  const { user, login, register, googleSession, githubExchange } = useAuth();
+  const [backend, setBackend] = useState(getBackendOrigin());
+  const [backendStatus, setBackendStatus] = useState("unchecked");
+  const { user, error: authError, login, register, googleSession, githubExchange } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
   const [params, setParams] = useSearchParams();
@@ -113,6 +115,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
 
   // ---- Emergent Google session redirect handler ----
   useEffect(() => {
+    if (isNative()) return;
     // Emergent redirects with #session_id=... in the URL hash.
     const hash = window.location.hash || "";
     const m = hash.match(/session_id=([^&]+)/);
@@ -146,6 +149,20 @@ export default function LoginPage({ mode: initialMode = "login" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function verifyBackend() {
+    setBackendStatus("checking"); setErr(null);
+    try {
+      await probeBackendOrigin(backend);
+      const normalized = setBackendOrigin(backend);
+      setBackend(normalized);
+      setBackendStatus("ok");
+      // Shared clients bind to this origin on their next request.
+    } catch (e) {
+      setBackendStatus("error");
+      setErr(`backend unavailable: ${e.message}`);
+    }
+  }
+
   async function submit(e) {
     e.preventDefault();
     setBusy(true); setErr(null);
@@ -161,16 +178,24 @@ export default function LoginPage({ mode: initialMode = "login" }) {
     } finally { setBusy(false); }
   }
 
+  async function nativeLogin(provider) {
+    setBusy(true); setErr(null);
+    try { await startNativeOAuth(provider); } catch (e) { setErr(e.response?.data?.detail || e.message); }
+    finally { setBusy(false); }
+  }
+
   function goGoogle() {
+    if (isNative()) return nativeLogin("google");
     // Emergent's hosted OAuth widget — redirects back with #session_id=...
     const redirect = encodeURIComponent(`${window.location.origin}/login`);
     window.location.href = `https://auth.emergentagent.com/?redirect=${redirect}`;
   }
 
   async function goGithub() {
+    if (isNative()) return nativeLogin("github");
     setBusy(true);
     try {
-      const { data } = await axios.get(`${BACKEND}/api/auth/oauth/github/start`, { withCredentials: true });
+      const { data } = await client.get("/auth/oauth/github/start");
       if (data?.url) window.location.href = data.url;
     } catch (e) {
       setErr("github oauth not configured — set GITHUB_CLIENT_ID + SECRET on the server");
@@ -202,9 +227,28 @@ export default function LoginPage({ mode: initialMode = "login" }) {
           </div>
         </div>
 
-        {err && (
+        <div className="border border-white/10 bg-bg-panel p-3 space-y-2" data-testid="backend-origin-panel">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-400">A0 backend</span>
+            <span className={"text-[0.6rem] font-mono uppercase " + (backendStatus === "ok" ? "text-emerald-300" : backendStatus === "error" ? "text-rose-300" : "text-neutral-500")}>
+              {backendStatus}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <input value={backend} onChange={e => setBackend(e.target.value)}
+              className="input-term flex-1" placeholder="https://a0.example.org" inputMode="url"/>
+            <button type="button" className="btn-ghost" onClick={verifyBackend} disabled={!backend || backendStatus === "checking"}>
+              {backendStatus === "checking" ? "checking…" : "connect"}
+            </button>
+          </div>
+          <div className="text-[0.6rem] font-mono text-neutral-600">
+            Stored on this device. Login uses this origin immediately after a successful A0 health check.
+          </div>
+        </div>
+
+        {(err || authError) && (
           <div className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-rose-300 text-xs font-mono" data-testid="login-error">
-            {err}
+            {err || authError}
           </div>
         )}
 

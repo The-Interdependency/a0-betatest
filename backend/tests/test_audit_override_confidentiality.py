@@ -526,7 +526,7 @@ async def test_audit_override_index_contract(tmp_path, monkeypatch):
     names = [
         "keys_col", "vault_col", "sessions_col", "drafts_col", "fanout_col", "chain_col",
         "agents_col", "agent_instances_col", "usage_col", "fiq_audit_col", "pending_overrides_col",
-        "users_col", "login_attempts_col", "password_reset_tokens_col", "demo_quota_col",
+        "users_col", "mobile_oauth_col", "login_attempts_col", "password_reset_tokens_col", "demo_quota_col",
         "custom_keys_col", "user_tools_col", "mcp_servers_col", "odysseus_servers_col", "skills_col",
     ]
     doubles = {}
@@ -535,6 +535,7 @@ async def test_audit_override_index_contract(tmp_path, monkeypatch):
         monkeypatch.setattr(database, name, doubles[name])
 
     await database.ensure_indexes()
+    assert ("expires_at", {"expireAfterSeconds": 0}) in doubles["mobile_oauth_col"].indexes
     audit_indexes = {kwargs.get("name"): (spec, kwargs) for spec, kwargs in doubles["fiq_audit_col"].indexes}
     override_indexes = {kwargs.get("name"): (spec, kwargs) for spec, kwargs in doubles["pending_overrides_col"].indexes}
     assert audit_indexes["fiq_audit_owner_timestamp"][0] == [("user_id", 1), ("timestamp_ms", -1)]

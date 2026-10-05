@@ -96,11 +96,12 @@ export default function Shell({ children }) {
   const nav = useNavigate();
   // Hide shell chrome on the splash so the marketing page reads as a fresh canvas.
   const isSplash = location.pathname === "/";
+  const isWorkspace = location.pathname === "/workspace";
   const items = user ? authedItems : publicItems;
 
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row">
-      {!isSplash && (
+      {!isSplash && !isWorkspace && (
         <aside className="md:w-64 md:min-h-screen border-b md:border-b-0 md:border-r border-white/10 bg-bg-panel flex flex-col">
           <Link to={user ? "/workspace" : "/"} className="px-4 py-5 border-b border-white/10 flex items-center gap-3 hover:bg-bg-surface transition-colors" data-testid="brand-home">
             <Atom size={26} weight="duotone" className="text-accent-cyan" />
@@ -160,7 +161,16 @@ export default function Shell({ children }) {
         </aside>
       )}
 
-      <main className={`flex-1 ${isSplash ? "px-6 md:px-12" : "p-4 md:p-8"} max-w-[1600px] mx-auto w-full`}>
+      <main className={`flex-1 ${isSplash ? "px-6 md:px-12" : isWorkspace ? "p-0" : "p-4 md:p-8"} ${isWorkspace ? "" : "max-w-[1600px] mx-auto"} w-full min-w-0`}>
+        {isWorkspace && (
+          <details className="border-b border-white/10 bg-bg-panel p-3">
+            <summary className="cursor-pointer font-mono text-sm text-accent-cyan">A0 navigation</summary>
+            <nav aria-label="Workspace navigation" className="flex flex-wrap gap-3 py-3">
+              {items.map(it => <NavLink key={it.to} to={it.to} data-testid={it.testid} className="btn-ghost">{it.label}</NavLink>)}
+              {user && <button onClick={async () => { await logout(); nav("/login"); }}>Sign out</button>}
+            </nav>
+          </details>
+        )}
         {children}
       </main>
     </div>

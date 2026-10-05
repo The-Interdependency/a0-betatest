@@ -437,21 +437,21 @@ def pcea_kernel_advances_state_holds() -> None:
 def pcea_kernel_layer_cross_cut_holds() -> None:
     """Contract: kernel_step round-trips on any layer's aggregate (against grid_project)."""
     from interdependent_lib.pcna.tensor import Tensor
-    from interdependent_lib.pcta import Circle
-    from interdependent_lib.ptca.seed import Seed
-    from interdependent_lib.ptca.core import Core
+    from interdependent_lib.pcta.circle import from_seed as circle_from_seed
+    from interdependent_lib.ptca.seed import from_seed as seed_from_seed
+    from interdependent_lib.ptca.core import with_n
     from interdependent_lib.pcea.kernel import kernel_step, kernel_invert, grid_project
 
     prev = Tensor.from_seed(0, "kernel::prev")
 
-    circle = Circle.from_seed(1, "cross-cut::circle")
-    seed = Seed.from_seed(2, "cross-cut::seed")
-    core = Core.with_n(7, label="cross-cut::core")
+    circle = circle_from_seed(1, "cross-cut::circle")
+    seed = seed_from_seed(2, "cross-cut::seed")
+    core = with_n(7, label="cross-cut::core")
 
     for label, agg in [
-        ("circle", circle.aggregate()),
-        ("seed", seed.aggregate()),
-        ("core", core.aggregate()),
+        ("circle", circle.aggregate),
+        ("seed", seed.aggregate),
+        ("core", core.aggregate),
     ]:
         enc = kernel_step(agg, prev)
         rec = kernel_invert(enc, prev)
@@ -1279,7 +1279,18 @@ def module_imports_cleanly_holds():
         if not modpath:
             continue
         try:
-            importlib.import_module(modpath)
+            if all(part.isidentifier() for part in rel.parts):
+                importlib.import_module(modpath)
+            else:
+                # The runtime deliberately loads its literally versioned helper
+                # by file path. Require that exact file to be loaded by its owner;
+                # never turn an invalid import name into a blanket skip.
+                import sys
+                loaded = [module for module in tuple(sys.modules.values())
+                          if getattr(module, "__file__", None)
+                          and Path(module.__file__).resolve() == p.resolve()]
+                if not loaded:
+                    raise ImportError(f"no owner-loaded module for {p.name}")
             checked += 1
         except Exception as e:  # pragma: no cover - reported via failures
             failures.append((modpath, f"{type(e).__name__}: {e}"))

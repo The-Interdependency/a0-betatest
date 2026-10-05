@@ -35,13 +35,14 @@
 
 import React, { useEffect, useState } from "react";
 import { Plus, ArrowsClockwise, Trash, Copy, Key, ArrowUpRight } from "@phosphor-icons/react";
+import { getBackendOrigin } from "../lib/backendOrigin";
 import { mcpClientApi, mcpPublishApi } from "../lib/api_tools";
 
 function PublishCard() {
   const [tok, setTok] = useState(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { mcpPublishApi.getToken().then(setTok).catch(() => {}); }, []);
-  const publicUrl = `${process.env.REACT_APP_BACKEND_URL}/api/mcp`;
+  const publicUrl = `${getBackendOrigin()}/api/mcp`;
   const headerExample = `Authorization: Bearer ${tok?.token || "<your-token>"}`;
   async function rotate() {
     if (!window.confirm("Rotate the publish token? Any external client using the old token will lose access.")) return;

@@ -59,6 +59,7 @@ usage_col      = db["usage_records"]
 fiq_audit_col  = db["fiq_audit_log"]
 pending_overrides_col = db["pending_overrides"]
 users_col      = db["users"]
+mobile_oauth_col = db["mobile_oauth_transactions"]
 login_attempts_col = db["login_attempts"]
 password_reset_tokens_col = db["password_reset_tokens"]
 demo_quota_col = db["demo_quota"]
@@ -128,6 +129,7 @@ async def ensure_indexes():
         [("status", 1), ("expires_ms", 1)],
         name="pending_override_expiry",
     )
+    await mobile_oauth_col.create_index("expires_at", expireAfterSeconds=0)
     await users_col.create_index("email", unique=True)
     await users_col.create_index("username", unique=True)
     await login_attempts_col.create_index("identifier")

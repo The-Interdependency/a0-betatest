@@ -76,7 +76,8 @@ jobs:
             backend/tests/test_strict_auth_demo_isolation.py \
             backend/tests/test_audit_override_confidentiality.py \
             backend/tests/test_audit_storage_confidentiality.py \
-            backend/tests/test_agent_state_isolation.py 2>&1)"
+            backend/tests/test_agent_state_isolation.py \
+            backend/tests/test_mobile_contracts.py 2>&1)"
           status=$?
           printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
           printf 'log=%s\n' "$(printf '%s' "$output" | base64 -w0)" >> "$GITHUB_OUTPUT"
@@ -147,9 +148,17 @@ jobs:
         with:
           node-version: "22"
       - name: Install frontend dependencies
-        run: npm install --silent --prefix frontend
+        run: npm ci --prefix frontend
+      - name: Frontend regression tests
+        run: CI=true npm test --prefix frontend -- --watchAll=false --runInBand
       - name: Build frontend without REPL_ID
         run: env -u REPL_ID CI=false npm run build --silent --prefix frontend
+      - name: Install browser test runtime
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Verify phone and short-tablet layout
+        working-directory: frontend
+        run: npm run test:browser
       - name: Check for @replit references in frontend bundle
         run: |
           MATCHES=$( (grep -r "@replit" frontend/build/static/ || true) )

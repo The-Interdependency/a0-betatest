@@ -34,10 +34,9 @@
 // === END CAPABILITIES ===
 
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import client from "../lib/client";
 import { CaretDown, CaretRight, Pulse, ShieldWarning, Wrench, ChatCircle, ShieldCheck, Link } from "@phosphor-icons/react";
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL;
 const POLL_MS = 3000;
 
 const ICONS = {
@@ -97,19 +96,22 @@ function useAuditFeed(agentId) {
   const [err, setErr] = useState(null);
   useEffect(() => {
     if (!agentId) { setEvents([]); return; }
-    let alive = true;
+    let alive = true, timer;
+    const controller = new AbortController();
+    setEvents([]); setErr(null);
     async function poll() {
       try {
-        const r = await axios.get(`${BACKEND}/api/audit/feed`,
-          { params: { agent_id: agentId, limit: 50 }, withCredentials: true });
+        const r = await client.get("/audit/feed",
+          { params: { agent_id: agentId, limit: 50 }, signal: controller.signal });
         if (alive) { setEvents(r.data.events || []); setErr(null); }
       } catch (e) {
         if (alive) setErr(e?.response?.data?.detail || e.message);
+      } finally {
+        if (alive) timer = setTimeout(poll, POLL_MS);
       }
     }
     poll();
-    const id = setInterval(poll, POLL_MS);
-    return () => { alive = false; clearInterval(id); };
+    return () => { alive = false; clearTimeout(timer); controller.abort(); };
   }, [agentId]);
   return { events, err };
 }

@@ -108,3 +108,111 @@ button, input, textarea, select { border-radius: 0; }
 /* Carousel snap */
 .snap-track { scroll-snap-type: x mandatory; }
 .snap-card { scroll-snap-align: start; }
+
+
+/* A0 conversation-first split workspace */
+.a0-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(18rem, 0.9fr);
+  gap: 0;
+  min-height: 100vh;
+  background: #030303;
+}
+.a0-conversation-pane {
+  min-width: 0;
+  padding: 12px;
+  border-right: 1px solid rgba(255,255,255,0.1);
+}
+.a0-readout-rack {
+  min-width: 0;
+  background: #070707;
+  display: flex;
+  flex-direction: column;
+  max-height: 100vh;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+}
+.a0-readout-strip {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.a0-readout-card,
+.a0-readout-add {
+  min-height: 54px;
+  padding: 8px 10px;
+  background: #0a0a0a;
+  color: #a3a3a3;
+  border: 0;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+}
+.a0-readout-card-selected {
+  background: #101010;
+  color: #22d3ee;
+  box-shadow: inset 2px 0 0 #22d3ee;
+}
+.a0-readout-add {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .65rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+}
+.a0-readout-detail {
+  padding: 14px;
+  overflow-y: auto;
+  min-height: 12rem;
+}
+.a0-readout-config {
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  display: grid;
+  gap: 6px;
+}
+@media (max-width: 760px) {
+  .a0-workspace-grid {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  .a0-conversation-pane {
+    border-right: 0;
+    padding: 8px;
+    order: 1;
+  }
+  .a0-readout-rack {
+    order: 2;
+    position: static;
+    max-height: none;
+    border-top: 1px solid rgba(255,255,255,.1);
+  }
+  .a0-readout-strip {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+  }
+  .a0-readout-card {
+    flex: 0 0 9.5rem;
+    scroll-snap-align: start;
+  }
+  .a0-readout-add {
+    flex: 0 0 auto;
+    padding-inline: 14px;
+  }
+  .a0-readout-detail {
+    min-height: 10rem;
+    max-height: 40vh;
+  }
+}
+
+/* Keep all rack regions reachable, including its editor on short tablets. */
+.a0-readout-rack > * { flex-shrink: 0; }

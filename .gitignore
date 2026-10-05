@@ -5,3 +5,13 @@ credentials.json
 .env
 .env.*
 *.env
+
+# Generated bundles and Android signing material stay outside source control.
+node_modules/
+frontend/build/
+frontend/android/
+dist/
+*.jks
+*.keystore
+__pycache__/
+.pytest_cache/

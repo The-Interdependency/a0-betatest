@@ -2,7 +2,7 @@
 # === MODULE_BUILD ===
 # id: pcna_tensor
 #   module_name: tensor
-#   module_kind: core
+#   module_kind: engine
 #   summary: PCNA leaf tensor — fixed d=53 scalar payload with both the current layered-construction API and the pre-existing Tensor compatibility contract used by ZFAE, PCEA, and PCNA callers.
 #   owner: a0p maintainer
 #   public_surface: Tensor, TENSOR_DIM, tensor_identity, tensor_compose, payload_width, from_scalar, to_scalar, from_seed, zero, zero_tensor, tensors_equal

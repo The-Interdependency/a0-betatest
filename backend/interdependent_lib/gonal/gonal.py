@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: carrier_gonal
 #   module_name: gonal
-#   module_kind: fixture
+#   module_kind: schema
 #   summary: exact A0 source-provenance public 157-gonal plus an independent constructor for private application arrangements
 #   owner: Erin Spencer
 #   public_surface: GonalSpec, build_gonal, validate_gonal, print_gonal, PUBLIC_GONOL_157, PUBLIC_GONOL_SHA256, EXAMPLE_157, make_example_157, get_default, public_gonol_sha256

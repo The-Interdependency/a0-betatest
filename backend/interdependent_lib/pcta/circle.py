@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: pcta_circle
 #   module_name: circle
-#   module_kind: core
+#   module_kind: engine
 #   summary: PCTA circle containing exactly seven PCNA tensors with structural heptagram routing and A0-local identity
 #   owner: a0p maintainer
 #   public_surface: Circle, circle_identity, circle_compose, heptagram_compose, tensor_count, from_tensors, from_seed, aggregate, structural_shape, heptagram_order
@@ -55,9 +55,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Tuple
 
-import backend.interdependent_lib.pcna.tensor as pcna
-import backend.interdependent_lib.ptca.constants as canon
-from backend.interdependent_lib.structural_shape import A0StructuralShape, shape_from_content
+from ..pcna import tensor as pcna
+from ..ptca import constants as canon
+from ..structural_shape import A0StructuralShape, shape_from_content
 
 CIRCLE_SIZE = canon.TENSORS_PER_CIRCLE
 HEPTAGRAM_STEP_CIRCLE = canon.CIRCLE_ROUTING_STEP

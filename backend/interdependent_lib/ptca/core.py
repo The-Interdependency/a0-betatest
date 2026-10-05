@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: ptca_core
 #   module_name: core
-#   module_kind: core
+#   module_kind: engine
 #   summary: PTCA core containing N seeds with deterministic aggregate and A0-local structural identity
 #   owner: a0p maintainer
 #   public_surface: Core, with_n, from_seeds, aggregate, param_count, structural_shape, n, label
@@ -50,8 +50,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Sequence, Tuple
 
-import backend.interdependent_lib.ptca.constants as canon
-from backend.interdependent_lib.structural_shape import A0StructuralShape, shape_from_content
+from ..ptca import constants as canon
+from ..structural_shape import A0StructuralShape, shape_from_content
 
 DEFAULT_N = canon.SEED_COUNT
 
@@ -61,7 +61,7 @@ def _core_structural_shape(content) -> A0StructuralShape:
 
 
 def core_aggregate(tensors: Sequence):
-    from backend.interdependent_lib.pcna.tensor import Tensor, tensor_identity
+    from ..pcna.tensor import Tensor, tensor_identity
     if not tensors:
         return tensor_identity()
     sums = [0.0] * canon.TENSOR_DIM
@@ -100,7 +100,7 @@ class Core:
 def with_n(n: int = DEFAULT_N, label: str = "phi") -> Core:
     if n <= 0:
         raise ValueError("n must be positive")
-    from backend.interdependent_lib.ptca.seed import from_seed as seed_from_seed
+    from .seed import from_seed as seed_from_seed
     return Core(tuple(seed_from_seed(i, f"{label}::seed{i}") for i in range(n)), label=label)
 
 

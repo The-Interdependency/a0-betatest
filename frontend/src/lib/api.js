@@ -34,15 +34,8 @@
 // === END CAPABILITIES ===
 
 
-import axios from "axios";
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
-const client = axios.create({
-  baseURL: API,
-  headers: { "Content-Type": "application/json" },
-  withCredentials: true,
-});
+import client from "./client";
+import { getBackendOrigin } from "./backendOrigin";
 
 // ─── Custom-keys vault (per-user, generic GitHub/GCP/AWS/etc.) ─────────────
 export const customKeys = {
@@ -63,7 +56,7 @@ export const livingSpec = {
 };
 
 export const api = {
-  base: API,
+  get base() { return `${getBackendOrigin()}/api`; },
   health:           () => client.get("/health").then(r => r.data),
 
   // BYOK keys
@@ -133,14 +126,14 @@ export const api = {
 
   // ─── Sentinels (13-sentinel canon + per-agent modes/weights) ────────────
   sentinelsCanon:   () => client.get("/sentinels/canon").then(r => r.data),
-  getSentinelModes: (agent_id, user_id = "local") => client.get(`/instances/${agent_id}/sentinel-modes`, { params: { user_id } }).then(r => r.data),
+  getSentinelModes: (agent_id, user_id = "local", options = {}) => client.get(`/instances/${agent_id}/sentinel-modes`, { ...options, params: { user_id } }).then(r => r.data),
   patchSentinelModes: (agent_id, body) => client.patch(`/instances/${agent_id}/sentinel-modes`, body).then(r => r.data),
   bulkSentinelModes: (agent_id, body) => client.post(`/instances/${agent_id}/sentinel-modes/bulk`, body).then(r => r.data),
   getSentinelWeights: (agent_id, user_id = "local") => client.get(`/instances/${agent_id}/sentinel-weights`, { params: { user_id } }).then(r => r.data),
   patchSentinelWeights: (agent_id, body) => client.patch(`/instances/${agent_id}/sentinel-weights`, body).then(r => r.data),
 
   // ─── Overrides (async approve/reject for sentinel halts) ────────────────
-  listOverrides:    (params = {}) => client.get("/overrides", { params }).then(r => r.data),
+  listOverrides:    (params = {}, options = {}) => client.get("/overrides", { ...options, params }).then(r => r.data),
   getOverride:      (id) => client.get(`/overrides/${id}`).then(r => r.data),
   approveOverride:  (id, body) => client.post(`/overrides/${id}/approve`, body).then(r => r.data),
   rejectOverride:   (id, body) => client.post(`/overrides/${id}/reject`, body).then(r => r.data),
@@ -159,5 +152,5 @@ export const api = {
   listGonals:       () => client.get("/gonals").then(r => r.data),
 
   // Usage
-  usage:            (user_id = "local") => client.get("/usage", { params: { user_id } }).then(r => r.data),
+  usage:            (user_id = "local", options = {}) => client.get("/usage", { ...options, params: { user_id } }).then(r => r.data),
 };
