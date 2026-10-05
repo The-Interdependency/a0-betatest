@@ -28,8 +28,8 @@ jobs:
 
       - name: Verify Android SDK
         run: |
+          test -d "$ANDROID_HOME"
           echo "ANDROID_HOME=$ANDROID_HOME"
-          sdkmanager --list_installed | head -n 80
 
       - name: Install frontend
         run: npm install --silent --prefix frontend
