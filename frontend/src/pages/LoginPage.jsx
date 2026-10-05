@@ -102,6 +102,8 @@ export default function LoginPage({ mode: initialMode = "login" }) {
   const [err, setErr] = useState(null);
   const [backend, setBackend] = useState(getBackendOrigin());
   const [backendStatus, setBackendStatus] = useState("unchecked");
+  const native = isNative();
+  const backendReady = !native || backendStatus === "ok";
   const { user, error: authError, login, register, googleSession, githubExchange } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
@@ -115,7 +117,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
 
   // ---- Emergent Google session redirect handler ----
   useEffect(() => {
-    if (isNative()) return;
+    if (native) return;
     // Emergent redirects with #session_id=... in the URL hash.
     const hash = window.location.hash || "";
     const m = hash.match(/session_id=([^&]+)/);
@@ -165,6 +167,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
 
   async function submit(e) {
     e.preventDefault();
+    if (!backendReady) { setErr("connect and verify the displayed A0 backend before signing in"); return; }
     setBusy(true); setErr(null);
     try {
       if (mode === "login") {
@@ -179,6 +182,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
   }
 
   async function nativeLogin(provider) {
+    if (!backendReady) { setErr("connect and verify the displayed A0 backend before signing in"); return; }
     setBusy(true); setErr(null);
     try { await startNativeOAuth(provider); } catch (e) { setErr(e.response?.data?.detail || e.message); }
     finally { setBusy(false); }
@@ -227,7 +231,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
           </div>
         </div>
 
-        <div className="border border-white/10 bg-bg-panel p-3 space-y-2" data-testid="backend-origin-panel">
+        {native && <div className="border border-white/10 bg-bg-panel p-3 space-y-2" data-testid="backend-origin-panel">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-400">A0 backend</span>
             <span className={"text-[0.6rem] font-mono uppercase " + (backendStatus === "ok" ? "text-emerald-300" : backendStatus === "error" ? "text-rose-300" : "text-neutral-500")}>
@@ -235,16 +239,16 @@ export default function LoginPage({ mode: initialMode = "login" }) {
             </span>
           </div>
           <div className="flex gap-2">
-            <input value={backend} onChange={e => setBackend(e.target.value)}
+            <input value={backend} onChange={e => { setBackend(e.target.value); setBackendStatus("unchecked"); setErr(null); }}
               className="input-term flex-1" placeholder="https://a0.example.org" inputMode="url"/>
             <button type="button" className="btn-ghost" onClick={verifyBackend} disabled={!backend || backendStatus === "checking"}>
               {backendStatus === "checking" ? "checking…" : "connect"}
             </button>
           </div>
           <div className="text-[0.6rem] font-mono text-neutral-600">
-            Stored on this device. Login uses this origin immediately after a successful A0 health check.
+            Stored on this device. Native login is disabled until this exact origin passes the A0 health check.
           </div>
-        </div>
+        </div>}
 
         {(err || authError) && (
           <div className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-rose-300 text-xs font-mono" data-testid="login-error">
@@ -299,7 +303,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
 
           <button
             type="submit"
-            disabled={busy || (mode === "login" ? !canLogin : !canRegister)}
+            disabled={busy || !backendReady || (mode === "login" ? !canLogin : !canRegister)}
             data-testid={mode === "login" ? "login-submit-btn" : "register-submit-btn"}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 border border-accent-cyan/60 text-accent-cyan font-mono text-sm uppercase tracking-wider hover:bg-accent-cyan/10 disabled:opacity-40"
           >
@@ -311,7 +315,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
           <span className="flex-1 h-px bg-white/10" /> or <span className="flex-1 h-px bg-white/10" />
         </div>
 
-        <SocialRow disabled={busy} onGoogle={goGoogle} onGithub={goGithub} />
+        <SocialRow disabled={busy || !backendReady} onGoogle={goGoogle} onGithub={goGithub} />
 
         <p className="text-[0.65rem] font-mono text-neutral-500 text-center pt-2">
           by signing in you accept the canon and accept that the canon may halt.

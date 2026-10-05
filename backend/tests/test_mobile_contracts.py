@@ -13,8 +13,19 @@ no account credentials, external OAuth calls, or persistent test writes.
 #   call: self::test_native_provider_round_trip
 #   mutates: none
 #   cleanup: none
+# id: check_mobile_callback_query_redaction
+#   proves: traffic_log_redacts_oauth_callback_query
+#   call: self::test_mobile_callback_query_is_not_persisted
+#   mutates: tempdir
+#   cleanup: tempdir_teardown
+# id: check_native_bearer_traffic_attribution
+#   proves: traffic_log_attributes_cookie_or_bearer_access
+#   call: self::test_native_bearer_request_is_attributed_without_logging_token
+#   mutates: tempdir
+#   cleanup: tempdir_teardown
 # === END CHECKS ===
 import copy
+import json
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlsplit
 from unittest.mock import AsyncMock
@@ -163,3 +174,31 @@ async def test_callback_headers_and_provider_mismatch(runtime, monkeypatch):
         provider.assert_not_called()
         monkeypatch.setenv('PUBLIC_BACKEND_URL', 'https://vm.example/arbitrary-path')
         assert (await cli.post('/api/auth/oauth/mobile/start', json={'provider': 'github', 'code_challenge': mobile.challenge('v'*43)})).status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_mobile_callback_query_is_not_persisted(runtime):
+    app, _, _, _ = runtime
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='https://vm.example') as cli:
+        response = await cli.get('/api/auth/oauth/mobile/callback?code=provider-secret&state=transaction-secret')
+        assert response.status_code == 200
+    import traffic_log
+    rows = [json.loads(line) for line in traffic_log.log_path().read_text(encoding='utf-8').splitlines()]
+    callback = next(row for row in reversed(rows) if row['path'] == '/api/auth/oauth/mobile/callback')
+    assert callback['query'] == ''
+    rendered = json.dumps(callback)
+    assert 'provider-secret' not in rendered and 'transaction-secret' not in rendered
+
+
+@pytest.mark.asyncio
+async def test_native_bearer_request_is_attributed_without_logging_token(runtime):
+    app, _, _, _ = runtime
+    import auth, traffic_log
+    token, _ = auth._make_tokens('owner', 'owner@example.org')
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='https://vm.example') as cli:
+        response = await cli.get('/api/auth/me', headers={'Authorization': f'Bearer {token}'})
+        assert response.status_code == 200
+    rows = [json.loads(line) for line in traffic_log.log_path().read_text(encoding='utf-8').splitlines()]
+    record = next(row for row in reversed(rows) if row['path'] == '/api/auth/me')
+    assert record['uid'] == 'owner'
+    assert token not in json.dumps(record)
