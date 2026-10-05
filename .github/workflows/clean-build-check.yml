@@ -148,7 +148,7 @@ jobs:
         with:
           node-version: "22"
       - name: Install frontend dependencies
-        run: npm ci --silent --prefix frontend
+        run: npm ci --prefix frontend
       - name: Frontend regression tests
         run: CI=true npm test --prefix frontend -- --watchAll=false --runInBand
       - name: Build frontend without REPL_ID

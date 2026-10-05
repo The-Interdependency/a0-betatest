@@ -6,11 +6,24 @@ const {chromium} = require('playwright');
 // Usage after npm run build: npm run test:browser (requires Playwright Chromium).
 // The mock API isolates UI layout/navigation; native auth has separate HTTP/React tests.
 const root = path.resolve(__dirname, '../build');
+// Preload only build assets. HTTP input selects bytes, never a filesystem path.
+const assets = new Map();
+function collectAssets(directory, prefix = '') {
+  for (const entry of fs.readdirSync(directory, {withFileTypes:true})) {
+    const file = path.join(directory, entry.name);
+    const url = `${prefix}/${entry.name}`;
+    if (entry.isDirectory()) collectAssets(file, url);
+    else if (entry.isFile()) assets.set(url, {
+      body: fs.readFileSync(file),
+      type: entry.name.endsWith('.js') ? 'application/javascript' : entry.name.endsWith('.css') ? 'text/css' : 'text/html',
+    });
+  }
+}
+collectAssets(root);
 const server = http.createServer((req,res) => {
-  let file = path.join(root, decodeURIComponent(req.url.split('?')[0]));
-  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(root,'index.html');
-  res.setHeader('Content-Type', file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html');
-  res.end(fs.readFileSync(file));
+  const asset = assets.get(req.url.split('?')[0]) || assets.get('/index.html');
+  res.setHeader('Content-Type', asset.type);
+  res.end(asset.body);
 });
 (async () => {
  await new Promise(r => server.listen(0,'127.0.0.1',r));

@@ -32,7 +32,7 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_HOME"
 
       - name: Install frontend
-        run: npm ci --silent --prefix frontend
+        run: npm ci --prefix frontend
 
       - name: Frontend regression tests
         working-directory: frontend
