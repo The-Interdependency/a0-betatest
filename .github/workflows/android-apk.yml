@@ -1,0 +1,67 @@
+name: Android APK
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install frontend
+        run: npm install --silent --prefix frontend
+
+      - name: Install Capacitor build tooling
+        working-directory: frontend
+        run: npm install --no-save @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+      - name: Build bundled web UI
+        working-directory: frontend
+        env:
+          CI: "false"
+          REACT_APP_BACKEND_URL: ""
+        run: npm run build --silent
+
+      - name: Generate Android project
+        working-directory: frontend
+        run: |
+          rm -rf android
+          npx cap add android
+          npx cap sync android
+
+      - name: Build unsigned release APK
+        working-directory: frontend/android
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+          cp frontend/android/app/build/outputs/apk/release/app-release-unsigned.apk dist/a0-mobile-release-unsigned.apk
+          sha256sum dist/a0-mobile-release-unsigned.apk > dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: a0-mobile-unsigned
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
