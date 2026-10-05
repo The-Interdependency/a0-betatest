@@ -1,0 +1,9 @@
+{
+  "appId": "org.interdependentway.a0",
+  "appName": "A0",
+  "webDir": "build",
+  "server": {
+    "hostname": "localhost",
+    "androidScheme": "https"
+  }
+}
