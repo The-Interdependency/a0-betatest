@@ -36,8 +36,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
+import { getBackendOrigin } from "./backendOrigin";
 
-const BACKEND = process.env.REACT_APP_BACKEND_URL;
+const BACKEND = getBackendOrigin();
 const client = axios.create({ baseURL: `${BACKEND}/api`, withCredentials: true });
 
 export function formatApiErrorDetail(detail) {
