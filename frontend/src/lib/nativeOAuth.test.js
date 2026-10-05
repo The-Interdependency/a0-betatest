@@ -20,6 +20,7 @@ import { listenNativeOAuth } from "./nativeOAuth";
 import client from "./client";
 import { App } from "@capacitor/app";
 import { setBackendOrigin } from "./backendOrigin";
+jest.mock("@capacitor/core", () => ({ Capacitor: { isNativePlatform: () => true } }));
 jest.mock("./client", () => ({ __esModule: true, default: { post: jest.fn() }, isNative: () => true }));
 jest.mock("@capacitor/app", () => ({ App: { addListener: jest.fn(), getLaunchUrl: jest.fn() } }));
 jest.mock("@capacitor/browser", () => ({ Browser: { close: jest.fn(async () => {}) } }));
