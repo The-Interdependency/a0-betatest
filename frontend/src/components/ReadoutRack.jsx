@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, Brain, Cpu, Database, Fingerprint, Gauge, Plus, ShieldCheck, Warning } from "@phosphor-icons/react";
+import { Brain, Cpu, Database, Fingerprint, Gauge, Plus, Pulse, ShieldCheck, Warning } from "@phosphor-icons/react";
 import { api } from "../lib/api";
 
 const DEFAULT_ORDER = ["agent","process","inference","state","authority","activity","machine","hmmm"];
@@ -9,7 +9,7 @@ const LABELS = {
 };
 const ICONS = {
   agent: Fingerprint, process: Gauge, inference: Brain, state: Database,
-  authority: ShieldCheck, activity: Activity, machine: Cpu, hmmm: Warning
+  authority: ShieldCheck, activity: Pulse, machine: Cpu, hmmm: Warning
 };
 
 function loadConfig() {
