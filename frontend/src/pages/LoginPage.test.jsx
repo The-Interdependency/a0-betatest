@@ -41,7 +41,7 @@ const healthy = () => ({ ok: true, json: async () => ({ status: "ok", service: "
 const response = (config, data = { user: { id: "owner" }, access_token: "test-token" }) => ({ config, data, status: 200, headers: {} });
 const originalFetch = global.fetch;
 const originalEncoder = global.TextEncoder;
-const originalSubtle = Object.getOwnPropertyDescriptor(global.crypto, "subtle");
+const originalCrypto = Object.getOwnPropertyDescriptor(global, "crypto");
 let auth, root, container, requests, receive, savedDefault;
 function deferred() {
   let resolve, reject;
@@ -88,7 +88,10 @@ beforeEach(() => {
   Browser.open.mockClear(); Browser.close.mockClear();
   global.fetch = jest.fn(async () => healthy());
   global.TextEncoder = TextEncoder;
-  Object.defineProperty(global.crypto, "subtle", { configurable: true, value: { digest: jest.fn(async () => new ArrayBuffer(32)) } });
+  Object.defineProperty(global, "crypto", { configurable: true, value: {
+    getRandomValues: jest.fn(bytes => { bytes.fill(7); return bytes; }),
+    subtle: { digest: jest.fn(async () => new ArrayBuffer(32)) },
+  } });
   client.defaults.adapter = async config => {
     requests.push(config);
     return response(config, config.url === "/auth/me" ? { user: null } : undefined);
@@ -98,8 +101,8 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount()); container.remove();
   global.fetch = originalFetch; global.TextEncoder = originalEncoder;
-  if (originalSubtle) Object.defineProperty(global.crypto, "subtle", originalSubtle);
-  else delete global.crypto.subtle;
+  if (originalCrypto) Object.defineProperty(global, "crypto", originalCrypto);
+  else delete global.crypto;
   if (savedDefault === undefined) delete process.env.REACT_APP_BACKEND_URL;
   else process.env.REACT_APP_BACKEND_URL = savedDefault;
 });
