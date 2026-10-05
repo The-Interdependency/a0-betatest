@@ -1,4 +1,21 @@
-import React, { useEffect, useMemo, useState } from "react";
+// === MODULE_BUILD ===
+// id: mobile_ReadoutRack
+//   module_name: ReadoutRack
+//   module_kind: ui_panel
+//   summary: instance-bound usage, state, sentinel and unresolved readouts
+//   owner: a0p maintainer
+//   public_surface: ReadoutRack
+//   internal_surface: local helpers
+//   auth_boundary: read
+//   storage_boundary: write
+//   network_boundary: external
+//   user_data_boundary: read
+//   admin_only: false
+//   tests: npm test -- --watchAll=false --runInBand
+//   rollout: bundled APK and backend deploy together; see frontend/ANDROID_APK.md
+//   rollback: revert mobile repair commit and rebuild APK
+// === END MODULE_BUILD ===
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Brain, Cpu, Database, Fingerprint, Gauge, Plus, Pulse, ShieldCheck, Warning } from "@phosphor-icons/react";
 import { api } from "../lib/api";
 
@@ -43,46 +60,66 @@ export default function ReadoutRack({ agent, turns, busy, pendingOverride }) {
   const [config, setConfig] = useState(loadConfig);
   const [selected, setSelected] = useState("agent");
   const [editing, setEditing] = useState(false);
-  const [snapshot, setSnapshot] = useState(null);
+  const [modes, setModes] = useState(null);
+  const [queue, setQueue] = useState(null);
+  const [queueComplete, setQueueComplete] = useState(false);
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
   const [usage, setUsage] = useState(null);
 
   useEffect(() => {
     localStorage.setItem("a0.readouts.v1", JSON.stringify(config));
   }, [config]);
 
+  // Completion-driven polling: one request group at a time, aborted on unmount.
   useEffect(() => {
-    let live = true;
+    let live = true, timer;
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
     const load = async () => {
-      const [s, u] = await Promise.all([
-        api.inspectorSnap().catch(() => null),
-        api.usage().catch(() => null),
+      const [u, q, approved, m] = await Promise.all([
+        api.usage("local", options).catch(() => null),
+        api.listOverrides({ status: "pending", limit: 200 }, options).catch(() => null),
+        api.listOverrides({ status: "approved", limit: 200 }, options).catch(() => null),
+        agent?.id ? api.getSentinelModes(agent.id, "local", options).catch(() => null) : Promise.resolve(null),
       ]);
-      if (live) {
-        setSnapshot(s?.agent_card?.snapshot || null);
-        setUsage(u);
-      }
+      if (!live) return;
+      setUsage(u);
+      const pendingRows = Array.isArray(q?.overrides) ? q.overrides : [];
+      const approvedRows = Array.isArray(approved?.overrides) ? approved.overrides : [];
+      setQueue([...pendingRows, ...approvedRows]);
+      setQueueComplete(Array.isArray(q?.overrides) && Array.isArray(approved?.overrides) && pendingRows.length < 200 && approvedRows.length < 200);
+      setModes(m?.modes ?? null);
+      timer = setTimeout(load, busyRef.current ? 4000 : 15000);
     };
     load();
-    const timer = setInterval(load, busy ? 4000 : 15000);
-    return () => { live = false; clearInterval(timer); };
-  }, [busy, turns.length]);
+    return () => { live = false; clearTimeout(timer); controller.abort(); };
+  }, [agent?.id]);
 
   const lastAssistant = useMemo(() => [...turns].reverse().find(t => t.role === "assistant"), [turns]);
   const toolCalls = useMemo(() => turns.reduce((n,t) => n + (t.tool_trace?.length || 0), 0), [turns]);
-  const unresolved = pendingOverride ? 1 : (lastAssistant?.reply_source === "zfae_refused" ? 1 : 0);
+  const pending = new Set((queue || []).filter(row => row.agent_id === agent?.id).map(row => row.id));
+  if (pendingOverride) pending.add(pendingOverride.id);
+  const unresolved = pending.size + (lastAssistant?.reply_source === "zfae_refused" ? 1 : 0);
+  const snapshot = lastAssistant?.nextSnapshot;
+  const resolvedModes = modes || agent?.sheet?.sentinel_modes;
+  const modeValues = Array.from({ length: 13 }, (_, i) => resolvedModes?.[`S${i + 1}`]);
+  const gate = !agent ? "unselected" : modeValues.some(mode => !mode) ? "unknown" :
+    modeValues.every(mode => mode === "off") ? "disabled" :
+    modeValues.some(mode => mode === "flag") ? "active" : "observe only";
   const agentName = agent?.sheet?.name || "no agent";
   const inference = lastAssistant?.reply_source || agent?.sheet?.mode || "not yet used";
-  const stateStep = agent?.zfae_metrics?.zfae_training_step ?? snapshot?.tick_count ?? 0;
+  const stateStep = agent?.zfae_metrics?.zfae_training_step ?? snapshot?.tick ?? "—";
   const machine = navigator.userAgent.includes("Android") ? "Android host" : "web host";
   const summaries = {
     agent: agent ? `${agentName} · ${busy ? "running" : "ready"}` : "select an agent",
     process: busy ? "running current turn" : (turns.length ? "waiting for human" : "idle"),
     inference,
     state: `step ${stateStep}${lastAssistant?.zfae_weights_updated ? " · weights Δ" : ""}`,
-    authority: `${toolCalls} tool call${toolCalls === 1 ? "" : "s"} · sentinel gated`,
+    authority: `${toolCalls} tool call${toolCalls === 1 ? "" : "s"} · sentinels ${gate}`,
     activity: `${turns.length} turns · ${toolCalls} tools`,
     machine,
-    hmmm: unresolved ? `${unresolved} unresolved boundary` : "clear",
+    hmmm: unresolved ? `${unresolved} unresolved boundary` : !queueComplete ? "status incomplete" : "clear",
   };
 
   const details = {
@@ -96,7 +133,7 @@ export default function ReadoutRack({ agent, turns, busy, pendingOverride }) {
       ["status", busy ? "running" : "waiting"],
       ["turns", turns.length],
       ["current", busy ? "processing conversation turn" : "human input"],
-      ["pending approval", pendingOverride ? "yes" : "no"],
+      ["unresolved overrides", pending.size || (!queueComplete ? "unknown" : "none")],
     ],
     inference: [
       ["source", inference],
@@ -106,21 +143,21 @@ export default function ReadoutRack({ agent, turns, busy, pendingOverride }) {
     ],
     state: [
       ["training step", agent?.zfae_metrics?.zfae_training_step ?? "—"],
-      ["engine tick", snapshot?.tick_count ?? "—"],
+      ["engine tick", snapshot?.tick ?? "—"],
       ["checkpoint", agent?.zfae_metrics?.zfae_checkpoint_digest?.slice(0,16) || "—"],
       ["memory LT/ST", snapshot?.memory ? `${snapshot.memory.lt?.length || 0}/${snapshot.memory.st?.length || 0}` : "—"],
     ],
     authority: [
-      ["sentinel gate", "active"],
+      ["sentinel gate", gate],
       ["tool invocations", toolCalls],
-      ["override pending", pendingOverride ? "yes" : "no"],
+      ["override pending", pending.size ? "yes" : !queueComplete ? "unknown" : "no"],
       ["capability source", "A0 tool registry"],
     ],
     activity: [
       ["conversation turns", turns.length],
       ["tool calls", toolCalls],
       ["last reply", lastAssistant?.reply_source || "—"],
-      ["usage records", Array.isArray(usage?.usage) ? usage.usage.length : (usage?.items?.length ?? "—")],
+      ["usage records", usage?.records?.length ?? "—"],
     ],
     machine: [
       ["host", machine],
@@ -129,10 +166,10 @@ export default function ReadoutRack({ agent, turns, busy, pendingOverride }) {
       ["surface", "bundled A0 UI"],
     ],
     hmmm: [
-      ["status", unresolved ? "UNRESOLVED" : "clear"],
+      ["status", unresolved ? "UNRESOLVED" : !queueComplete ? "incomplete" : "clear"],
       ["pending override", pendingOverride?.id || "—"],
       ["refusal", lastAssistant?.reply_source === "zfae_refused" ? "yes" : "no"],
-      ["resolution", pendingOverride ? "human approval or rejection required" : "—"],
+      ["resolution", pendingOverride?.status === "approved" ? "resume approved turn" : pending.size ? "review the overrides queue" : "—"],
     ],
   };
 

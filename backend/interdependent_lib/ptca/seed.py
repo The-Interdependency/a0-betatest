@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: ptca_seed
 #   module_name: seed
-#   module_kind: core
+#   module_kind: engine
 #   summary: PTCA seed containing exactly seven PCTA circles with {7/3} routing and A0-local structural identity
 #   owner: a0p maintainer
 #   public_surface: Seed, seed_identity, seed_compose, from_circles, from_seed, aggregate, structural_shape, heptagram_order, param_count
@@ -50,9 +50,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Tuple
 
-import backend.interdependent_lib.pcta.circle as pcta
-import backend.interdependent_lib.ptca.constants as canon
-from backend.interdependent_lib.structural_shape import A0StructuralShape, shape_from_content
+from ..pcta import circle as pcta
+from ..ptca import constants as canon
+from ..structural_shape import A0StructuralShape, shape_from_content
 
 SEED_CIRCLES = canon.CIRCLES_PER_SEED
 HEPTAGRAM_STEP_SEED = canon.SEED_ROUTING_STEP

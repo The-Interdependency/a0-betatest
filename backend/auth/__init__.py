@@ -149,6 +149,8 @@ class OAuthGithubCodeBody(BaseModel):
     """Body for /oauth/github/callback — accepts a GitHub authorization code."""
     code: str
     state: Optional[str] = None
+    code_verifier: Optional[str] = None
+    redirect_uri: Optional[str] = None
 
 
 # ---- Auth dependencies ---------------------------------------------------
@@ -361,7 +363,9 @@ async def oauth_github_callback(body: OAuthGithubCodeBody, response: Response):
         tok_resp = await cli.post(
             "https://github.com/login/oauth/access_token",
             headers={"Accept": "application/json"},
-            data={"client_id": cid, "client_secret": cs, "code": body.code},
+            data={"client_id": cid, "client_secret": cs, "code": body.code,
+                  **({"code_verifier": body.code_verifier} if body.code_verifier else {}),
+                  **({"redirect_uri": body.redirect_uri} if body.redirect_uri else {})},
         )
         tok_resp.raise_for_status()
         tok = tok_resp.json().get("access_token")
@@ -489,6 +493,8 @@ async def seed_admin() -> Optional[dict]:
 def init_auth(app) -> None:
     """Attach the auth router to the FastAPI app."""
     app.include_router(router)
+    from .mobile import router as mobile_router
+    app.include_router(mobile_router)
 
 
 __all__ = [

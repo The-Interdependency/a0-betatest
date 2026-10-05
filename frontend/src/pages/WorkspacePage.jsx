@@ -109,8 +109,11 @@ export default function WorkspacePage() {
   const [err, setErr] = useState(null);
 
   // halt / override state
+  const [overrideOpen, setOverrideOpen] = useState(false);
   const [pendingOverride, setPendingOverride] = useState(null); // { id, verdict, prompt, mode }
 
+  const selectedRef = useRef(agentId);
+  selectedRef.current = agentId;
   const inputRef = useRef(null);
   const scrollRef = useRef(null);
 
@@ -125,9 +128,14 @@ export default function WorkspacePage() {
   }, []);
 
   useEffect(() => {
-    if (!agentId) return setAgent(null);
-    api.getInstance(agentId).then(setAgent).catch(e => setErr(e.message));
+    let live = true;
+    setAgent(null);
+    setPendingOverride(null);
+    setOverrideOpen(false);
+    if (!agentId) return;
+    api.getInstance(agentId).then(value => { if (live) setAgent(value); }).catch(e => { if (live) setErr(e.message); });
     setSearchParams(agentId ? { agent: agentId } : {}, { replace: true });
+    return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentId]);
 
@@ -137,22 +145,25 @@ export default function WorkspacePage() {
 
   const transcriptForApi = useMemo(() => turns.map(t => ({ role: t.role, content: t.content })), [turns]);
 
-  const send = useCallback(async (textOverride, modeOverride, overrideId) => {
+  const send = useCallback(async (textOverride, modeOverride, overrideId, resumeRequest) => {
     const text = (textOverride ?? prompt).trim();
     const m = modeOverride ?? mode ?? agent?.sheet?.mode;
-    if (!text || !agentId || busy) return;
+    if (!text || !agentId || busy || (pendingOverride && !overrideId)) return;
     const myId = Date.now();
-    setTurns(prev => [...prev, { id: myId, role: "user", content: text, mode: m }]);
+    if (!overrideId) setTurns(prev => [...prev, { id: myId, role: "user", content: text, mode: m }]);
     setPrompt("");
     setBusy(true); setErr(null);
-    try {
-      const { status, data } = await api.chatInstance(agentId, {
+    const requestBody = resumeRequest ? { ...resumeRequest, override_id: overrideId } : {
         user_id: "local",
         prompt: text,
         mode: m || undefined,
         transcript: transcriptForApi,
         override_id: overrideId || undefined,
-      });
+        zfae_snapshot: [...turns].reverse().find(t => t.nextSnapshot)?.nextSnapshot,
+    };
+    try {
+      const { status, data } = await api.chatInstance(agentId, requestBody);
+      if (status >= 400) throw new Error(data.detail || `chat failed (HTTP ${status})`);
       const assistantTurn = {
         id: myId + 1,
         role: "assistant",
@@ -164,34 +175,45 @@ export default function WorkspacePage() {
         sentinel_verdict: data.sentinel_verdict,
         zfae_metrics: data.zfae_metrics,
         tool_trace: data.trace?.tool_trace,
+        nextSnapshot: data.nextSnapshot,
       };
       setTurns(prev => [...prev, assistantTurn]);
       if (status === 202 && data.pending_override_id) {
+        setOverrideOpen(true);
         setPendingOverride({
           id: data.pending_override_id,
           verdict: data.sentinel_verdict,
           prompt: text,
           mode: m,
+          request: requestBody,
+          status: "pending",
         });
+      } else {
+        setPendingOverride(null);
+        setOverrideOpen(false);
       }
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message);
     } finally {
       setBusy(false);
       // refresh agent metrics
-      if (agentId) api.getInstance(agentId).then(setAgent).catch(() => {});
+      if (agentId) api.getInstance(agentId).then(value => { if (selectedRef.current === agentId) setAgent(value); }).catch(() => {});
     }
-  }, [prompt, mode, agent, agentId, busy, transcriptForApi]);
+  }, [prompt, mode, agent, agentId, busy, transcriptForApi, pendingOverride, turns]);
 
   const approveAndResume = useCallback(async (reason) => {
     if (!pendingOverride) return;
     setBusy(true); setErr(null);
     try {
-      await api.approveOverride(pendingOverride.id, { user_id: "local", justification: reason });
-      const { id, prompt: p, mode: m } = pendingOverride;
-      setPendingOverride(null);
-      // resume by re-sending the same prompt with the override_id
-      await send(p, m, id);
+      if (pendingOverride.status !== "approved") {
+        await api.approveOverride(pendingOverride.id, { user_id: "local", justification: reason });
+        setPendingOverride(previous => ({ ...previous, status: "approved" }));
+      }
+      const { id, prompt: p, mode: m, request } = pendingOverride;
+      setOverrideOpen(false);
+      // The server binds the entire original action, including transcript and
+      // snapshot. Resume that exact payload; a newer transcript is a new action.
+      await send(p, m, id, request);
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message);
     } finally {
@@ -205,6 +227,7 @@ export default function WorkspacePage() {
     try {
       await api.rejectOverride(pendingOverride.id, { user_id: "local", reason });
       setPendingOverride(null);
+      setOverrideOpen(false);
     } catch (e) {
       setErr(e?.response?.data?.detail || e.message);
     } finally { setBusy(false); }
@@ -218,7 +241,7 @@ export default function WorkspacePage() {
       <header className="border border-white/10 bg-bg-panel p-3 flex flex-wrap items-center gap-3" data-testid="ws-agent-bar">
         <div className="flex-1 min-w-[18rem]">
           <label className="block text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-500">agent</label>
-          <select data-testid="ws-agent-select" value={agentId} onChange={e => { setAgentId(e.target.value); setTurns([]); }}
+          <select data-testid="ws-agent-select" disabled={busy} value={agentId} onChange={e => { setAgentId(e.target.value); setTurns([]); }}
                   className="w-full bg-bg-surface border border-white/10 px-2 py-1.5 font-mono text-sm text-white">
             <option value="">— select agent —</option>
             {agents.map(a => <option key={a.id} value={a.id}>{a.sheet?.name || a.id.slice(0, 8)}</option>)}
@@ -291,7 +314,7 @@ export default function WorkspacePage() {
           disabled={!agentId || busy}
           className="flex-1 bg-bg-surface border border-white/10 px-3 py-2 font-mono text-sm text-white disabled:opacity-40"
         />
-        <button type="submit" disabled={!agentId || busy || !prompt.trim()} data-testid="ws-send-btn"
+        <button type="submit" disabled={!agentId || busy || !!pendingOverride || !prompt.trim()} data-testid="ws-send-btn"
                 className="px-4 py-2 border border-accent-cyan/40 text-accent-cyan font-mono text-xs uppercase tracking-wider hover:bg-accent-cyan/10 disabled:opacity-40 flex items-center gap-1.5">
           <PaperPlaneTilt size={14} /> send
         </button>
@@ -300,22 +323,22 @@ export default function WorkspacePage() {
       {pendingOverride && (
         <div className="border border-rose-500/40 bg-rose-500/5 px-3 py-2 flex items-center gap-3 text-xs font-mono text-rose-200" data-testid="ws-halt-banner">
           <ShieldWarning size={14} />
-          Sentinel halt — explicit override required to continue.
+          {pendingOverride.status === "approved" ? "Approved — resume still required." : "Sentinel halt — explicit override required to continue."}
           <Link to="/overrides" className="ml-auto underline text-rose-100">manage overrides</Link>
-          <button onClick={() => setPendingOverride(null)} className="text-rose-400 hover:text-white">dismiss</button>
+          <button disabled={busy} onClick={() => pendingOverride.status === "approved" ? approveAndResume() : setOverrideOpen(true)} className="text-rose-400 hover:text-white">{pendingOverride.status === "approved" ? "resume approved turn" : "review decision"}</button>
         </div>
       )}
 
       <OverrideModal
-        overrideId={pendingOverride?.id}
+        overrideId={overrideOpen ? pendingOverride?.id : null}
         verdict={pendingOverride?.verdict}
         busy={busy}
         onApprove={approveAndResume}
         onReject={rejectOverride}
-        onDismiss={() => setPendingOverride(null)}
+        onDismiss={() => setOverrideOpen(false)}
       />
       </div>
-      <ReadoutRack agent={agent} turns={turns} busy={busy} pendingOverride={pendingOverride} />
+      <ReadoutRack key={agentId} agent={agent} turns={turns} busy={busy} pendingOverride={pendingOverride} />
     </div>
   );
 }

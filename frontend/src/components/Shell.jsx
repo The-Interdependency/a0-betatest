@@ -162,6 +162,15 @@ export default function Shell({ children }) {
       )}
 
       <main className={`flex-1 ${isSplash ? "px-6 md:px-12" : isWorkspace ? "p-0" : "p-4 md:p-8"} ${isWorkspace ? "" : "max-w-[1600px] mx-auto"} w-full min-w-0`}>
+        {isWorkspace && (
+          <details className="border-b border-white/10 bg-bg-panel p-3">
+            <summary className="cursor-pointer font-mono text-sm text-accent-cyan">A0 navigation</summary>
+            <nav aria-label="Workspace navigation" className="flex flex-wrap gap-3 py-3">
+              {items.map(it => <NavLink key={it.to} to={it.to} data-testid={it.testid} className="btn-ghost">{it.label}</NavLink>)}
+              {user && <button onClick={async () => { await logout(); nav("/login"); }}>Sign out</button>}
+            </nav>
+          </details>
+        )}
         {children}
       </main>
     </div>

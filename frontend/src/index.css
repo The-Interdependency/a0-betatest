@@ -129,6 +129,7 @@ button, input, textarea, select { border-radius: 0; }
   display: flex;
   flex-direction: column;
   max-height: 100vh;
+  overflow-y: auto;
   position: sticky;
   top: 0;
 }
@@ -212,3 +213,6 @@ button, input, textarea, select { border-radius: 0; }
     max-height: 40vh;
   }
 }
+
+/* Keep all rack regions reachable, including its editor on short tablets. */
+.a0-readout-rack > * { flex-shrink: 0; }

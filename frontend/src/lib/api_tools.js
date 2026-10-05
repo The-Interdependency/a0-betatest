@@ -33,13 +33,7 @@
 //   owner: Erin Spencer
 // === END CAPABILITIES ===
 
-import axios from "axios";
-
-const client = axios.create({
-  baseURL: `${process.env.REACT_APP_BACKEND_URL}/api`,
-  withCredentials: true,
-  timeout: 60000,
-});
+import client from "./client";
 
 export const toolsApi = {
   list:    () => client.get("/tools").then(r => r.data),

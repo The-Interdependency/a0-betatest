@@ -35,7 +35,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation, Link, useSearchParams } from "react-router-dom";
-import axios from "axios";
+import client, { isNative } from "../lib/client";
+import { startNativeOAuth } from "../lib/nativeOAuth";
 import { Eye, EyeSlash, GoogleLogo, GithubLogo, ArrowRight } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
 import { getBackendOrigin, setBackendOrigin, probeBackendOrigin } from "../lib/backendOrigin";
@@ -101,7 +102,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
   const [err, setErr] = useState(null);
   const [backend, setBackend] = useState(getBackendOrigin());
   const [backendStatus, setBackendStatus] = useState("unchecked");
-  const { user, login, register, googleSession, githubExchange } = useAuth();
+  const { user, error: authError, login, register, googleSession, githubExchange } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
   const [params, setParams] = useSearchParams();
@@ -114,6 +115,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
 
   // ---- Emergent Google session redirect handler ----
   useEffect(() => {
+    if (isNative()) return;
     // Emergent redirects with #session_id=... in the URL hash.
     const hash = window.location.hash || "";
     const m = hash.match(/session_id=([^&]+)/);
@@ -154,9 +156,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
       const normalized = setBackendOrigin(backend);
       setBackend(normalized);
       setBackendStatus("ok");
-      // API/auth clients are created at module load; restart the bundled UI
-      // after a successful origin change so every client binds to the same VM.
-      window.setTimeout(() => window.location.reload(), 150);
+      // Shared clients bind to this origin on their next request.
     } catch (e) {
       setBackendStatus("error");
       setErr(`backend unavailable: ${e.message}`);
@@ -178,16 +178,24 @@ export default function LoginPage({ mode: initialMode = "login" }) {
     } finally { setBusy(false); }
   }
 
+  async function nativeLogin(provider) {
+    setBusy(true); setErr(null);
+    try { await startNativeOAuth(provider); } catch (e) { setErr(e.response?.data?.detail || e.message); }
+    finally { setBusy(false); }
+  }
+
   function goGoogle() {
+    if (isNative()) return nativeLogin("google");
     // Emergent's hosted OAuth widget — redirects back with #session_id=...
     const redirect = encodeURIComponent(`${window.location.origin}/login`);
     window.location.href = `https://auth.emergentagent.com/?redirect=${redirect}`;
   }
 
   async function goGithub() {
+    if (isNative()) return nativeLogin("github");
     setBusy(true);
     try {
-      const { data } = await axios.get(`${getBackendOrigin()}/api/auth/oauth/github/start`, { withCredentials: true });
+      const { data } = await client.get("/auth/oauth/github/start");
       if (data?.url) window.location.href = data.url;
     } catch (e) {
       setErr("github oauth not configured — set GITHUB_CLIENT_ID + SECRET on the server");
@@ -234,13 +242,13 @@ export default function LoginPage({ mode: initialMode = "login" }) {
             </button>
           </div>
           <div className="text-[0.6rem] font-mono text-neutral-600">
-            Stored on this device. Login uses this origin after a successful health check; reload once after changing an existing connection.
+            Stored on this device. Login uses this origin immediately after a successful A0 health check.
           </div>
         </div>
 
-        {err && (
+        {(err || authError) && (
           <div className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-rose-300 text-xs font-mono" data-testid="login-error">
-            {err}
+            {err || authError}
           </div>
         )}
 

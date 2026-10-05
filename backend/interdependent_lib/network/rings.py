@@ -38,9 +38,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..pcna.tensor import Tensor
-from ..pcta.circle import Circle, heptagram_walk
-from ..ptca.seed import Seed
-from ..ptca.core import Core
+from ..pcta.circle import heptagram_walk, from_seed as circle_from_seed
+from ..ptca.seed import Seed, from_seed as seed_from_seed, from_circles
+from ..ptca.core import Core, from_seeds
 from .topology import RingSpec, RING_TOPOLOGY, MEMORY_RING_NAMES
 from .sigma_source import sigma_tensors, gather_host_digest, HostDigest
 
@@ -88,7 +88,7 @@ class Ring:
 
     def aggregate(self) -> Tensor:
         """Ring-level aggregate Tensor — fed into PCEA each tick."""
-        return self.core.aggregate()
+        return self.core.aggregate
 
 
 def heptagram_order(spec: RingSpec, start: int = 0) -> tuple[int, ...]:
@@ -125,15 +125,15 @@ def _build_seed_for_position(
     the host digest.
     """
     if sigma_tensor is None:
-        return Seed.from_seed(base_seed + pos, f"{ring_name}::pos{pos}")
+        return seed_from_seed(base_seed + pos, f"{ring_name}::pos{pos}")
     # Σ position: each Seed's circles inherit from the host-digest tensor.
     # We deterministically derive a per-circle seed using sigma's payload.
     sigma_seed = base_seed + pos
     circles = [
-        Circle.from_seed(sigma_seed * 7 + i, f"sigma::pos{pos}::circle{i}")
+        circle_from_seed(sigma_seed * 7 + i, f"sigma::pos{pos}::circle{i}")
         for i in range(7)
     ]
-    return Seed.from_circles(circles)
+    return from_circles(circles)
 
 
 def build_ring(name: str, n_override: int | None = None) -> Ring:
@@ -155,14 +155,14 @@ def build_ring(name: str, n_override: int | None = None) -> Ring:
             _build_seed_for_position(name, i, base, sigma_ts[i])
             for i in range(n)
         ]
-        core = Core.from_seeds(seeds, label=name)
+        core = from_seeds(seeds, label=name)
         return Ring(spec=spec, core=core, digest=digest)
 
     seeds = [
         _build_seed_for_position(name, i, base)
         for i in range(n)
     ]
-    core = Core.from_seeds(seeds, label=name)
+    core = from_seeds(seeds, label=name)
     return Ring(spec=spec, core=core)
 
 

@@ -1,7 +1,7 @@
 # === MODULE_BUILD ===
 # id: carrier_pkg
 #   module_name: carrier
-#   module_kind: package
+#   module_kind: adapter
 #   summary: A0 source-gonol fixture, public structural helpers, and separately scoped private application material
 #   owner: Erin Spencer
 #   public_surface: PUBLIC_GONOL_157, PUBLIC_GONOL_SHA256, face, chirality, n_plus, n_minus, ClassTag, CarrierDisk, CarrierDiskUnavailable, hard_invariant_holds, face_crossing, build_public_fixture_disk

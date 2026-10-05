@@ -138,8 +138,11 @@ app = FastAPI(title="a0p — research instrument", version="0.1.0", lifespan=_li
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=list(dict.fromkeys(["https://localhost"] + [
+        value.strip() for value in os.environ.get("CORS_ORIGINS", "").split(",")
+        if value.strip() and value.strip() != "*"
+    ])),
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
