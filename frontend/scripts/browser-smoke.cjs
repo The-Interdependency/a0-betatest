@@ -51,7 +51,19 @@ const server = http.createServer((req,res) => {
  await page.setViewportSize({width:360,height:780});
  const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:innerWidth}));
  assert(widths.scroll<=widths.width,JSON.stringify(widths));
+
+ const login = await browser.newPage({viewport:{width:360,height:780}});
+ await login.route('**/api/**', async route => {
+   const pathname = new URL(route.request().url()).pathname;
+   if (pathname === '/api/auth/me') return route.fulfill({status:401,json:{detail:'not authenticated'}});
+   await route.fulfill({json:{}});
+ });
+ await login.goto(`http://127.0.0.1:${server.address().port}/login`);
+ await login.getByTestId('page-login').waitFor();
+ assert.equal(await login.getByTestId('backend-origin-panel').count(), 0, 'web cookie login must not offer arbitrary backend selection');
+ await login.close();
+
  assert.deepEqual(errors,[]);
- console.log('PASS: 1024x600 rack/editor scroll; 360px phone has no horizontal page overflow; empty-user navigation; no browser exceptions.');
+ console.log('PASS: layout/navigation; web login hides native backend selector; no browser exceptions.');
  } finally { await browser.close(); server.close(); }
 })().catch(e=>{console.error(e);process.exitCode=1;server.close();});
