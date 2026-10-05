@@ -154,6 +154,9 @@ export default function LoginPage({ mode: initialMode = "login" }) {
       const normalized = setBackendOrigin(backend);
       setBackend(normalized);
       setBackendStatus("ok");
+      // API/auth clients are created at module load; restart the bundled UI
+      // after a successful origin change so every client binds to the same VM.
+      window.setTimeout(() => window.location.reload(), 150);
     } catch (e) {
       setBackendStatus("error");
       setErr(`backend unavailable: ${e.message}`);
