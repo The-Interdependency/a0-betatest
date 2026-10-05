@@ -38,8 +38,7 @@ import { useNavigate, useLocation, Link, useSearchParams } from "react-router-do
 import axios from "axios";
 import { Eye, EyeSlash, GoogleLogo, GithubLogo, ArrowRight } from "@phosphor-icons/react";
 import { useAuth } from "../lib/auth";
-
-const BACKEND = process.env.REACT_APP_BACKEND_URL;
+import { getBackendOrigin, setBackendOrigin, probeBackendOrigin } from "../lib/backendOrigin";
 
 function PassphraseField({ value, onChange, testid, label = "passphrase (≥16 chars)", hint }) {
   const [show, setShow] = useState(false);
@@ -100,6 +99,8 @@ export default function LoginPage({ mode: initialMode = "login" }) {
   const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [backend, setBackend] = useState(getBackendOrigin());
+  const [backendStatus, setBackendStatus] = useState("unchecked");
   const { user, login, register, googleSession, githubExchange } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
@@ -146,6 +147,19 @@ export default function LoginPage({ mode: initialMode = "login" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  async function verifyBackend() {
+    setBackendStatus("checking"); setErr(null);
+    try {
+      await probeBackendOrigin(backend);
+      const normalized = setBackendOrigin(backend);
+      setBackend(normalized);
+      setBackendStatus("ok");
+    } catch (e) {
+      setBackendStatus("error");
+      setErr(`backend unavailable: ${e.message}`);
+    }
+  }
+
   async function submit(e) {
     e.preventDefault();
     setBusy(true); setErr(null);
@@ -170,7 +184,7 @@ export default function LoginPage({ mode: initialMode = "login" }) {
   async function goGithub() {
     setBusy(true);
     try {
-      const { data } = await axios.get(`${BACKEND}/api/auth/oauth/github/start`, { withCredentials: true });
+      const { data } = await axios.get(`${getBackendOrigin()}/api/auth/oauth/github/start`, { withCredentials: true });
       if (data?.url) window.location.href = data.url;
     } catch (e) {
       setErr("github oauth not configured — set GITHUB_CLIENT_ID + SECRET on the server");
@@ -199,6 +213,25 @@ export default function LoginPage({ mode: initialMode = "login" }) {
                     className={`px-2 py-1 border ${mode === "register" ? "border-accent-cyan text-accent-cyan" : "border-white/10 text-neutral-400"}`}>
               create account
             </button>
+          </div>
+        </div>
+
+        <div className="border border-white/10 bg-bg-panel p-3 space-y-2" data-testid="backend-origin-panel">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[0.6rem] font-mono uppercase tracking-ultra text-neutral-400">A0 backend</span>
+            <span className={"text-[0.6rem] font-mono uppercase " + (backendStatus === "ok" ? "text-emerald-300" : backendStatus === "error" ? "text-rose-300" : "text-neutral-500")}>
+              {backendStatus}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <input value={backend} onChange={e => setBackend(e.target.value)}
+              className="input-term flex-1" placeholder="https://a0.example.org" inputMode="url"/>
+            <button type="button" className="btn-ghost" onClick={verifyBackend} disabled={!backend || backendStatus === "checking"}>
+              {backendStatus === "checking" ? "checking…" : "connect"}
+            </button>
+          </div>
+          <div className="text-[0.6rem] font-mono text-neutral-600">
+            Stored on this device. Login uses this origin after a successful health check; reload once after changing an existing connection.
           </div>
         </div>
 
