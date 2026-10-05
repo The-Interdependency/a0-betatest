@@ -40,6 +40,16 @@
 #   then: the named callable returns without raising
 #   class: correctness
 #   call: a0p_skills.contracts.traffic_log_append_only_holds
+#
+# id: traffic_log_redacts_oauth_callback_query
+#   given: an OAuth callback carries provider credentials or transaction state in its query string
+#   then: the append-only traffic record stores an empty query rather than credential-bearing callback data
+#   class: confidentiality
+#
+# id: traffic_log_attributes_cookie_or_bearer_access
+#   given: an authenticated request carries the existing access JWT in either the web cookie or native Bearer transport
+#   then: best-effort traffic metadata resolves the same user id without recording either credential
+#   class: attribution
 # === END CONTRACTS ===
 """Append-only traffic logger for all HTTP traffic.
 
@@ -69,9 +79,14 @@ def _ensure_dir(p: Path) -> None:
 
 
 def _resolve_uid(request) -> str | None:
-    """Best-effort, no-DB user id from the access cookie. Never raises."""
+    """Best-effort, no-DB user id from the access cookie or native bearer. Never raises."""
     try:
         token = request.cookies.get("access_token")
+        if not token:
+            authorization = request.headers.get("authorization", "")
+            scheme, separator, credential = authorization.partition(" ")
+            if separator and scheme.lower() == "bearer" and credential:
+                token = credential
         if not token:
             return None
         import jwt as pyjwt  # PyJWT
@@ -82,6 +97,15 @@ def _resolve_uid(request) -> str | None:
         return payload.get("sub")
     except Exception:
         return None
+
+
+def _safe_query(request) -> str:
+    """Return loggable query metadata; OAuth callback credentials are never retained."""
+
+    path = request.url.path
+    if path.startswith("/api/auth/oauth/") and path.endswith("/callback"):
+        return ""
+    return request.url.query or ""
 
 
 def _append(record: dict) -> None:
@@ -111,7 +135,7 @@ async def traffic_middleware(request, call_next):
             "ts": datetime.now(timezone.utc).isoformat(),
             "method": request.method,
             "path": request.url.path,
-            "query": request.url.query or "",
+            "query": _safe_query(request),
             "status": status,
             "latency_ms": latency_ms,
             "ip": getattr(client, "host", None),
