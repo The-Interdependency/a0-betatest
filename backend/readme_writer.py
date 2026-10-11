@@ -39,6 +39,10 @@
 #   given: write_readme is called during ordinary application startup
 #   then: no repository file changes unless explicit=True or A0P_ALLOW_DOC_WRITE=1
 #   class: provenance
+# id: readme_preserves_license_grant
+#   given: README generation is explicitly requested
+#   then: the scoped AGPL-3.0-or-later grant and the approval-record link remain discoverable
+#   class: provenance
 # === END CONTRACTS ===
 """Explicit README generator from living MODULE_BUILD declarations.
 
@@ -214,6 +218,14 @@ def write_readme(
         "cd backend",
         "A0P_ALLOW_DOC_WRITE=1 python -c 'from readme_writer import write_readme; write_readme(explicit=True)'",
         "```",
+        "",
+        "## License",
+        "",
+        "A0 code owned by Erin Patrick Spencer, or that they are authorized to license, is",
+        "licensed under the GNU Affero General Public License, version 3 or (at your",
+        "option) any later version (SPDX: `AGPL-3.0-or-later`). See the project-specific",
+        "[grant and approval record](LICENSE_NOTICE.md) and the full [license text](LICENSE).",
+        "Third-party code retains its own terms; earlier grants are not withdrawn.",
         "",
         "## hmmm",
         "",

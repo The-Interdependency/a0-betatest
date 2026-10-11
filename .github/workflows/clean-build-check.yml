@@ -70,6 +70,7 @@ jobs:
           output="$(python -m pytest -q --tb=short \
             backend/interdependent_lib/tests/test_invariants.py \
             backend/tests/test_reset_boundaries.py \
+            backend/tests/test_license_consistency.py \
             backend/tests/test_lifted_path.py \
             backend/tests/test_morphology_ladder.py \
             backend/tests/test_zfae_gonal_inscription.py \
