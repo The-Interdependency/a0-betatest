@@ -30,3 +30,11 @@ The repaired regression suite now checks:
 No completion claim should be promoted beyond the exact checks executed at the commit
 being described. A shape test is not a double-cover proof, and a manifest declaration
 is not an executable result.
+
+## License version approval (2026-10-11)
+
+Erin Patrick Spencer explicitly approved `AGPL-3.0-or-later` for A0 code within
+their licensing authority. [LICENSE_NOTICE.md](LICENSE_NOTICE.md) records the
+project-specific grant, its date, and the historical and third-party boundaries.
+The July AGPL-3.0 record is preserved as history; earlier grants and other
+contributors' rights are not withdrawn or replaced by this decision.

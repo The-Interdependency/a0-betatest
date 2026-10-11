@@ -19,7 +19,7 @@
 | Runtime dependencies | `fastapi==0.115.0`, `uvicorn[standard]==0.32.0`, `motor==3.6.0`, `pymongo==4.9.1`, `pydantic==2.9.2`, `python-dotenv==1.0.1`, `httpx==0.27.2`, `cryptography==43.0.1`, `python-multipart==0.0.12`, `safetensors>=0.4.5`, `numpy>=1.26`, `openai>=1.50`, `anthropic>=0.40`, `google-generativeai>=0.8`, `bcrypt>=4.0,<5.0`, `PyJWT>=2.8`, `email-validator>=2.0` |
 | Optional extras | `dev` |
 | Keywords | a0p, ZFAE, PCNA, PTCA, PCEA, fiq, research, BYOK |
-| CI workflows | `apply-agent-state-isolation.yml`, `apply-agent-state-proxy.yml`, `apply-owned-agent-records.yml`, `apply-owner-state-core.yml`, `clean-build-check.yml`, `deploy.yml`, `repair-public-gonol-consumer-docs.yml` |
+| CI workflows | `android-apk.yml`, `apply-agent-state-isolation.yml`, `apply-agent-state-proxy.yml`, `apply-owned-agent-records.yml`, `apply-owner-state-core.yml`, `clean-build-check.yml`, `deploy.yml`, `repair-public-gonol-consumer-docs.yml` |
 | Top-level directories | `_legacy_a0/` · `_spec_reference/` · `a0python/` · `backend/` · `docs/` · `frontend/` · `memory/` · `repair/` · `storage/` · `test_reports/` |
 
 <sub>Derived from `backend/pyproject.toml` + the repo tree. Unknown fields surface as `hmmm` rather than a guess.</sub>
@@ -81,7 +81,7 @@ python .agents/skills/manifest/generate.py --root /app --pyproject backend/pypro
 
 ## License
 
-AGPL-3.0-or-later (see `LICENSE`, added 2026-07-10). The 157-gonal carrier disk, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.
+AGPL-3.0-or-later for code within Erin Patrick Spencer's licensing authority, explicitly approved 2026-10-11. See [LICENSE_NOTICE.md](LICENSE_NOTICE.md) for the grant, approval record, and historical/third-party scope; [LICENSE](LICENSE) contains the unchanged AGPL text added 2026-07-10. The 157-gonal carrier disk, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.
 
 ## Author
 
