@@ -31,7 +31,7 @@ No completion claim should be promoted beyond the exact checks executed at the c
 being described. A shape test is not a double-cover proof, and a manifest declaration
 is not an executable result.
 
-## License version approval (2026-10-11)
+## License version approval (2026-10-11 UTC / 2026-10-10 Pacific)
 
 Erin Patrick Spencer explicitly approved `AGPL-3.0-or-later` for A0 code within
 their licensing authority. [LICENSE_NOTICE.md](LICENSE_NOTICE.md) records the

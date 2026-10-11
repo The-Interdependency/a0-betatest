@@ -81,7 +81,7 @@ python .agents/skills/manifest/generate.py --root /app --pyproject backend/pypro
 
 ## License
 
-AGPL-3.0-or-later for code within Erin Patrick Spencer's licensing authority, explicitly approved 2026-10-11. See [LICENSE_NOTICE.md](LICENSE_NOTICE.md) for the grant, approval record, and historical/third-party scope; [LICENSE](LICENSE) contains the unchanged AGPL text added 2026-07-10. The 157-gonal carrier disk, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.
+AGPL-3.0-or-later for code within Erin Patrick Spencer's licensing authority, explicitly approved 2026-10-11 UTC (2026-10-10 Pacific). See [LICENSE_NOTICE.md](LICENSE_NOTICE.md) for the grant, approval record, and historical/third-party scope; [LICENSE](LICENSE) contains the unchanged AGPL text added 2026-07-10. The 157-gonal carrier disk, agent BYOK keys, agent per-instance ZFAE checkpoints, and any `last_state` PCEA key material are **not** committable.
 
 ## Author
 

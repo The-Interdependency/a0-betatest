@@ -12,10 +12,10 @@ SPDX license identifier: `AGPL-3.0-or-later`.
 The full GNU AGPL version 3 text is in [LICENSE](LICENSE). Its warranty disclaimer
 and other terms apply. That license text is unchanged by this approval record.
 
-## Approval on 2026-10-11
+## Approval on 2026-10-11 (UTC)
 
-Erin Patrick Spencer explicitly selected **AGPL-3.0-or-later** on 2026-10-11,
-in response to the choice between `AGPL-3.0-only` and `AGPL-3.0-or-later` raised
+Erin Patrick Spencer explicitly selected **AGPL-3.0-or-later** on 2026-10-11
+at 02:42 UTC (2026-10-10 at 19:42 Pacific), in response to the choice between `AGPL-3.0-only` and `AGPL-3.0-or-later` raised
 by [PR #29's licensing review](https://github.com/The-Interdependency/a0-betatest/pull/29#discussion_r4114333717).
 This project-specific grant records that decision for the code within their
 licensing authority.

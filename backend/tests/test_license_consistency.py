@@ -31,7 +31,7 @@ def test_metadata_and_summaries_match_approved_grant():
     notice = (ROOT / "LICENSE_NOTICE.md").read_text()
     assert f"SPDX license identifier: `{SPDX}`" in notice
     assert "either version 3 of the License, or (at your option) any later version" in notice
-    assert "## Approval on 2026-10-11" in notice
+    assert "## Approval on 2026-10-11 (UTC)" in notice
     assert "does not withdraw permissions granted in earlier releases" in notice
     assert "relicense code owned by other contributors without their permission" in notice
     for name in ("README.md", "CLAUDE.md", "HMMM.md"):
